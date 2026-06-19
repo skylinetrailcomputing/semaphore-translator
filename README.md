@@ -14,9 +14,14 @@ classifier maps two arm angles to a character.
 
 ## Status
 
-Scaffolding. Nothing is implemented yet. The immediate blocking task is
-**verifying and freezing the shared alphabet contract** — see
-[`shared/README.md`](shared/README.md) and Epic 1 in the issue tracker.
+Early scaffolding. The shared contract is frozen (Epic 1), and the
+**cross-platform parity harness is live** (Epic 2, #14): both the iOS
+(XCTest) and Android (JVM unit test) ports run `shared/test_vectors.json`
+through their decode path and assert identical results. Native projects
+exist for both platforms — see [`ios/README.md`](ios/README.md),
+[`android/README.md`](android/README.md), and
+[`docs/adr/0001-parity-harness-and-native-project-shape.md`](docs/adr/0001-parity-harness-and-native-project-shape.md).
+Camera, pose, and the adapter (Epic 3) are next.
 
 - **Publisher:** Skyline Trail Computing LLC. Private repo for now.
 - **Distribution posture:** Tier A (free, on-device, no PII of

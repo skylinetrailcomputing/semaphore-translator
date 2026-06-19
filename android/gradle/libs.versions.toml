@@ -1,0 +1,16 @@
+# Version catalog — single source of truth for plugin/library versions.
+# AGP 9.0+ provides built-in Kotlin compilation, so no separate Kotlin Gradle
+# plugin is applied (and the kotlinx-serialization compiler plugin with it).
+# JSON is parsed reflectively with Gson to keep the build free of Kotlin
+# compiler-plugin configuration under AGP's built-in Kotlin.
+[versions]
+agp = "9.2.1"
+gson = "2.13.2"
+junit = "4.13.2"
+
+[libraries]
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
