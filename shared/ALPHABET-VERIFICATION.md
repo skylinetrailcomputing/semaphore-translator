@@ -73,6 +73,26 @@ excluded — confirmed, unchanged.
 **Net change vs the unverified draft:** 9 letter pairs (J,P,Q,R,S,T,U,W,Y)
 + NUMERALS. 16 letters + I + REST + digit map already correct.
 
+### Arm-assignment ambiguity (which arm at which angle)
+
+During review (Brad, 2026-06-19) it was observed that published alphabets
+disagree on *which arm* sits at *which angle* for some letters (I, O, W,
+X). This is structural, not error: those — plus **H** and **Z** — are the
+letters whose two flags fall on the **same side** of the body, so one arm
+crosses over and the visible pose is identical regardless of which arm is
+on top. A semaphore character is fundamentally the **unordered pair** of
+flag positions: the 26 letters occupy 26 of the 28 unordered
+distinct-position pairs `C(8,2)`; the other two are NUMERALS (`{up,
+up-left}`) and the unused `{up-right, down-left}`.
+
+**Decision:** alphabet lookup is **order-insensitive** — canonicalize an
+observed `(left,right)` by sorting before lookup; `(a,b)` and `(b,a)` are
+the same character. Provably collision-free (no character's reverse is
+another character). The ordered pairs above remain the canonical
+signer's-perspective reference orientation. Encoded in
+`semaphore_alphabet.json._matching` and spec §4.3; `test_vectors.json`
+(#12) must include arm-swapped positive cases for H,I,O,W,X,Z.
+
 ---
 
 ## Earlier research notes (head-start, 2026-06-19 — superseded above)
