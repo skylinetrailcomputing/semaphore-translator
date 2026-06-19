@@ -59,7 +59,7 @@
 
   "control_signals": {
     "NUMERALS":  { "left": 5, "right": 4, "effect": "enter_numeric_mode", "_note": "the 'Numerals'/numeric sign (File:Semaphore Numeric): signer's left arm up-left (5), right arm up (4). Distinct from all 26 letters. Switches the decoder into numeric mode." },
-    "LETTERS":   { "alias_of_letter": "J", "effect": "enter_letter_mode", "_note": "the 'J'/alphabetic sign returns from numeric to letter mode (confirmed: Wikipedia 'Letters can be signaled by first signaling J')." },
+    "LETTERS":   { "alias_of_letter": "J", "effect": "enter_letter_mode", "_note": "the 'J'/alphabetic sign. Acts as a mode switch ONLY in numeric mode, where it returns to letter mode (confirmed: Wikipedia 'Letters can be signaled by first signaling J'; labelled 'Letters to follow'). In letter mode the J pose carries no shift meaning and is simply the letter J, so words like AJAR are spellable (spec 4.5). DIGIT_MAP excludes J (K=0), so in numeric mode the J pose is unambiguously the letters-shift." },
     "REST":      { "left": 0, "right": 0, "effect": "space_or_rest", "_note": "both arms straight down = space / rest / end (= chart 'Space')." },
     "ERROR":     { "effect": "error_or_attention", "_note": "8+ rapid alternations / chart-specific; out of scope for v1 recognition, reserved (spec 9-C)." },
     "CANCEL":    { "effect": "annul_previous", "_note": "disregard previous signal; out of scope for v1 recognition, reserved (spec 9-C)." }
