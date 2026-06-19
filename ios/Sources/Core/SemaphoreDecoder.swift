@@ -12,6 +12,10 @@ enum Mode: String {
 /// Pure logic, downstream of the per-platform adapter: it consumes the frozen
 /// 6-keypoint representation and produces the same emitted string + position
 /// ids as the Kotlin port. The parity harness proves they agree byte-for-byte.
+///
+/// The decoder is intentionally decoupled from the wire format: it takes the
+/// already-parsed contract as plain values, so the app target carries no JSON /
+/// loader code. The test harness parses `shared/*.json` and constructs it.
 struct SemaphoreDecoder {
     /// Order-insensitive lookup key: an unordered pair of position ids.
     private struct Pair: Hashable {
@@ -28,17 +32,28 @@ struct SemaphoreDecoder {
     private let toleranceDeg: Double
     private let minConfidence: Double
 
-    init(alphabet: Alphabet, config: SemaphoreConfig) {
-        self.toleranceDeg = config.angleToleranceDeg
-        self.minConfidence = config.minKeypointConfidence
-        self.digitMap = alphabet.numericMode.digitMap
-        self.octants = alphabet.positionModel.positions.values
-            .map { (id: $0.id, angle: $0.angleDeg) }
+    /// - Parameters:
+    ///   - octantAngles: position id → canonical angle in degrees.
+    ///   - symbolPairs: symbol name → (left id, right id); the 26 letters plus
+    ///     the `NUMERALS` and `REST` control signals.
+    ///   - digitMap: letter symbol → digit string, in numeric mode (A–I → 1–9, K → 0).
+    init(
+        octantAngles: [Int: Double],
+        symbolPairs: [String: (left: Int, right: Int)],
+        digitMap: [String: String],
+        angleToleranceDeg: Double,
+        minKeypointConfidence: Double
+    ) {
+        self.toleranceDeg = angleToleranceDeg
+        self.minConfidence = minKeypointConfidence
+        self.digitMap = digitMap
+        self.octants = octantAngles
+            .map { (id: $0.key, angle: $0.value) }
             .sorted { $0.id < $1.id }
 
         var table: [Pair: String] = [:]
-        func add(_ symbol: String, _ left: Int, _ right: Int) {
-            let key = Pair(left, right)
+        for (symbol, ids) in symbolPairs {
+            let key = Pair(ids.left, ids.right)
             if let existing = table[key] {
                 fatalError(
                     "alphabet collision under order-insensitive match: "
@@ -46,9 +61,6 @@ struct SemaphoreDecoder {
             }
             table[key] = symbol
         }
-        for (symbol, ids) in alphabet.letters { add(symbol, ids.left, ids.right) }
-        add("NUMERALS", alphabet.controlSignals.numerals.left, alphabet.controlSignals.numerals.right)
-        add("REST", alphabet.controlSignals.rest.left, alphabet.controlSignals.rest.right)
         self.lookup = table
     }
 
