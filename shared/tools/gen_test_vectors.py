@@ -139,20 +139,22 @@ def make_kp(
     right_angle=None,
     left_wrist_conf=1.0,
     right_wrist_conf=1.0,
+    left_shoulder_conf=1.0,
+    right_shoulder_conf=1.0,
 ):
     """Six keypoints placing each arm at its octant angle (or an override)."""
     la = OCTANT[left_id] if left_angle is None else left_angle
     ra = OCTANT[right_id] if right_angle is None else right_angle
 
-    def arm(sh, angle, wrist_conf):
+    def arm(sh, angle, wrist_conf, shoulder_conf):
         th = math.radians(angle)
         cos, sin = math.cos(th), math.sin(th)
         elbow = [_rd(sh[0] + 0.5 * L_ARM * cos), _rd(sh[1] + 0.5 * L_ARM * sin), 1.0]
         wrist = [_rd(sh[0] + L_ARM * cos), _rd(sh[1] + L_ARM * sin), wrist_conf]
-        return [_rd(sh[0]), _rd(sh[1]), 1.0], elbow, wrist
+        return [_rd(sh[0]), _rd(sh[1]), shoulder_conf], elbow, wrist
 
-    l_sh, l_el, l_wr = arm(L_SH, la, left_wrist_conf)
-    r_sh, r_el, r_wr = arm(R_SH, ra, right_wrist_conf)
+    l_sh, l_el, l_wr = arm(L_SH, la, left_wrist_conf, left_shoulder_conf)
+    r_sh, r_el, r_wr = arm(R_SH, ra, right_wrist_conf, right_shoulder_conf)
     return {
         "left_shoulder": l_sh,
         "left_elbow": l_el,
@@ -282,13 +284,21 @@ emit, got = add_single(
 )
 assert emit == "" and got[1] is None, ("indeterminate_angle", emit, got)
 emit, got = add_single(
-    "indeterminate_low_confidence",
+    "indeterminate_low_wrist",
     make_kp(2, 4, right_wrist_conf=0.3),  # valid octant, but wrist below the floor
     "LETTERS",
     f"Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE ({MIN_CONF}): that "
     "arm is indeterminate despite a valid octant geometry, no emit.",
 )
-assert emit == "" and got[1] is None, ("indeterminate_low_confidence", emit, got)
+assert emit == "" and got[1] is None, ("indeterminate_low_wrist", emit, got)
+emit, got = add_single(
+    "indeterminate_low_shoulder",
+    make_kp(2, 4, right_shoulder_conf=0.3),  # valid octant, but shoulder below the floor
+    "LETTERS",
+    f"Right shoulder confidence 0.3 < MIN_KEYPOINT_CONFIDENCE ({MIN_CONF}): the "
+    "shoulder gate (mirror of the wrist case) marks that arm indeterminate, no emit.",
+)
+assert emit == "" and got[1] is None, ("indeterminate_low_shoulder", emit, got)
 
 # 4. sequences exercising both numeric-mode transitions (spec 4.5)
 run_sequence(

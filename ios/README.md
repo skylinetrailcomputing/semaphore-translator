@@ -40,12 +40,12 @@ Simulator unit tests need no code signing.
 |------|------|
 | `project.yml` | XcodeGen project definition (source of truth). |
 | `Sources/App/` | Minimal SwiftUI app shell. |
-| `Sources/Core/` | `SharedContract.swift` (Decodable models + the `shared/` loader) and `SemaphoreDecoder.swift` (the decode logic ported from `shared/tools/gen_test_vectors.py`). |
-| `Tests/` | `ParityTests.swift` — runs `shared/test_vectors.json` and asserts emitted string + position ids. |
+| `Sources/Core/` | `SemaphoreDecoder.swift` — the decode logic ported from `shared/tools/gen_test_vectors.py`, decoupled from the wire format (plain-value constructor; no JSON/loader code ships in the app). |
+| `Tests/` | `ParityTests.swift` (the harness) and `SharedContract.swift` (test-only Decodable models + the `shared/` loader). |
 
 ## How the tests reach `shared/`
 
-`SharedFiles` (in `Sources/Core/SharedContract.swift`) walks up from this
+`SharedFiles` (in `Tests/SharedContract.swift`) walks up from this
 source tree's compile-time path (`#filePath`) until it finds the repo's
 `shared/test_vectors.json`, then loads the JSON directly — no copy, no symlink.
 Both platforms parse the exact bytes `shared/tools/gen_test_vectors.py` wrote,

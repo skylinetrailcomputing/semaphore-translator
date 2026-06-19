@@ -38,12 +38,12 @@ Rationale in the ADR.
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/libs.versions.toml` | Gradle build + version catalog. |
 | `app/build.gradle.kts` | The `:app` Android application module. |
 | `app/src/main/kotlin/.../MainActivity.kt` | Minimal app shell. |
-| `app/src/main/kotlin/.../core/` | `Contract.kt` (Gson models + the `shared/` loader) and `SemaphoreDecoder.kt` (the decode logic ported from `shared/tools/gen_test_vectors.py`). |
-| `app/src/test/kotlin/.../ParityTest.kt` | Runs `shared/test_vectors.json` and asserts emitted string + position ids. |
+| `app/src/main/kotlin/.../core/SemaphoreDecoder.kt` | The decode logic ported from `shared/tools/gen_test_vectors.py`, decoupled from the wire format (plain-value constructor; no Gson/loader ships in the app). |
+| `app/src/test/kotlin/.../` | `ParityTest.kt` (the harness) plus `core/Contract.kt` (Gson models) and `core/SharedFiles.kt` (the `shared/` loader) — test-only. |
 
 ## How the tests reach `shared/`
 
-`SharedFiles` (in `app/src/main/kotlin/.../core/SharedFiles.kt`) walks up from
+`SharedFiles` (in `app/src/test/kotlin/.../core/SharedFiles.kt`) walks up from
 the JVM working directory until it finds the repo's `shared/test_vectors.json`,
 then loads the JSON directly — no copy, no symlink. Both platforms parse the
 exact bytes `shared/tools/gen_test_vectors.py` wrote, so they can only disagree

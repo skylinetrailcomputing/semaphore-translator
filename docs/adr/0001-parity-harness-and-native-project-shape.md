@@ -62,22 +62,33 @@ the decode logic, which is precisely what the harness is meant to catch.
 - **iOS project generation:** the `.xcodeproj` is **generated** from a committed
   `ios/project.yml` via [XcodeGen](https://github.com/yonsm/XcodeGen) and is
   git-ignored. `project.yml` is the reviewable source of truth; contributors run
-  `xcodegen generate`. Simulator unit tests need no signing
-  (`CODE_SIGNING_ALLOWED=NO`), so the project is team-agnostic.
+  `xcodegen generate`. Simulator unit tests need no signing; that is passed as a
+  test-time CLI override (`CODE_SIGNING_ALLOWED=NO` on `xcodebuild test`), **not**
+  baked into the project, so device archives still sign normally later.
+- **Decoder is decoupled from the wire format.** The decoder takes the parsed
+  contract as plain values (octant angles, a symbol→id-pair map, the digit map,
+  the two constants), so the shipping app carries **no** JSON DTOs, JSON loader,
+  or `#filePath` build-machine path. The Codable/Gson DTOs and the `shared/`
+  loader (`SharedFiles`) live in the **test** sources on both platforms; the test
+  parses the JSON and assembles the decoder's inputs. When the app needs the
+  contract at runtime (Epic 3+), it gets its own bundled-asset loader.
 - **Android build toolchain (bleeding-edge, pinned deliberately):**
   - **AGP 9.2.1** provides **built-in Kotlin compilation** — the standalone
     `org.jetbrains.kotlin.android` plugin is no longer applied (AGP 9 rejects it
     as redundant). The Gradle wrapper is pinned to **9.5.1**; the daemon runs on
     the only installed JDK (**25**) and compiles to JVM 17 bytecode.
-  - **JSON via Gson 2.13.2**, not kotlinx.serialization. Reason: kotlinx requires
-    its compiler plugin, whose integration under AGP 9's built-in-Kotlin model is
-    not yet pinned down here. Gson is reflection-based, needs no compiler plugin,
-    and keeps the build free of that uncertainty. Revisit if/when the
+  - **JSON via Gson 2.13.2** (a `testImplementation` dep, so it is not in the
+    app), not kotlinx.serialization. Reason: kotlinx requires its compiler
+    plugin, whose integration under AGP 9's built-in-Kotlin model is not yet
+    pinned down here. Gson is reflection-based, needs no compiler plugin, and
+    keeps the build free of that uncertainty. Revisit if/when the
     built-in-Kotlin serialization-plugin story is settled.
+  - The Gradle wrapper pins `distributionSha256Sum` so the downloaded
+    distribution is integrity-checked, not just the URL.
   - `compileSdk = 35` (the installed platform); `minSdk = 26`.
 - **Parity, concretely:** both ports assert against the same fixture file, so
-  green on both platforms *is* the parity guarantee. Today: 36 single-pose
-  vectors + 4 sequences (40 frames). Re-run after any change to
+  green on both platforms *is* the parity guarantee. Today: 37 single-pose
+  vectors + 4 sequences (26 frames). Re-run after any change to
   `semaphore_alphabet.json` / `semaphore_config.json` (regenerate the fixtures
   first: `uv run shared/tools/gen_test_vectors.py`).
 - **Scope:** downstream of the adapter only. The vectors are the adapter's

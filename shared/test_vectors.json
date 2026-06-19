@@ -1461,7 +1461,7 @@
       "_note": "Right arm at 22.5deg is 22.5deg from both id 2 (0deg) and id 3 (45deg), beyond ANGLE_TOLERANCE_DEG (20): that arm is indeterminate, no emit."
     },
     {
-      "name": "indeterminate_low_confidence",
+      "name": "indeterminate_low_wrist",
       "keypoints": {
         "left_shoulder": [
           0.4,
@@ -1501,6 +1501,48 @@
         null
       ],
       "_note": "Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5): that arm is indeterminate despite a valid octant geometry, no emit."
+    },
+    {
+      "name": "indeterminate_low_shoulder",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          0.3
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "",
+      "expected_position_ids": [
+        2,
+        null
+      ],
+      "_note": "Right shoulder confidence 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5): the shoulder gate (mirror of the wrist case) marks that arm indeterminate, no emit."
     }
   ],
   "sequence_vectors": [

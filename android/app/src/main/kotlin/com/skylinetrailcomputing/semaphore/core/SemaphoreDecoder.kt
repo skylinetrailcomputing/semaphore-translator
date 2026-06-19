@@ -19,27 +19,40 @@ data class FrameResult(val emit: String, val mode: Mode, val ids: List<Int?>)
  * Pure logic, downstream of the per-platform adapter: it consumes the frozen
  * 6-keypoint representation and produces the same emitted string + position
  * ids as the Swift port. The parity harness proves they agree byte-for-byte.
+ *
+ * The decoder is intentionally decoupled from the wire format: it takes the
+ * already-parsed contract as plain values, so the app module carries no JSON /
+ * Gson / loader code. The test harness parses the shared JSON and constructs it.
+ *
+ * @param octantAngles position id -> canonical angle in degrees.
+ * @param symbolPairs symbol name -> (left id, right id); the 26 letters plus
+ *   the NUMERALS and REST control signals.
+ * @param digitMap letter symbol -> digit string, in numeric mode (A-I -> 1-9, K -> 0).
  */
-class SemaphoreDecoder(alphabet: Alphabet, config: SemaphoreConfig) {
+class SemaphoreDecoder(
+    octantAngles: Map<Int, Double>,
+    symbolPairs: Map<String, Pair<Int, Int>>,
+    digitMap: Map<String, String>,
+    angleToleranceDeg: Double,
+    minKeypointConfidence: Double,
+) {
     /** Order-insensitive lookup key: an unordered pair of position ids. */
-    private data class Pair(val a: Int, val b: Int)
+    private data class IdPair(val a: Int, val b: Int)
 
-    private fun pairOf(x: Int, y: Int): Pair = if (x <= y) Pair(x, y) else Pair(y, x)
+    private fun pairOf(x: Int, y: Int): IdPair = if (x <= y) IdPair(x, y) else IdPair(y, x)
 
     // (id, angle) sorted by id, like the generator.
-    private val octants: List<kotlin.Pair<Int, Double>> =
-        alphabet.positionModel.positions.values
-            .map { it.id to it.angleDeg }
-            .sortedBy { it.first }
-    private val lookup: Map<Pair, String>
-    private val digitMap: Map<String, String> = alphabet.numericMode.digitMap
-    private val toleranceDeg: Double = config.angleToleranceDeg
-    private val minConfidence: Double = config.minKeypointConfidence
+    private val octants: List<Pair<Int, Double>> =
+        octantAngles.map { it.key to it.value }.sortedBy { it.first }
+    private val lookup: Map<IdPair, String>
+    private val digitMap: Map<String, String> = digitMap
+    private val toleranceDeg: Double = angleToleranceDeg
+    private val minConfidence: Double = minKeypointConfidence
 
     init {
-        val table = HashMap<Pair, String>()
-        fun add(symbol: String, left: Int, right: Int) {
-            val key = pairOf(left, right)
+        val table = HashMap<IdPair, String>()
+        symbolPairs.forEach { (symbol, ids) ->
+            val key = pairOf(ids.first, ids.second)
             val existing = table[key]
             check(existing == null) {
                 "alphabet collision under order-insensitive match: " +
@@ -47,9 +60,6 @@ class SemaphoreDecoder(alphabet: Alphabet, config: SemaphoreConfig) {
             }
             table[key] = symbol
         }
-        alphabet.letters.forEach { (symbol, ids) -> add(symbol, ids.left, ids.right) }
-        add("NUMERALS", alphabet.controlSignals.numerals.left, alphabet.controlSignals.numerals.right)
-        add("REST", alphabet.controlSignals.rest.left, alphabet.controlSignals.rest.right)
         lookup = table
     }
 
@@ -95,7 +105,7 @@ class SemaphoreDecoder(alphabet: Alphabet, config: SemaphoreConfig) {
     }
 
     /** Map a classified symbol to (emitted string, new mode) per spec §4.5. */
-    private fun interpret(symbol: String?, mode: Mode): kotlin.Pair<String, Mode> {
+    private fun interpret(symbol: String?, mode: Mode): Pair<String, Mode> {
         if (symbol == null) return "" to mode // indeterminate: emit nothing
         if (symbol == "NUMERALS") return "" to Mode.NUMERIC // numerals sign
         if (symbol == "J" && mode == Mode.NUMERIC) return "" to Mode.LETTERS // letters-shift, numeric only

@@ -1,10 +1,12 @@
 import Foundation
 
-// Decodable mirrors of the language-neutral `shared/*.json` contract. Only the
-// fields the decoder consumes are modeled; unknown keys (the `_`-prefixed
-// documentation, control signals other than NUMERALS/REST, etc.) are ignored
-// by Codable. These three files are the single source of truth — see
-// `SharedFiles` below for how the tests reach them without copying.
+// Test-only mirrors of the language-neutral `shared/*.json` contract plus the
+// loader that reaches them. These live in the test target (not the app) so the
+// shipping app carries no JSON-loader code or build-machine `#filePath`. Only
+// the fields the harness needs are modeled; Codable ignores unknown keys (the
+// `_`-prefixed documentation, control signals other than NUMERALS/REST, etc.).
+// When the app needs the contract at runtime (Epic 3+), it gets its own
+// bundled-asset loader; this stays test-side.
 
 // MARK: - semaphore_config.json
 
@@ -124,8 +126,8 @@ struct TestVectors: Decodable {
 
 /// Resolves the repo's `shared/` directory and loads the JSON contract files.
 ///
-/// Per the #14 decision, the tests read `shared/*.json` directly rather than
-/// copying or symlinking them, so both platforms parse the exact bytes the
+/// Per the #14 decision, the tests read the `shared/` JSON files directly rather
+/// than copying or symlinking them, so both platforms parse the exact bytes the
 /// Python generator wrote. The anchor is this source file's compile-time path
 /// (`#filePath`); we walk up until we find the directory containing
 /// `shared/test_vectors.json`. This works from a simulator-hosted XCTest the

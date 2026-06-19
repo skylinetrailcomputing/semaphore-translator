@@ -14,9 +14,6 @@ settings:
     GENERATE_INFOPLIST_FILE: "YES"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    # Simulator unit tests don't need signing; keep the project team-agnostic
-    # so it builds for any contributor without a provisioning profile.
-    CODE_SIGNING_ALLOWED: "NO"
 targets:
   SemaphoreTranslator:
     type: application

@@ -21,6 +21,8 @@ android {
 }
 
 dependencies {
-    implementation(libs.gson)
+    // Gson and the JSON contract DTOs are used only by the parity harness, so
+    // they stay out of the shipping app (the decoder takes plain values).
+    testImplementation(libs.gson)
     testImplementation(libs.junit)
 }
