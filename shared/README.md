@@ -40,6 +40,11 @@ Two concrete problems found during scaffolding (2026-06-19):
    down-*right*. But the table labels id 1 (−45°) as "down-right" and
    id 7 (225°) as "down-left."
 
+**Convention decision (ratified 2026-06-19):** freeze in the **signer's
+own perspective** (anchor on the spec's stated convention). The exact
+`+x` direction and the id↔angle table are reconciled against the chart
+at freeze time.
+
 **Resolution (Epic 1):** pick ONE convention, verify every (left,right)
 pair A–Z against an authoritative chart read in the signer's
 perspective, confirm the numerals/letters signs and the digit→0 detail
@@ -49,3 +54,11 @@ source + date.
 
 Until that's done, `test_vectors.json` cannot be authored with correct
 expected outputs (it currently holds only a structural skeleton).
+
+> **A verification research pass was done 2026-06-19 — see
+> [`ALPHABET-VERIFICATION.md`](ALPHABET-VERIFICATION.md).** Headline: an
+> independent cross-check against anbg.gov.au found **~10 of 26 letter
+> pairs disagree** with the current JSON (I, J, P, Q, R, S, T, U, W, Y),
+> so the JSON's letter pairs are likely wrong and must be rebuilt from a
+> canonical image chart. The JSON's **numeric** half (A=1…I=9, K=0,
+> J=letters-shift) and the 8-octant model are **confirmed correct**.
