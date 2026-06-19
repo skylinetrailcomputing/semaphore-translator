@@ -1,0 +1,62 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Frozen shared contract for the post-adapter keypoint representation that BOTH platform adapters must emit (spec docs/semaphore-translator-spec.md sections 3.2, 4.1, 4.2). This is the cross-platform spine: the per-platform adapter is the ONLY code that may touch native skeleton schemas, coordinate origins, or the camera mirror; everything downstream (feature extraction, classification, decode) consumes this exact representation and must be logically identical across iOS and Android. Human-readable spec + per-platform mapping guidance + verification: shared/ADAPTER-CONTRACT.md. Issue #13 (Epic 2).",
+
+  "keypoints": {
+    "names": [
+      "left_shoulder", "left_elbow", "left_wrist",
+      "right_shoulder", "right_elbow", "right_wrist"
+    ],
+    "value_shape": "[x, y, confidence]",
+    "value_notes": {
+      "x": "normalized to [0,1]; increases toward the SIGNER'S RIGHT (+x = signer's right)",
+      "y": "normalized to [0,1]; increases UP (y-up). The screen/image y-down axis is negated ONCE, in the adapter.",
+      "confidence": "per-keypoint visibility in [0,1], passed through unmodified from the native pose estimator"
+    },
+    "left_right_semantics": "left_* is the signer's ANATOMICAL LEFT arm; right_* is the signer's ANATOMICAL RIGHT arm. Because +x points to the signer's right, a signer facing the camera with arms relaxed has right_shoulder.x > left_shoulder.x. Getting native left/right correct under front-camera mirroring is the adapter's single most error-prone job; see ADAPTER-CONTRACT.md."
+  },
+
+  "coordinate_frame": {
+    "normalized_range": "[0,1] for both x and y",
+    "y_axis": "up",
+    "perspective": "signer's (not the camera's / observer's)",
+    "plus_x": "signer's right",
+    "matches": "the frozen angle convention in spec 4.2 (angle = atan2(wrist.y - shoulder.y, wrist.x - shoulder.x), measured CCW from +x) and the position model in semaphore_alphabet.json._position_model; position ids 0..7 sit at -90, -45, 0, 45, 90, 135, 180, -135 degrees",
+    "transforms_owned_by_adapter": [
+      "y-flip: negate image y so the frame is y-up (once, at ingest)",
+      "horizontal mirror: undo the front-camera mirror so coordinates are in the signer's perspective (+x = signer's right)"
+    ],
+    "transforms_rule": "Both flips happen EXACTLY ONCE, in the per-platform adapter, and NOWHERE else. Cross-platform divergence almost always traces to one platform's adapter getting one of these two flips wrong -- which the parity harness (#14) and native fixtures (Epic 3) exist to catch."
+  },
+
+  "confidence_gate": {
+    "constant": "MIN_KEYPOINT_CONFIDENCE",
+    "source": "semaphore_config.json",
+    "rule": "An arm is indeterminate if its shoulder OR wrist confidence is below MIN_KEYPOINT_CONFIDENCE (spec 4.3). The adapter only PASSES confidence through; the floor is applied downstream in feature extraction, identically on both platforms. Confidence on the elbow is carried for completeness but does not gate (only shoulder + wrist define the arm vector)."
+  },
+
+  "model_input_order": {
+    "_note": "INPUT-side analogue of semaphore_alphabet.json.label_order (the OUTPUT class order). Pins the flatten order of the trained classifier's fixed-length input vector (spec 5.3) so both the Core ML and LiteRT exports AND both platform adapters index identically. A label-index or preprocessing/order mismatch between the two converted models is the single most common cross-platform ML bug (spec 5.3 note); this freezes the input half of that contract.",
+    "floats": [
+      "left_shoulder.x", "left_shoulder.y",
+      "left_elbow.x", "left_elbow.y",
+      "left_wrist.x", "left_wrist.y",
+      "right_shoulder.x", "right_shoulder.y",
+      "right_elbow.x", "right_elbow.y",
+      "right_wrist.x", "right_wrist.y"
+    ],
+    "length": 12,
+    "confidence_excluded": "Confidence is NOT part of the model input (12 floats = 6 keypoints x {x,y}), matching spec 5.3 ('12 values: x,y per point'). Confidence gates indeterminacy upstream of the model. Revisit only if a future model is given confidence as input (spec 9-D, open)."
+  },
+
+  "adapter_must_not": [
+    "compute arm angles or quantize to position ids (that is feature extraction / classification, spec 4.2-4.3)",
+    "look up characters or run the numeric-mode state machine (spec 4.5)",
+    "apply temporal smoothing or commit timing (spec 4.4, Epic 4)",
+    "apply the mirror or the y-flip more than once, or anywhere downstream of the adapter"
+  ],
+
+  "version": "1.0",
+  "_human_doc": "shared/ADAPTER-CONTRACT.md",
+  "spec_refs": ["3.2", "4.1", "4.2", "4.3", "5.3", "6"]
+}
