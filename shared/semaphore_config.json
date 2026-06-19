@@ -1,0 +1,16 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Frozen runtime constants per docs/semaphore-translator-spec.md §4.4. Both platforms load and parse this file; values are never hardcoded in Swift/Kotlin. Changing a value here changes behavior on both platforms identically.",
+  "ANGLE_TOLERANCE_DEG": 20,
+  "MIN_KEYPOINT_CONFIDENCE": 0.5,
+  "COMMIT_HOLD_MS": 600,
+  "INTER_CHAR_GAP_MS": 300,
+  "SMOOTHING_WINDOW": 5,
+  "_field_notes": {
+    "ANGLE_TOLERANCE_DEG": "max deviation from a 45-degree canonical position to accept; beyond this the arm is indeterminate",
+    "MIN_KEYPOINT_CONFIDENCE": "below this per-keypoint visibility, the arm is indeterminate",
+    "COMMIT_HOLD_MS": "how long a stable character must hold before being committed to output",
+    "INTER_CHAR_GAP_MS": "minimum indeterminate gap before the next character can commit",
+    "SMOOTHING_WINDOW": "frames of majority-vote smoothing on the predicted character"
+  }
+}

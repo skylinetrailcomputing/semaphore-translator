@@ -1,0 +1,30 @@
+# Claude Code maintainer-only context
+CLAUDE.local.md
+
+# macOS
+.DS_Store
+
+# Xcode / iOS
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/DerivedData/
+ios/**/build/
+*.xcscmblueprint
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/**/build/
+android/local.properties
+*.iml
+.idea/
+
+# Python (model/ training pipeline)
+__pycache__/
+*.pyc
+.venv/
+.python-version
+
+# NOTE: model/artifacts/ exported models (.mlmodel/.mlpackage, .tflite)
+# are intentionally NOT ignored — they are checked-in artifacts per
+# docs/semaphore-translator-spec.md §6.

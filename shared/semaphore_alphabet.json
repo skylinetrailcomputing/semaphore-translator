@@ -1,0 +1,94 @@
+{
+  "$schema_version": "0.1-draft",
+  "_README": "AUTHORED FROM THE CANONICAL SEMAPHORE STANDARD. NOT YET VERIFIED against an authoritative chart image. Before either platform trusts this file, validate every (left,right) pair against a reference chart (see _verification). The standard alphabet is well-established and consistent across sources, but the per-letter pairs below MUST be confirmed because a single transposed pair is a silent, hard-to-catch error.",
+
+  "_position_model": {
+    "description": "Each arm occupies one of 8 octant positions, 45 degrees apart. Position IDs and angles follow spec section 4.2 (signer's perspective, y-up, CCW from +x where +x points to the signer's LEFT). These are SINGLE-ARM directions, identical reference frame for both arms.",
+    "positions": {
+      "S":  { "id": 0, "angle_deg": -90, "name": "down",            "clock_note": "6 o'clock" },
+      "DR": { "id": 1, "angle_deg": -45, "name": "down-right",      "clock_note": "4:30 (toward signer's right, low)" },
+      "R":  { "id": 2, "angle_deg": 180, "name": "out-right",       "clock_note": "3 o'clock (signer's right, horizontal)" },
+      "UR": { "id": 3, "angle_deg": 135, "name": "up-right",        "clock_note": "1:30 (signer's right, high)" },
+      "U":  { "id": 4, "angle_deg": 90,  "name": "up",              "clock_note": "12 o'clock" },
+      "UL": { "id": 5, "angle_deg": 45,  "name": "up-left",         "clock_note": "10:30 (signer's left, high)" },
+      "L":  { "id": 6, "angle_deg": 0,   "name": "out-left",        "clock_note": "9 o'clock (signer's left, horizontal)" },
+      "DL": { "id": 7, "angle_deg": -135,"name": "down-left",       "clock_note": "7:30 (signer's left, low)" }
+    },
+    "_position_note": "Symbol keys (S, DR, R, ...) are human-readable aliases. The authoritative machine value is 'id'. The clock_note column is the bridge used to verify against printed charts, which conventionally describe positions in clock terms from the signer's own viewpoint."
+  },
+
+  "_encoding_note": "Each character lists the LEFT arm position id and RIGHT arm position id, both in the signer's-perspective frame defined above. The canonical alphabet is generated in 'circles': with one arm fixed, the other sweeps through positions. Pairs below follow that standard construction.",
+
+  "letters": {
+    "A": { "left": 0, "right": 1 },
+    "B": { "left": 0, "right": 2 },
+    "C": { "left": 0, "right": 3 },
+    "D": { "left": 0, "right": 4 },
+    "E": { "left": 5, "right": 0 },
+    "F": { "left": 6, "right": 0 },
+    "G": { "left": 7, "right": 0 },
+    "H": { "left": 1, "right": 2 },
+    "I": { "left": 1, "right": 3 },
+    "J": { "left": 4, "right": 2 },
+    "K": { "left": 4, "right": 1 },
+    "L": { "left": 5, "right": 1 },
+    "M": { "left": 6, "right": 1 },
+    "N": { "left": 7, "right": 1 },
+    "O": { "left": 3, "right": 2 },
+    "P": { "left": 4, "right": 3 },
+    "Q": { "left": 5, "right": 3 },
+    "R": { "left": 6, "right": 3 },
+    "S": { "left": 7, "right": 3 },
+    "T": { "left": 4, "right": 5 },
+    "U": { "left": 4, "right": 6 },
+    "V": { "left": 7, "right": 4 },
+    "W": { "left": 5, "right": 6 },
+    "X": { "left": 7, "right": 5 },
+    "Y": { "left": 5, "right": 2 },
+    "Z": { "left": 6, "right": 7 }
+  },
+
+  "control_signals": {
+    "NUMERALS":  { "left": 3, "right": 1, "effect": "enter_numeric_mode", "_note": "the 'Numbers' / numeric sign; equals the 'J'-position family per standard; CONFIRM against chart" },
+    "LETTERS":   { "alias_of_letter": "J", "effect": "enter_letter_mode", "_note": "the 'J' / alphabetic sign returns from numeric to letter mode" },
+    "REST":      { "left": 0, "right": 0, "effect": "space_or_rest", "_note": "both arms straight down = space / rest / end" },
+    "ERROR":     { "effect": "error_or_attention", "_note": "8+ rapid alternations / chart-specific; out of scope for v1 recognition, reserved" },
+    "CANCEL":    { "effect": "annul_previous", "_note": "disregard previous signal; out of scope for v1 recognition, reserved" }
+  },
+
+  "numeric_mode": {
+    "_note": "In numeric mode the letter POSES A-J are reinterpreted as digits. Mapping per the international convention: A=1 .. I=9, K=0. (Some sources use J as the letters-shift, with K=0; CONFIRM the 0/J/K detail against the chart, this is the single most commonly misreported part of the standard.)",
+    "digit_map": {
+      "A": "1",
+      "B": "2",
+      "C": "3",
+      "D": "4",
+      "E": "5",
+      "F": "6",
+      "G": "7",
+      "H": "8",
+      "I": "9",
+      "K": "0"
+    }
+  },
+
+  "label_order": [
+    "A","B","C","D","E","F","G","H","I","J","K","L","M",
+    "N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
+    "NUMERALS","REST","INDETERMINATE"
+  ],
+  "_label_order_note": "This is the FROZEN output class order for the trained model and both platform exports. INDETERMINATE is the catch-all no-confident-pose class. Digits are NOT separate classes: they are produced by the decoder's numeric-mode reinterpretation of letter classes (spec 4.5), so they do not appear here.",
+
+  "_verification": {
+    "status": "UNVERIFIED",
+    "must_do_before_use": [
+      "Open an authoritative semaphore chart (e.g. Wikipedia 'Flag semaphore', a scouting/naval manual, or dCode's per-letter images).",
+      "For each letter A-Z, confirm the (left,right) octant pair matches the chart when read in the SIGNER'S perspective.",
+      "Confirm NUMERALS sign pose and the LETTERS/J relationship.",
+      "Confirm the digit map, especially which pose maps to 0 (J vs K) — this is the most error-prone detail.",
+      "Once confirmed, set status to VERIFIED and record the chart source + date here."
+    ],
+    "verified_against": null,
+    "verified_date": null
+  }
+}
