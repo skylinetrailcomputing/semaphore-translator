@@ -130,24 +130,26 @@ angle_deg = degrees( atan2(v.y, v.x) )             // CCW from +x axis
 ```
 (Note: because the adapter already delivers y-up coordinates, the formula uses `+v.y` directly — there is no second negation here. The negation lives once, in the adapter.)
 
-**Canonical positions:** +x points toward the signer's left. Angle is measured counterclockwise. Thus:
+**Canonical positions:** +x points toward the signer's **right**, +y points up, angle measured counterclockwise from +x. (This is the natural math frame from the signer's own viewpoint: the signer's right hand is +x. The source charts are drawn in the *observer's* perspective; the adapter's mirror, §3.2, converts to this signer's frame.) Thus:
 
 | Position ID | Angle (deg) | Direction (signer's perspective) |
 |-------------|-------------|----------------------------------|
 | 0 | -90 (= 270) | straight down |
 | 1 | -45 (= 315) | down-and-right (low diagonal toward signer's right) |
-| 2 | 0   | straight out to signer's left |
-| 3 | 45  | up-and-left |
+| 2 | 0   | straight out to signer's right |
+| 3 | 45  | up-and-right |
 | 4 | 90  | straight up |
-| 5 | 135 | up-and-right |
-| 6 | 180 | straight out to signer's right |
+| 5 | 135 | up-and-left |
+| 6 | 180 | straight out to signer's left |
 | 7 | 225 | down-and-left |
 
-> The exact ID↔angle assignment above is the contract the alphabet JSON is authored against. The single rule to remember: **the mirror and the y-flip happen once, in the adapter, and nowhere else.** Cross-platform divergence almost always traces to one platform's adapter getting one of those two flips wrong — which the parity test (§6) will surface immediately.
+> The exact ID↔angle assignment above is the contract the alphabet JSON is authored against, and `shared/semaphore_alphabet.json._position_model` now matches it exactly. The single rule to remember: **the mirror and the y-flip happen once, in the adapter, and nowhere else.** Cross-platform divergence almost always traces to one platform's adapter getting one of those two flips wrong — which the parity test (§6) will surface immediately.
 
 ### 4.3 Quantization to position IDs
 
 A continuous arm angle is snapped to the nearest 45° position with a tolerance band. If the angle is farther than `ANGLE_TOLERANCE_DEG` from any canonical position, the arm is "indeterminate" and no character is emitted.
+
+**Alphabet lookup is order-insensitive.** A semaphore character is defined by the *pair of flag positions*, not by which arm holds which: when both flags fall on the same side of the body (letters **H, I, O, W, X, Z**) one arm must cross over, and charts/signers render either arm on top without changing the visible pose — published alphabets genuinely disagree on the arm assignment for exactly these letters. So both platforms canonicalize the observed `(left_id, right_id)` by sorting before looking it up in `semaphore_alphabet.json`, treating `(a,b)` and `(b,a)` as the same character. This is provably collision-free: no character's reverse is another character (the 26 letters occupy 26 of the 28 unordered distinct-position pairs; NUMERALS and REST fill the rest). The ordered pairs in the JSON are the canonical signer's-perspective reference orientation; the swapped rendering is equally valid input. See `semaphore_alphabet.json._matching`.
 
 ### 4.4 Shared constants (frozen)
 
@@ -279,10 +281,10 @@ Contract requirements:
 4. Angle convention → frozen in §4.2 (signer's perspective, y-up, mirror+flip in adapter). ✔
 
 **Still to do before/while scaffolding:**
-- A. Author `semaphore_alphabet.json` from an **authoritative** semaphore chart (pose→letter, the numerals/letters mode signs, and `DIGIT_MAP`). Must not be done from memory. **Next action.**
-- B. Confirm the §4.2 ID↔angle table against that chart once authored (the two must agree).
-- C. Decide control-signal scope beyond numerals/letters (e.g., space, error/annul sign) — defer unless trivial.
-- D. Choose trained-model architecture (small MLP over the 12 floats is the default starting point).
+- A. ~~Author `semaphore_alphabet.json` from an **authoritative** semaphore chart.~~ ✔ **VERIFIED 2026-06-19** against the canonical Wikipedia/anbg chart (read in the signer's perspective) + numerals sign; see `shared/semaphore_alphabet.json._verification` and `shared/ALPHABET-VERIFICATION.md`.
+- B. ~~Confirm the §4.2 ID↔angle table against that chart.~~ ✔ Reconciled: §4.2 frame is **+x = signer's right, CCW, y-up**; the spec table and the JSON `_position_model` now agree exactly.
+- C. Control-signal scope: `REST` = space (both arms down) is in scope and encoded; ERROR/CANCEL recognition deferred (reserved, §9 / `semaphore_alphabet.json.control_signals`).
+- D. Choose trained-model architecture (small MLP over the 12 floats is the default starting point). *(open)*
 
 ---
 
