@@ -5,6 +5,9 @@ CLAUDE.local.md
 .DS_Store
 
 # Xcode / iOS
+# The .xcodeproj is generated from ios/project.yml by XcodeGen — see
+# ios/README.md. project.yml is the committed source of truth.
+ios/*.xcodeproj/
 ios/**/xcuserdata/
 ios/**/*.xcuserstate
 ios/**/DerivedData/
