@@ -19,6 +19,15 @@
 
   "_encoding_note": "Each character lists the LEFT arm position id and RIGHT arm position id, both in the signer's-perspective frame defined above. The canonical alphabet is generated in 'circles': with one arm fixed, the other sweeps through positions (e.g. O/P/Q/R/S fix the right arm at out-right (2); T/U/Y fix it at up-right (3)). The pairs below were verified to follow that construction.",
 
+  "_matching": {
+    "order_insensitive": true,
+    "rule": "Classification matches on the UNORDERED pair of position ids. Canonicalize an observed (left_id, right_id) by sorting before lookup; treat (a,b) and (b,a) as the same character. The ordered pairs in 'letters' are the canonical signer's-perspective reference orientation (as drawn on the chart); the arm-swapped rendering is equally valid input.",
+    "why": "A semaphore character is defined by the two flag POSITIONS, not by which arm holds which. When both flags fall on the same side of the body, one arm crosses over, so charts and signers render either arm on top without changing the visible pose; published alphabets disagree on the arm assignment for exactly these letters.",
+    "ambiguous_letters": ["H", "I", "O", "W", "X", "Z"],
+    "_ambiguous_note": "These six have both flags on one side (the only ones where arm assignment is visually free). Opposite-side letters are physically unambiguous; order-insensitive matching is simply never exercised for them.",
+    "collision_free": "Verified: no character's reverse is another character. The 26 letters are 26 of the 28 unordered distinct-position pairs (C(8,2)); with NUMERALS (the {up,up-left} pair) and REST ({down,down}) all 28 classes remain distinct under unordered matching."
+  },
+
   "letters": {
     "A": { "left": 0, "right": 1 },
     "B": { "left": 0, "right": 2 },

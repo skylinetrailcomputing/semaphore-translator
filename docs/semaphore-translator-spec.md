@@ -149,6 +149,8 @@ angle_deg = degrees( atan2(v.y, v.x) )             // CCW from +x axis
 
 A continuous arm angle is snapped to the nearest 45° position with a tolerance band. If the angle is farther than `ANGLE_TOLERANCE_DEG` from any canonical position, the arm is "indeterminate" and no character is emitted.
 
+**Alphabet lookup is order-insensitive.** A semaphore character is defined by the *pair of flag positions*, not by which arm holds which: when both flags fall on the same side of the body (letters **H, I, O, W, X, Z**) one arm must cross over, and charts/signers render either arm on top without changing the visible pose — published alphabets genuinely disagree on the arm assignment for exactly these letters. So both platforms canonicalize the observed `(left_id, right_id)` by sorting before looking it up in `semaphore_alphabet.json`, treating `(a,b)` and `(b,a)` as the same character. This is provably collision-free: no character's reverse is another character (the 26 letters occupy 26 of the 28 unordered distinct-position pairs; NUMERALS and REST fill the rest). The ordered pairs in the JSON are the canonical signer's-perspective reference orientation; the swapped rendering is equally valid input. See `semaphore_alphabet.json._matching`.
+
 ### 4.4 Shared constants (frozen)
 
 | Constant | Value (v1 default) | Meaning |
