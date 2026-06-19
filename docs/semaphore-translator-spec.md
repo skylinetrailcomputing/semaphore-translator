@@ -169,9 +169,9 @@ Semaphore does not have distinct poses for digits. Instead it uses a **stateful 
 
 - A special **"numerals" sign** switches the decoder into numeric mode.
 - While in numeric mode, the letter poses **A–K (excluding J)** are reinterpreted as digits **1, 2, 3, 4, 5, 6, 7, 8, 9, 0** respectively.
-- A special **"letters" sign** (the "J" pose / alphabetic sign, per the standard chart) switches back to letter mode.
+- A special **"letters" sign** (the "J" pose / alphabetic sign, per the standard chart) switches back to letter mode. **The letters sign is only a mode switch while in numeric mode** — it is the exit door from numbers, analogous to how "numerals" is the entry door. In letter mode the J pose carries no shift meaning (you are already in letters) and is simply the **letter J**. This is what lets words containing J (e.g. `AJAR`) be spelled normally; a symmetric, always-on letters-shift would make the letter J unsendable, which no real chart intends.
 
-This makes the decoder **stateful**: the same observed pose maps to a different output character depending on current mode. The state must be modeled explicitly.
+This makes the decoder **stateful**: the same observed pose maps to a different output character depending on current mode. The state must be modeled explicitly. Note the J pose is the clearest example: it emits the letter `J` in letter mode but acts as the (no-output) letters-shift in numeric mode.
 
 ```
             numerals sign
@@ -182,14 +182,17 @@ This makes the decoder **stateful**: the same observed pose maps to a different 
 
 interpret(pose):
   if pose == NUMERALS_SIGN: mode = NUMERIC; emit nothing
-  elif pose == LETTERS_SIGN: mode = LETTERS; emit nothing
+  elif mode == NUMERIC and pose == LETTERS_SIGN: mode = LETTERS; emit nothing
   elif mode == NUMERIC and pose in DIGIT_MAP: emit DIGIT_MAP[pose]
-  else: emit alphabet_lookup(pose)
+  else: emit alphabet_lookup(pose)   # in LETTERS mode the J pose lands here -> 'J'
 ```
+
+(The letters-shift branch is gated on `mode == NUMERIC`: the J pose only switches mode when leaving numbers. Note `LETTERS_SIGN` is the J pose, so a J immediately following the letters-shift — "numbers then a J-word" — is two J poses in a row: the first shifts to letters and emits nothing, the second is now in letter mode and emits `J`.)
 
 Contract requirements:
 - `mode` is decoder state, initialized to `LETTERS` on reset.
 - The numerals-sign and letters-sign pose definitions, and the `DIGIT_MAP` (which letter pose → which digit), live in `semaphore_alphabet.json` so both platforms share them.
+- The letters-shift only fires in numeric mode; the J pose emits the letter `J` in letter mode. (`DIGIT_MAP` excludes J — `K`=0 — so in numeric mode the J pose is unambiguously the letters-shift.)
 - The mode switch itself emits no character.
 - The parity test set (§6) must include sequences that exercise both mode transitions, so cross-platform state handling is verified, not just stateless single-pose classification.
 
