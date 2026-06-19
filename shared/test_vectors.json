@@ -1,17 +1,2189 @@
 {
-  "$schema_version": "0.1-skeleton",
-  "_README": "Parity test vectors: input keypoint sets -> expected decoded output. Both platforms run these through their full feature-extraction + classification + decode path and MUST produce identical results (spec §6 parity guarantee). THIS FILE IS A SKELETON: real vectors cannot be authored until semaphore_alphabet.json is VERIFIED (Epic 1), because the expected outputs depend on the frozen (left,right)->character mapping and the id<->angle convention. See shared/README.md.",
+  "$schema_version": "1.0",
+  "_README": "Parity test vectors: post-adapter keypoint sets -> expected decoded output. Both platforms run these through their full feature-extraction + classification + decode path and MUST produce identical results (spec sec 6 parity guarantee). These vectors are defined as the per-platform adapter's OUTPUT, so they do NOT exercise the adapter's mirror/y-flip (tested separately with native fixtures, Epic 3) nor temporal smoothing/commit timing (Epic 4) -- one frame per committed symbol.",
+  "_generated_by": "shared/tools/gen_test_vectors.py (uv run). Generated, not hand-edited: regenerate after any change to semaphore_alphabet.json or semaphore_config.json. The generator re-decodes every vector and asserts the expected output before writing, so running it is the fixture's correctness check.",
+  "_decode_contract": "Per frame: angle = atan2(wrist.y - shoulder.y, wrist.x - shoulder.x) per arm (spec 4.2); snap to nearest octant, indeterminate if > ANGLE_TOLERANCE_DEG from every octant or a defining keypoint is below MIN_KEYPOINT_CONFIDENCE (4.3); look up the SORTED (left,right) id pair order-insensitively (4.3); then apply the numeric-mode state machine (4.5): NUMERALS pose -> NUMERIC (emit ''), J pose == letters sign -> LETTERS (emit ''; a literal 'J' is therefore never emitted), REST -> ' ' (mode persists), A-I/K in NUMERIC -> digits 1-9/0, else the letter.",
   "_format": {
-    "keypoints": "Object with the six shared keypoints, each [x, y, confidence], already normalized to [0,1], y-up, signer's perspective (i.e. post-adapter). Keys: left_shoulder,left_elbow,left_wrist,right_shoulder,right_elbow,right_wrist.",
-    "mode_before": "Decoder mode entering this vector: 'LETTERS' or 'NUMERIC' (for stateful numeric-mode tests, §4.5).",
-    "expected": "Expected emitted character (or '' for a mode-switch / indeterminate frame that emits nothing).",
-    "expected_position_ids": "Optional [left_id, right_id] for white-box checking of the quantization step before alphabet lookup."
+    "keypoints": "Object with the six shared keypoints, each [x, y, confidence], normalized to [0,1], y-up, signer's perspective (post-adapter). Keys: left_shoulder, left_elbow, left_wrist, right_shoulder, right_elbow, right_wrist.",
+    "mode_before": "single_pose_vectors only: decoder mode entering the frame ('LETTERS' or 'NUMERIC'). Sequences thread mode from 'mode_start'.",
+    "expected": "Emitted string for the frame: a letter A-Z, a digit 0-9, ' ' for REST/space, or '' when nothing is emitted (a mode-switch pose or an indeterminate arm).",
+    "expected_position_ids": "[left_id, right_id] white-box check of the quantization step before lookup; an entry is null when that arm is indeterminate.",
+    "name": "Human-readable label for debugging. Ignored by the parity harness.",
+    "_note": "Optional human explanation. Ignored by the parity harness.",
+    "mode_after": "Optional documentation of decoder mode after the frame (present where it changes, and on every sequence frame). Ignored by the harness, which derives mode itself.",
+    "sequence_vectors": "Each is {name, mode_start, frames:[...]}. Frames are decoded in order, threading decoder mode from mode_start; each frame has the same shape as a single_pose vector (minus mode_before)."
   },
-  "single_pose_vectors": [],
-  "sequence_vectors": [],
-  "_todo": [
-    "After Epic 1 freezes the alphabet + angle convention, populate single_pose_vectors with at least one clean vector per letter A-Z plus an indeterminate case.",
-    "Include arm-SWAPPED variants as positive cases for the order-insensitive letters (H, I, O, W, X, Z): a vector with (left,right) reversed must decode to the same letter (spec §4.3, semaphore_alphabet.json._matching).",
-    "Populate sequence_vectors with sequences exercising BOTH numeric-mode transitions (LETTERS->NUMERIC->LETTERS) so cross-platform state handling is verified, not just stateless classification (§4.5)."
+  "single_pose_vectors": [
+    {
+      "name": "A",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.44,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.33,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "A",
+      "expected_position_ids": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "B",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.44,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.33,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "B",
+      "expected_position_ids": [
+        0,
+        2
+      ]
+    },
+    {
+      "name": "C",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.44,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.33,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "C",
+      "expected_position_ids": [
+        0,
+        3
+      ]
+    },
+    {
+      "name": "D",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.44,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.33,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "D",
+      "expected_position_ids": [
+        0,
+        4
+      ]
+    },
+    {
+      "name": "E",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.44,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.33,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "E",
+      "expected_position_ids": [
+        5,
+        0
+      ]
+    },
+    {
+      "name": "F",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.44,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.33,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "F",
+      "expected_position_ids": [
+        6,
+        0
+      ]
+    },
+    {
+      "name": "G",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.44,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.33,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "G",
+      "expected_position_ids": [
+        7,
+        0
+      ]
+    },
+    {
+      "name": "H",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.477782,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.555563,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "H",
+      "expected_position_ids": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "I",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.477782,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.555563,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "I",
+      "expected_position_ids": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "J",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "",
+      "expected_position_ids": [
+        6,
+        4
+      ],
+      "_note": "J pose == LETTERS sign: re-asserts letter mode, emits nothing (spec 4.5)."
+    },
+    {
+      "name": "K",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.66,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.77,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "K",
+      "expected_position_ids": [
+        4,
+        1
+      ]
+    },
+    {
+      "name": "L",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "L",
+      "expected_position_ids": [
+        5,
+        1
+      ]
+    },
+    {
+      "name": "M",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "M",
+      "expected_position_ids": [
+        6,
+        1
+      ]
+    },
+    {
+      "name": "N",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "N",
+      "expected_position_ids": [
+        7,
+        1
+      ]
+    },
+    {
+      "name": "O",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.477782,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.555563,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "O",
+      "expected_position_ids": [
+        3,
+        2
+      ]
+    },
+    {
+      "name": "P",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.66,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.77,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "P",
+      "expected_position_ids": [
+        4,
+        2
+      ]
+    },
+    {
+      "name": "Q",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "Q",
+      "expected_position_ids": [
+        5,
+        2
+      ]
+    },
+    {
+      "name": "R",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "R",
+      "expected_position_ids": [
+        6,
+        2
+      ]
+    },
+    {
+      "name": "S",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.71,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.82,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "S",
+      "expected_position_ids": [
+        7,
+        2
+      ]
+    },
+    {
+      "name": "T",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.66,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.77,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "T",
+      "expected_position_ids": [
+        4,
+        3
+      ]
+    },
+    {
+      "name": "U",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "U",
+      "expected_position_ids": [
+        5,
+        3
+      ]
+    },
+    {
+      "name": "V",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "V",
+      "expected_position_ids": [
+        7,
+        4
+      ]
+    },
+    {
+      "name": "W",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.522218,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.444437,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "W",
+      "expected_position_ids": [
+        6,
+        5
+      ]
+    },
+    {
+      "name": "X",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.522218,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.444437,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "X",
+      "expected_position_ids": [
+        7,
+        5
+      ]
+    },
+    {
+      "name": "Y",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "Y",
+      "expected_position_ids": [
+        6,
+        3
+      ]
+    },
+    {
+      "name": "Z",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.29,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.18,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.522218,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.444437,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "Z",
+      "expected_position_ids": [
+        6,
+        7
+      ]
+    },
+    {
+      "name": "NUMERALS",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "",
+      "expected_position_ids": [
+        5,
+        4
+      ],
+      "mode_after": "NUMERIC",
+      "_note": "Numerals sign: switches the decoder to NUMERIC mode, emits nothing (spec 4.5)."
+    },
+    {
+      "name": "REST",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.4,
+          0.44,
+          1.0
+        ],
+        "left_wrist": [
+          0.4,
+          0.33,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.44,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.33,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": " ",
+      "expected_position_ids": [
+        0,
+        0
+      ],
+      "_note": "Both arms down = space/rest (chart 'Space'): emits ' ', mode persists."
+    },
+    {
+      "name": "H_arm_swapped",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "H",
+      "expected_position_ids": [
+        2,
+        1
+      ],
+      "_note": "Arm-swapped H: (left,right)=(2,1); order-insensitive match still decodes H (spec 4.3, _matching)."
+    },
+    {
+      "name": "I_arm_swapped",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.477782,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.555563,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "I",
+      "expected_position_ids": [
+        3,
+        1
+      ],
+      "_note": "Arm-swapped I: (left,right)=(3,1); order-insensitive match still decodes I (spec 4.3, _matching)."
+    },
+    {
+      "name": "O_arm_swapped",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.755563,
+          0.705563,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "O",
+      "expected_position_ids": [
+        2,
+        3
+      ],
+      "_note": "Arm-swapped O: (left,right)=(2,3); order-insensitive match still decodes O (spec 4.3, _matching)."
+    },
+    {
+      "name": "W_arm_swapped",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.49,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.38,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "W",
+      "expected_position_ids": [
+        5,
+        6
+      ],
+      "_note": "Arm-swapped W: (left,right)=(5,6); order-insensitive match still decodes W (spec 4.3, _matching)."
+    },
+    {
+      "name": "X_arm_swapped",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.627782,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.705563,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.522218,
+          0.472218,
+          1.0
+        ],
+        "right_wrist": [
+          0.444437,
+          0.394437,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "X",
+      "expected_position_ids": [
+        5,
+        7
+      ],
+      "_note": "Arm-swapped X: (left,right)=(5,7); order-insensitive match still decodes X (spec 4.3, _matching)."
+    },
+    {
+      "name": "Z_arm_swapped",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.322218,
+          0.472218,
+          1.0
+        ],
+        "left_wrist": [
+          0.244437,
+          0.394437,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.49,
+          0.55,
+          1.0
+        ],
+        "right_wrist": [
+          0.38,
+          0.55,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "Z",
+      "expected_position_ids": [
+        7,
+        6
+      ],
+      "_note": "Arm-swapped Z: (left,right)=(7,6); order-insensitive match still decodes Z (spec 4.3, _matching)."
+    },
+    {
+      "name": "indeterminate_angle",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.701627,
+          0.592095,
+          1.0
+        ],
+        "right_wrist": [
+          0.803253,
+          0.63419,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "",
+      "expected_position_ids": [
+        2,
+        null
+      ],
+      "_note": "Right arm at 22.5deg is 22.5deg from both id 2 (0deg) and id 3 (45deg), beyond ANGLE_TOLERANCE_DEG (20): that arm is indeterminate, no emit."
+    },
+    {
+      "name": "indeterminate_low_confidence",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          0.3
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "",
+      "expected_position_ids": [
+        2,
+        null
+      ],
+      "_note": "Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5): that arm is indeterminate despite a valid octant geometry, no emit."
+    }
+  ],
+  "sequence_vectors": [
+    {
+      "name": "letters_numeric_letters",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "name": "A",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "expected": "A",
+          "expected_position_ids": [
+            0,
+            1
+          ],
+          "mode_after": "LETTERS",
+          "_note": "Letter mode: A pose -> 'A'."
+        },
+        {
+          "name": "NUMERALS",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "expected": "",
+          "expected_position_ids": [
+            5,
+            4
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "Numerals sign -> NUMERIC mode, emits nothing."
+        },
+        {
+          "name": "A_as_1",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "expected": "1",
+          "expected_position_ids": [
+            0,
+            1
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "Same A pose, now NUMERIC -> digit '1'."
+        },
+        {
+          "name": "B_as_2",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "expected": "2",
+          "expected_position_ids": [
+            0,
+            2
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "B pose in NUMERIC -> '2'."
+        },
+        {
+          "name": "LETTERS_shift",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "expected": "",
+          "expected_position_ids": [
+            6,
+            4
+          ],
+          "mode_after": "LETTERS",
+          "_note": "J pose = letters sign -> LETTERS, emits nothing."
+        },
+        {
+          "name": "A_again",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "expected": "A",
+          "expected_position_ids": [
+            0,
+            1
+          ],
+          "mode_after": "LETTERS",
+          "_note": "A pose, LETTERS mode again -> 'A'."
+        }
+      ]
+    },
+    {
+      "name": "rest_spaces_and_high_digits",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "name": "H",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.477782,
+              0.472218,
+              1.0
+            ],
+            "left_wrist": [
+              0.555563,
+              0.394437,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "expected": "H",
+          "expected_position_ids": [
+            1,
+            2
+          ],
+          "mode_after": "LETTERS"
+        },
+        {
+          "name": "I",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.477782,
+              0.472218,
+              1.0
+            ],
+            "left_wrist": [
+              0.555563,
+              0.394437,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "expected": "I",
+          "expected_position_ids": [
+            1,
+            3
+          ],
+          "mode_after": "LETTERS"
+        },
+        {
+          "name": "REST_space",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "expected": " ",
+          "expected_position_ids": [
+            0,
+            0
+          ],
+          "mode_after": "LETTERS",
+          "_note": "REST -> space; mode persists (still LETTERS)."
+        },
+        {
+          "name": "NUMERALS",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "expected": "",
+          "expected_position_ids": [
+            5,
+            4
+          ],
+          "mode_after": "NUMERIC"
+        },
+        {
+          "name": "H_as_8",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.477782,
+              0.472218,
+              1.0
+            ],
+            "left_wrist": [
+              0.555563,
+              0.394437,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "expected": "8",
+          "expected_position_ids": [
+            1,
+            2
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "H pose in NUMERIC -> '8'."
+        },
+        {
+          "name": "I_as_9",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.477782,
+              0.472218,
+              1.0
+            ],
+            "left_wrist": [
+              0.555563,
+              0.394437,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "expected": "9",
+          "expected_position_ids": [
+            1,
+            3
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "I pose in NUMERIC -> '9'."
+        },
+        {
+          "name": "K_as_0",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.66,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.77,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "expected": "0",
+          "expected_position_ids": [
+            4,
+            1
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "K pose in NUMERIC -> '0' (K=0)."
+        },
+        {
+          "name": "REST_in_numeric",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "expected": " ",
+          "expected_position_ids": [
+            0,
+            0
+          ],
+          "mode_after": "NUMERIC",
+          "_note": "REST inside NUMERIC -> space; numeric mode is NOT reset by a rest."
+        },
+        {
+          "name": "LETTERS_shift",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "expected": "",
+          "expected_position_ids": [
+            6,
+            4
+          ],
+          "mode_after": "LETTERS",
+          "_note": "J pose = letters sign -> LETTERS."
+        },
+        {
+          "name": "REST_space2",
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "expected": " ",
+          "expected_position_ids": [
+            0,
+            0
+          ],
+          "mode_after": "LETTERS",
+          "_note": "Trailing REST -> space."
+        }
+      ]
+    }
   ]
 }
