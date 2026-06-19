@@ -11,6 +11,7 @@
   "sequence_vectors": [],
   "_todo": [
     "After Epic 1 freezes the alphabet + angle convention, populate single_pose_vectors with at least one clean vector per letter A-Z plus an indeterminate case.",
+    "Include arm-SWAPPED variants as positive cases for the order-insensitive letters (H, I, O, W, X, Z): a vector with (left,right) reversed must decode to the same letter (spec §4.3, semaphore_alphabet.json._matching).",
     "Populate sequence_vectors with sequences exercising BOTH numeric-mode transitions (LETTERS->NUMERIC->LETTERS) so cross-platform state handling is verified, not just stateless classification (§4.5)."
   ]
 }
