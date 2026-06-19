@@ -1,0 +1,16 @@
+{
+  "$schema_version": "0.1-skeleton",
+  "_README": "Parity test vectors: input keypoint sets -> expected decoded output. Both platforms run these through their full feature-extraction + classification + decode path and MUST produce identical results (spec §6 parity guarantee). THIS FILE IS A SKELETON: real vectors cannot be authored until semaphore_alphabet.json is VERIFIED (Epic 1), because the expected outputs depend on the frozen (left,right)->character mapping and the id<->angle convention. See shared/README.md.",
+  "_format": {
+    "keypoints": "Object with the six shared keypoints, each [x, y, confidence], already normalized to [0,1], y-up, signer's perspective (i.e. post-adapter). Keys: left_shoulder,left_elbow,left_wrist,right_shoulder,right_elbow,right_wrist.",
+    "mode_before": "Decoder mode entering this vector: 'LETTERS' or 'NUMERIC' (for stateful numeric-mode tests, §4.5).",
+    "expected": "Expected emitted character (or '' for a mode-switch / indeterminate frame that emits nothing).",
+    "expected_position_ids": "Optional [left_id, right_id] for white-box checking of the quantization step before alphabet lookup."
+  },
+  "single_pose_vectors": [],
+  "sequence_vectors": [],
+  "_todo": [
+    "After Epic 1 freezes the alphabet + angle convention, populate single_pose_vectors with at least one clean vector per letter A-Z plus an indeterminate case.",
+    "Populate sequence_vectors with sequences exercising BOTH numeric-mode transitions (LETTERS->NUMERIC->LETTERS) so cross-platform state handling is verified, not just stateless classification (§4.5)."
+  ]
+}
