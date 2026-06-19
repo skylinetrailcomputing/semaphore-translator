@@ -105,13 +105,13 @@ def interpret(sym, mode):
         return "", mode  # indeterminate: emit nothing, mode unchanged
     if sym == "NUMERALS":
         return "", "NUMERIC"  # numerals sign
-    if sym == "J":
-        return "", "LETTERS"  # J pose == letters sign (never emits a literal 'J')
+    if sym == "J" and mode == "NUMERIC":
+        return "", "LETTERS"  # J pose = letters sign, but ONLY as the exit from numeric mode
     if sym == "REST":
         return " ", mode  # space; numeric mode is NOT reset by a rest
     if mode == "NUMERIC" and sym in DIGIT_MAP:
         return DIGIT_MAP[sym], mode
-    return sym, mode
+    return sym, mode  # in LETTERS mode the J pose lands here -> 'J'
 
 
 def decode_frame(kp, mode):
@@ -233,10 +233,13 @@ for letter in [c for c in ALPHABET["label_order"] if c in LETTERS]:
     ids = LETTERS[letter]
     note = None
     if letter == "J":
-        note = "J pose == LETTERS sign: re-asserts letter mode, emits nothing (spec 4.5)."
+        note = (
+            "J pose in LETTERS mode -> the letter 'J'. The same pose is the "
+            "letters-shift, but only when exiting numeric mode (spec 4.5)."
+        )
     emit, got = add_single(letter, kp_letter(letter), "LETTERS", note)
     assert got == [ids["left"], ids["right"]], (letter, got)
-    assert emit == ("" if letter == "J" else letter), (letter, emit)
+    assert emit == letter, (letter, emit)
 
 # NUMERALS pose and REST pose
 emit, got = add_single(
@@ -316,6 +319,30 @@ run_sequence(
         ("REST_space2", kp_rest(), " ", "Trailing REST -> space."),
     ],
 )
+# literal J mid-word: in letter mode the J pose is the letter J, not a shift
+run_sequence(
+    "letter_j_in_word",
+    "LETTERS",
+    [
+        ("A", kp_letter("A"), "A", "A pose -> 'A' (spelling AJAR)."),
+        ("J_as_letter", kp_letter("J"), "J", "J pose in LETTERS mode -> the letter 'J' (no shift)."),
+        ("A2", kp_letter("A"), "A", None),
+        ("R", kp_letter("R"), "R", None),
+    ],
+)
+# edge: numbers then a J-word -> two J poses in a row across the boundary
+run_sequence(
+    "numeric_then_j_word",
+    "LETTERS",
+    [
+        ("NUMERALS", kp_numerals(), "", "-> NUMERIC."),
+        ("one", kp_letter("A"), "1", "A pose in NUMERIC -> '1'."),
+        ("LETTERS_shift", kp_letter("J"), "", "First J pose: letters-shift (NUMERIC -> LETTERS), emits nothing."),
+        ("J_as_letter", kp_letter("J"), "J", "Second J pose, now in LETTERS -> the letter 'J' (spelling JAR)."),
+        ("A", kp_letter("A"), "A", None),
+        ("R", kp_letter("R"), "R", None),
+    ],
+)
 
 
 # --- assemble + write ---
@@ -344,9 +371,10 @@ out = {
         "ANGLE_TOLERANCE_DEG from every octant or a defining keypoint is below "
         "MIN_KEYPOINT_CONFIDENCE (4.3); look up the SORTED (left,right) id pair "
         "order-insensitively (4.3); then apply the numeric-mode state machine "
-        "(4.5): NUMERALS pose -> NUMERIC (emit ''), J pose == letters sign -> "
-        "LETTERS (emit ''; a literal 'J' is therefore never emitted), REST -> "
-        "' ' (mode persists), A-I/K in NUMERIC -> digits 1-9/0, else the letter."
+        "(4.5): NUMERALS pose -> NUMERIC (emit ''); the J pose is the letters-"
+        "shift ONLY in numeric mode (NUMERIC -> LETTERS, emit '') and is the "
+        "letter 'J' in letter mode; REST -> ' ' (mode persists); A-I/K in "
+        "NUMERIC -> digits 1-9/0; else the letter."
     ),
     "_format": {
         "keypoints": (
