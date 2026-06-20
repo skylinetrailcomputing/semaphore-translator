@@ -1,0 +1,91 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Frozen native-fixture verification contract (spec section 7 in shared/ADAPTER-CONTRACT.md; Issue #20, Epic 3). The parity harness (test_vectors.json) CANNOT catch a wrong adapter flip because its vectors are defined as the adapter's OUTPUT, downstream of the y-flip + horizontal mirror. The only way to verify the flips is to run the real native pose estimator on a known pose and assert the adapter's output satisfies the geometric invariants below. This file freezes WHAT every adapter must satisfy, so both platforms assert the same thing -- the same discipline that froze the alphabet against one canonical chart. Human-readable companion: shared/native_fixtures/NATIVE-FIXTURES.md.",
+
+  "version": "1.0",
+  "_frame": "All coordinates and invariants are in the POST-ADAPTER frame, identical to keypoint_contract.json and spec section 4.2: normalized [0,1], +x = SIGNER'S RIGHT, y-up, signer's perspective. Note this is NOT the camera/image frame the pose images are drawn in -- the image is the observer's view (signer facing the camera), and the adapter's mirror + y-flip relate the two. That relationship is exactly what these invariants pin.",
+
+  "_invariant_dsl": {
+    "operand": "a keypoint component, '<name>.<x|y>', e.g. 'right_wrist.x'. Names are keypoint_contract.json.keypoints.names.",
+    "kind": {
+      "gt": "lhs > rhs",
+      "lt": "lhs < rhs",
+      "abs_diff_lt": "abs(lhs - rhs) < value"
+    },
+    "pins": "which adapter transform a violation implicates (y-flip / horizontal mirror).",
+    "evaluation": "Invariants are RELATIONAL on purpose: they hold for ANY correct adapter output regardless of exact coordinates, so the real estimator's coords (which differ run-to-run and across Vision vs ML Kit) still satisfy them. reference_post_adapter below is a SYNTHETIC ideal output used only to self-test the invariants and the decoder; it is not the expected estimator output."
+  },
+
+  "poses": [
+    {
+      "name": "right_arm_out",
+      "image": "pose_right_arm_out.png",
+      "description": "Signer's right arm straight out to the signer's right (position id 2, 0deg); left arm straight down (position id 0, -90deg). Asymmetric ON PURPOSE: an asymmetric pose distinguishes a wrong horizontal mirror from a left/right anatomical-label swap, which a symmetric pose cannot (ADAPTER-CONTRACT.md section 3b).",
+      "expected_position_ids": { "left": 0, "right": 2 },
+      "reference_post_adapter": {
+        "left_shoulder":  [0.40, 0.60, 1.0],
+        "left_elbow":     [0.40, 0.45, 1.0],
+        "left_wrist":     [0.40, 0.30, 1.0],
+        "right_shoulder": [0.60, 0.60, 1.0],
+        "right_elbow":    [0.75, 0.60, 1.0],
+        "right_wrist":    [0.90, 0.60, 1.0]
+      },
+      "invariants": [
+        {
+          "kind": "gt", "lhs": "right_wrist.x", "rhs": "right_shoulder.x",
+          "pins": "horizontal mirror",
+          "why": "id 2 (0deg) points along +x = signer's right, so the extended wrist is at greater x than its shoulder. A missed or extra mirror puts it at lesser x."
+        },
+        {
+          "kind": "abs_diff_lt", "lhs": "right_wrist.y", "rhs": "right_shoulder.y", "value": 0.15,
+          "pins": "y-flip",
+          "why": "id 2 is horizontal, so the out-arm's wrist and shoulder sit at nearly equal height. A wrong y-flip tilts it off horizontal."
+        },
+        {
+          "kind": "lt", "lhs": "left_wrist.y", "rhs": "left_shoulder.y",
+          "pins": "y-flip",
+          "why": "id 0 (-90deg) points down; in a y-up frame the wrist is below the shoulder. A wrong y-flip inverts this."
+        },
+        {
+          "kind": "gt", "lhs": "right_shoulder.x", "rhs": "left_shoulder.x",
+          "pins": "horizontal mirror / left-right labels",
+          "why": "Signer faces the camera and +x = signer's right, so the right shoulder is at greater x than the left. The cleanest single mirror/label check (ADAPTER-CONTRACT.md sections 1, 3b)."
+        }
+      ]
+    },
+    {
+      "name": "arms_down",
+      "image": "pose_arms_down.png",
+      "description": "Both arms straight down (position id 0 / id 0). The symmetric sanity pose: pins the y-flip independently on each arm and the mirror via shoulder order.",
+      "expected_position_ids": { "left": 0, "right": 0 },
+      "reference_post_adapter": {
+        "left_shoulder":  [0.40, 0.60, 1.0],
+        "left_elbow":     [0.40, 0.45, 1.0],
+        "left_wrist":     [0.40, 0.30, 1.0],
+        "right_shoulder": [0.60, 0.60, 1.0],
+        "right_elbow":    [0.60, 0.45, 1.0],
+        "right_wrist":    [0.60, 0.30, 1.0]
+      },
+      "invariants": [
+        {
+          "kind": "lt", "lhs": "left_wrist.y", "rhs": "left_shoulder.y",
+          "pins": "y-flip",
+          "why": "Left arm down (id 0) ⇒ wrist below shoulder in a y-up frame."
+        },
+        {
+          "kind": "lt", "lhs": "right_wrist.y", "rhs": "right_shoulder.y",
+          "pins": "y-flip",
+          "why": "Right arm down (id 0) ⇒ wrist below shoulder in a y-up frame."
+        },
+        {
+          "kind": "gt", "lhs": "right_shoulder.x", "rhs": "left_shoulder.x",
+          "pins": "horizontal mirror / left-right labels",
+          "why": "Right shoulder at greater x than the left in the signer's perspective."
+        }
+      ]
+    }
+  ],
+
+  "_human_doc": "shared/native_fixtures/NATIVE-FIXTURES.md",
+  "spec_refs": ["3.2", "4.1", "4.2", "4.3", "7"]
+}

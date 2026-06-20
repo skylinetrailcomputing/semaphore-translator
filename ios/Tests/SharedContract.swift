@@ -88,6 +88,33 @@ struct KeypointContract: Decodable {
     }
 }
 
+// MARK: - native_fixtures/invariants.json
+
+struct NativeInvariant: Decodable {
+    let kind: String
+    let lhs: String
+    let rhs: String
+    let value: Double?  // present only for `abs_diff_lt`
+}
+
+struct NativePose: Decodable {
+    let name: String
+    let image: String
+    let expectedPositionIds: ArmPair
+    let referencePostAdapter: [String: [Double]]
+    let invariants: [NativeInvariant]
+
+    enum CodingKeys: String, CodingKey {
+        case name, image, invariants
+        case expectedPositionIds = "expected_position_ids"
+        case referencePostAdapter = "reference_post_adapter"
+    }
+}
+
+struct NativeFixtures: Decodable {
+    let poses: [NativePose]
+}
+
 // MARK: - test_vectors.json
 
 struct SinglePoseVector: Decodable {
