@@ -25,6 +25,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+        INFOPLIST_KEY_NSCameraUsageDescription: "Reads semaphore flag positions from the camera on-device; no images leave the device."
   SemaphoreTranslatorTests:
     type: bundle.unit-test
     platform: iOS
