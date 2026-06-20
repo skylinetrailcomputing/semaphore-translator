@@ -73,6 +73,21 @@ struct Alphabet: Decodable {
     }
 }
 
+// MARK: - keypoint_contract.json
+
+struct ModelInputOrder: Decodable {
+    let floats: [String]
+    let length: Int
+}
+
+struct KeypointContract: Decodable {
+    let modelInputOrder: ModelInputOrder
+
+    enum CodingKeys: String, CodingKey {
+        case modelInputOrder = "model_input_order"
+    }
+}
+
 // MARK: - test_vectors.json
 
 struct SinglePoseVector: Decodable {
