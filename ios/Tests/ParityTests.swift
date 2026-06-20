@@ -21,67 +21,14 @@ import XCTest
 /// harness does not exercise the flips (Epic 3 native fixtures) or temporal
 /// smoothing/commit timing (Epic 4).
 final class ParityTests: XCTestCase {
-    /// Parses `shared/*.json` and assembles the decoder's plain inputs. The
-    /// JSON DTOs and loader are test-only (see `SharedContract.swift`); the
-    /// decoder itself takes no wire types.
-    private func makeDecoder() throws -> SemaphoreDecoder {
-        let alphabet = try SharedFiles.load(Alphabet.self, "semaphore_alphabet.json")
-        let config = try SharedFiles.load(SemaphoreConfig.self, "semaphore_config.json")
-
-        var octantAngles: [Int: Double] = [:]
-        for position in alphabet.positionModel.positions.values {
-            octantAngles[position.id] = position.angleDeg
-        }
-
-        var symbolPairs: [String: (left: Int, right: Int)] = [:]
-        for (symbol, ids) in alphabet.letters {
-            symbolPairs[symbol] = (ids.left, ids.right)
-        }
-        symbolPairs["NUMERALS"] = (
-            alphabet.controlSignals.numerals.left, alphabet.controlSignals.numerals.right
-        )
-        symbolPairs["REST"] = (
-            alphabet.controlSignals.rest.left, alphabet.controlSignals.rest.right
-        )
-
-        return SemaphoreDecoder(
-            octantAngles: octantAngles,
-            symbolPairs: symbolPairs,
-            digitMap: alphabet.numericMode.digitMap,
-            angleToleranceDeg: config.angleToleranceDeg,
-            minKeypointConfidence: config.minKeypointConfidence
-        )
-    }
-
-    /// Build the typed `Keypoints` the decoder now consumes from a fixture's
-    /// `[name: [x, y, confidence]]` map. The map shape is a test/fixture artifact
-    /// (the shipping adapter builds `Keypoints` directly from native pose output,
-    /// Epic 3); only the parity harness goes through the map. The 6 names are the
-    /// contract order (`keypoint_contract.json.keypoints.names`); a missing name
-    /// is a malformed fixture and fails the test loudly.
-    private func keypoints(from map: [String: [Double]], _ context: String) throws -> Keypoints {
-        func point(_ name: String) throws -> Keypoint {
-            let v = try XCTUnwrap(map[name], "\(context): missing keypoint \(name)")
-            return Keypoint(x: v[0], y: v[1], confidence: v[2])
-        }
-        return Keypoints(
-            leftShoulder: try point("left_shoulder"),
-            leftElbow: try point("left_elbow"),
-            leftWrist: try point("left_wrist"),
-            rightShoulder: try point("right_shoulder"),
-            rightElbow: try point("right_elbow"),
-            rightWrist: try point("right_wrist")
-        )
-    }
-
     func testSinglePoseVectors() throws {
-        let decoder = try makeDecoder()
+        let decoder = try ReferenceDecoder.make()
         let vectors = try SharedFiles.load(TestVectors.self, "test_vectors.json")
         XCTAssertFalse(vectors.singlePoseVectors.isEmpty, "no single-pose vectors loaded")
 
         for vector in vectors.singlePoseVectors {
             let mode = try XCTUnwrap(Mode(rawValue: vector.modeBefore), "bad mode in \(vector.name)")
-            let kp = try keypoints(from: vector.keypoints, vector.name)
+            let kp = try makeKeypoints(from: vector.keypoints, vector.name)
             let result = decoder.decodeFrame(kp, mode: mode)
             XCTAssertEqual(result.emit, vector.expected, "emit mismatch for \(vector.name)")
             XCTAssertEqual(
@@ -90,7 +37,7 @@ final class ParityTests: XCTestCase {
     }
 
     func testSequenceVectors() throws {
-        let decoder = try makeDecoder()
+        let decoder = try ReferenceDecoder.make()
         let vectors = try SharedFiles.load(TestVectors.self, "test_vectors.json")
         XCTAssertFalse(vectors.sequenceVectors.isEmpty, "no sequence vectors loaded")
 
@@ -99,7 +46,7 @@ final class ParityTests: XCTestCase {
                 Mode(rawValue: sequence.modeStart), "bad mode_start in \(sequence.name)")
             for frame in sequence.frames {
                 let label = "\(sequence.name)/\(frame.name)"
-                let kp = try keypoints(from: frame.keypoints, label)
+                let kp = try makeKeypoints(from: frame.keypoints, label)
                 let result = decoder.decodeFrame(kp, mode: mode)
                 XCTAssertEqual(result.emit, frame.expected, "emit mismatch for \(label)")
                 XCTAssertEqual(
@@ -126,7 +73,7 @@ final class ParityTests: XCTestCase {
             map[name] = [base, base + 1, base + 2]  // x, y, confidence — all distinct
         }
 
-        let flat = try keypoints(from: map, "flatten contract").flatten()
+        let flat = try makeKeypoints(from: map, "flatten contract").flatten()
         XCTAssertEqual(flat.count, contract.modelInputOrder.length, "flatten() length")
         XCTAssertEqual(
             contract.modelInputOrder.floats.count, contract.modelInputOrder.length,

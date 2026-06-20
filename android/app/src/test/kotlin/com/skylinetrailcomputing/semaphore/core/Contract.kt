@@ -46,6 +46,25 @@ data class KeypointContract(
     @SerializedName("model_input_order") val modelInputOrder: ModelInputOrder,
 )
 
+// --- native_fixtures/invariants.json ---
+
+data class NativeInvariant(
+    val kind: String,
+    val lhs: String,
+    val rhs: String,
+    val value: Double? = null, // present only for `abs_diff_lt`
+)
+
+data class NativePose(
+    val name: String,
+    val image: String,
+    @SerializedName("expected_position_ids") val expectedPositionIds: ArmPair,
+    @SerializedName("reference_post_adapter") val referencePostAdapter: Map<String, List<Double>>,
+    val invariants: List<NativeInvariant>,
+)
+
+data class NativeFixtures(val poses: List<NativePose>)
+
 // --- test_vectors.json ---
 
 data class SinglePoseVector(
