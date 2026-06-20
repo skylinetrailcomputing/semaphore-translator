@@ -20,6 +20,14 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+      # The frozen shared contract, bundled as app resources so the runtime
+      # `ContractLoader` can build the decoder on-device. Referenced straight
+      # from `../shared` (no committed copy) — `shared/` stays single-source,
+      # the same posture as the test harness reaching it via `#filePath`.
+      - path: ../shared/semaphore_alphabet.json
+        buildPhase: resources
+      - path: ../shared/semaphore_config.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore

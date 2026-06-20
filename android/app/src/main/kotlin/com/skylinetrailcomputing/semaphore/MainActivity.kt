@@ -1,17 +1,17 @@
 package com.skylinetrailcomputing.semaphore
 
-import android.app.Activity
 import android.os.Bundle
-import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import com.skylinetrailcomputing.semaphore.ui.SemaphoreScreen
 
 /**
- * Minimal app shell. The CameraX/ML Kit/LiteRT capture path lands in a later
- * epic; for now the app exists so the parity harness has a module to compile
- * against (Issue #14, Epic 2).
+ * Hosts the live debug screen ([3.5], #23): camera preview + skeleton overlay +
+ * per-frame decode. The Compose entry point; all UI lives in [SemaphoreScreen].
  */
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(TextView(this).apply { text = "Semaphore Translator" })
+        setContent { SemaphoreScreen() }
     }
 }

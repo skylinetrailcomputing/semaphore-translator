@@ -22,9 +22,21 @@ import Vision
 actor PoseCaptureSession {
     enum CaptureError: Error { case noFrontCamera, cannotAddInput, cannotAddOutput }
 
-    private let session = AVCaptureSession()
+    /// The capture session, exposed so the SwiftUI preview layer ([3.5], #23)
+    /// can attach to the *same* session this actor configures and runs. Sharing
+    /// the session between this actor (configuration) and a main-thread
+    /// `AVCaptureVideoPreviewLayer` (display) is the documented AVFoundation
+    /// pattern; since AVFoundation is not `Sendable`-clean, it crosses the
+    /// boundary as `nonisolated(unsafe)` — the same escape the start/stop hops
+    /// below use. The preview is the *display* surface; the decode path still
+    /// runs off the non-mirrored `AVCaptureVideoDataOutput` configured here.
+    nonisolated(unsafe) let session = AVCaptureSession()
     private let videoQueue = DispatchQueue(label: "com.skylinetrailcomputing.semaphore.capture")
     private var handler: PoseSampleHandler?
+
+    /// Portrait. The analysis connection is rotated by this so the buffer Vision
+    /// receives is upright, matching `CameraPreviewView.previewRotationAngle`.
+    static let portraitRotationAngle: CGFloat = 90
 
     /// Configure the front-camera pipeline and start streaming adapted poses.
     /// The stream finishes when its consuming task is cancelled or `stop()` runs.
@@ -50,10 +62,21 @@ actor PoseCaptureSession {
         guard session.canAddOutput(output) else { throw CaptureError.cannotAddOutput }
         session.addOutput(output)
 
-        // Quarantine the mirror in the adapter, not the buffer.
-        if let connection = output.connection(with: .video), connection.isVideoMirroringSupported {
-            connection.automaticallyAdjustsVideoMirroring = false
-            connection.isVideoMirrored = false
+        if let connection = output.connection(with: .video) {
+            // Rotate the analysis buffer to portrait-upright so Vision (fed `.up`)
+            // sees an upright signer. Without this the sensor-native landscape
+            // buffer makes the skeleton come out rotated 90° — the [3.5] on-device
+            // smoke. Matches the preview's rotation so both paths share one frame.
+            if connection.isVideoRotationAngleSupported(Self.portraitRotationAngle) {
+                connection.videoRotationAngle = Self.portraitRotationAngle
+            }
+            // Quarantine the mirror in the adapter, not the buffer: keep the
+            // analysis stream non-mirrored (observer perspective) so it matches the
+            // fixtures the adapter is calibrated against.
+            if connection.isVideoMirroringSupported {
+                connection.automaticallyAdjustsVideoMirroring = false
+                connection.isVideoMirrored = false
+            }
         }
         session.commitConfiguration()
 
@@ -96,8 +119,8 @@ private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleB
         from connection: AVCaptureConnection
     ) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        // `.up` is a portrait-front placeholder; the correct device orientation
-        // is an on-device smoke item (see the actor's doc comment).
+        // The capture connection rotates the buffer to portrait-upright, so `.up`
+        // is correct here; the front-camera mirror is handled once in the adapter.
         let requestHandler = VNImageRequestHandler(
             cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
         do {
