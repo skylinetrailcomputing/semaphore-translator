@@ -113,6 +113,21 @@ an estimator can't read a render, **swap in a real photo of the same pose** — 
 invariants are relational and image-agnostic, so the contract (this file +
 `invariants.json`) is unaffected by the swap.
 
+**Flags don't affect decode.** Classification is on the shoulder→wrist arm
+vector, and a correctly held flag is a collinear extension of the arm, so it
+lands in the same octant; the Epic-5 classifier consumes the 12 keypoint floats
+(`keypoint_contract.json.model_input_order`), never pixels, so it is invariant to
+flag presence/type/colour by construction. Flags matter only one stage upstream,
+at pose **detection**: a large flag can occlude a wrist/elbow or perturb wrist
+localization → lower confidence (→ indeterminate via `MIN_KEYPOINT_CONFIDENCE`)
+or a small angle nudge (absorbed by `ANGLE_TOLERANCE_DEG`). That is a Layer-2
+detection-robustness question, not a contract one — so Layer-2 imagery in
+[#21]/[#22] should include **both flags-in-hand and empty-hand** signers (and a
+couple of flag sizes/colours), which is a further reason that imagery wants real
+photos. The deeper geometric ambiguity is a **bent arm** (shoulder→wrist stops
+representing the intended direction), independent of flags; the carried-but-
+non-gating `elbow` keypoint is the lever there, not flag tracking.
+
 ## 7. How both test suites consume it
 
 `invariants.json` is loaded by the iOS (`NativeFixtureTests`) and Android
