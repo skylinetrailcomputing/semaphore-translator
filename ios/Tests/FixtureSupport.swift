@@ -117,3 +117,49 @@ func mirrorBroken(_ kp: Keypoints) -> Keypoints {
 func yFlipBroken(_ kp: Keypoints) -> Keypoints {
     mapPoints(kp) { Keypoint(x: $0.x, y: 1 - $0.y, confidence: $0.confidence) }
 }
+
+// MARK: - native fixtures (#21 Layer-1 / Layer-2)
+
+/// The frozen geometric contract, loaded once for the adapter fixture suites.
+func loadNativeFixtures() throws -> NativeFixtures {
+    try SharedFiles.load(NativeFixtures.self, "native_fixtures/invariants.json")
+}
+
+/// Recorded Apple Vision skeletons (the iOS Layer-1 fixture): pose name →
+/// keypoint name → `[x, y, confidence]` in Vision's native frame.
+private struct RecordedSkeletons: Decodable {
+    let skeletons: [String: [String: [Double]]]
+}
+
+func recordedVisionSkeletons() throws -> [String: [String: [Double]]] {
+    try IOSFixtures.load(RecordedSkeletons.self, "vision_skeletons.json").skeletons
+}
+
+/// Build the adapter's `VisionSkeleton` input from a recorded `[name: [x,y,c]]`
+/// map (Vision native frame). A missing name is a malformed fixture.
+func visionSkeleton(from map: [String: [Double]], _ context: String) throws -> VisionSkeleton {
+    func joint(_ name: String) throws -> VisionJoint {
+        let v = try XCTUnwrap(map[name], "\(context): missing keypoint \(name)")
+        return VisionJoint(x: v[0], y: v[1], confidence: v[2])
+    }
+    return VisionSkeleton(
+        leftShoulder: try joint("left_shoulder"),
+        leftElbow: try joint("left_elbow"),
+        leftWrist: try joint("left_wrist"),
+        rightShoulder: try joint("right_shoulder"),
+        rightElbow: try joint("right_elbow"),
+        rightWrist: try joint("right_wrist")
+    )
+}
+
+/// Loader for iOS-only test fixtures under `ios/Tests/Fixtures/`, resolved from
+/// this file's compile-time path (the same trick `SharedFiles` uses for `shared/`).
+enum IOSFixtures {
+    static let directory: URL =
+        URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures")
+
+    static func load<T: Decodable>(_ type: T.Type, _ fileName: String) throws -> T {
+        let url = directory.appendingPathComponent(fileName)
+        return try JSONDecoder().decode(T.self, from: Data(contentsOf: url))
+    }
+}
