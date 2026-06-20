@@ -1,12 +1,7 @@
 package com.skylinetrailcomputing.semaphore
 
-import com.skylinetrailcomputing.semaphore.core.Alphabet
-import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.KeypointContract
-import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.Mode
-import com.skylinetrailcomputing.semaphore.core.SemaphoreConfig
-import com.skylinetrailcomputing.semaphore.core.SemaphoreDecoder
 import com.skylinetrailcomputing.semaphore.core.SharedFiles
 import com.skylinetrailcomputing.semaphore.core.TestVectors
 import org.junit.Assert.assertEquals
@@ -34,60 +29,9 @@ import org.junit.Test
  * smoothing/commit timing (Epic 4).
  */
 class ParityTest {
-    /**
-     * Parses the shared JSON and assembles the decoder's plain inputs. The JSON
-     * DTOs and loader are test-only (see `core/Contract.kt` / `core/SharedFiles.kt`
-     * in the test source set); the decoder itself takes no wire types.
-     */
-    private fun makeDecoder(): SemaphoreDecoder {
-        val alphabet = SharedFiles.load<Alphabet>("semaphore_alphabet.json")
-        val config = SharedFiles.load<SemaphoreConfig>("semaphore_config.json")
-
-        val octantAngles = alphabet.positionModel.positions.values.associate { it.id to it.angleDeg }
-        val symbolPairs = buildMap {
-            alphabet.letters.forEach { (symbol, ids) -> put(symbol, ids.left to ids.right) }
-            put(
-                "NUMERALS",
-                alphabet.controlSignals.numerals.left to alphabet.controlSignals.numerals.right,
-            )
-            put("REST", alphabet.controlSignals.rest.left to alphabet.controlSignals.rest.right)
-        }
-
-        return SemaphoreDecoder(
-            octantAngles = octantAngles,
-            symbolPairs = symbolPairs,
-            digitMap = alphabet.numericMode.digitMap,
-            angleToleranceDeg = config.angleToleranceDeg,
-            minKeypointConfidence = config.minKeypointConfidence,
-        )
-    }
-
-    /**
-     * Build the typed [Keypoints] the decoder now consumes from a fixture's
-     * `[name: [x, y, confidence]]` map. The map shape is a test/fixture artifact
-     * (the shipping adapter builds [Keypoints] directly from native pose output,
-     * Epic 3); only the parity harness goes through the map. The 6 names are the
-     * contract order (`keypoint_contract.json.keypoints.names`); a missing name
-     * is a malformed fixture and fails the test loudly.
-     */
-    private fun keypointsFrom(map: Map<String, List<Double>>): Keypoints {
-        fun point(name: String): Keypoint {
-            val v = requireNotNull(map[name]) { "missing keypoint $name" }
-            return Keypoint(v[0], v[1], v[2])
-        }
-        return Keypoints(
-            leftShoulder = point("left_shoulder"),
-            leftElbow = point("left_elbow"),
-            leftWrist = point("left_wrist"),
-            rightShoulder = point("right_shoulder"),
-            rightElbow = point("right_elbow"),
-            rightWrist = point("right_wrist"),
-        )
-    }
-
     @Test
     fun singlePoseVectors() {
-        val decoder = makeDecoder()
+        val decoder = referenceDecoder()
         val vectors = SharedFiles.load<TestVectors>("test_vectors.json")
         assertFalse("no single-pose vectors loaded", vectors.singlePoseVectors.isEmpty())
 
@@ -105,7 +49,7 @@ class ParityTest {
 
     @Test
     fun sequenceVectors() {
-        val decoder = makeDecoder()
+        val decoder = referenceDecoder()
         val vectors = SharedFiles.load<TestVectors>("test_vectors.json")
         assertFalse("no sequence vectors loaded", vectors.sequenceVectors.isEmpty())
 
