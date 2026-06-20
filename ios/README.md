@@ -1,8 +1,11 @@
 # iOS — Semaphore Translator
 
-Native iOS app (Swift / SwiftUI; AVFoundation / Vision / Core ML land in later
-epics). Right now this holds the app shell and the **cross-platform parity
-harness** (Issue #14) — see [`../docs/adr/0001-parity-harness-and-native-project-shape.md`](../docs/adr/0001-parity-harness-and-native-project-shape.md).
+Native iOS app (Swift / SwiftUI / AVFoundation / Vision; Core ML — the trained
+classifier — lands in a later epic). This holds the app shell, the
+**cross-platform parity harness** (Issue #14 — see
+[`../docs/adr/0001-parity-harness-and-native-project-shape.md`](../docs/adr/0001-parity-harness-and-native-project-shape.md)),
+and the **Vision capture → adapter → `Keypoints`** path with its native-fixture
+tests (Issue #21).
 
 ## Project generation
 
@@ -40,8 +43,9 @@ Simulator unit tests need no code signing.
 |------|------|
 | `project.yml` | XcodeGen project definition (source of truth). |
 | `Sources/App/` | Minimal SwiftUI app shell. |
-| `Sources/Core/` | `SemaphoreDecoder.swift` — the decode logic ported from `shared/tools/gen_test_vectors.py`, decoupled from the wire format (plain-value constructor; no JSON/loader code ships in the app). |
-| `Tests/` | `ParityTests.swift` (the harness) and `SharedContract.swift` (test-only Decodable models + the `shared/` loader). |
+| `Sources/Core/` | `SemaphoreDecoder.swift` (decode logic ported from `shared/tools/gen_test_vectors.py`); `Keypoints.swift` (the frozen 6-keypoint boundary); `VisionPoseAdapter.swift` (Apple Vision skeleton → `Keypoints`, the two flips applied once each — `shared/ADAPTER-CONTRACT.md`). |
+| `Sources/Capture/` | `PoseCaptureSession.swift` — `actor`-wrapped front-camera `AVCaptureSession` → Vision → adapter → `AsyncStream<Keypoints>` (compiled/reviewed; live behaviour is an on-device smoke item). |
+| `Tests/` | `ParityTests.swift` (the harness); `SharedContract.swift` (test-only Decodable models + the `shared/` loader); `NativeFixtureTests.swift` (#20 contract); `VisionAdapterTests.swift` (Layer-1: replay recorded Vision skeletons → adapter → `invariants.json`); `VisionCalibrationTests.swift` (Layer-2: live Vision on the committed images, device-only); `Fixtures/vision_skeletons.json` (recorded skeletons). |
 
 ## How the tests reach `shared/`
 

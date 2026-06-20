@@ -5,7 +5,7 @@ import Foundation
 /// contract's — x increases toward the SIGNER'S RIGHT, y is UP, both in [0,1];
 /// confidence in [0,1], passed through unmodified. See
 /// `shared/keypoint_contract.json`.
-struct Keypoint {
+struct Keypoint: Sendable {
     let x: Double
     let y: Double
     let confidence: Double
@@ -18,7 +18,7 @@ struct Keypoint {
 ///
 /// Property order is the contract's `keypoints.names` order, and `flatten()`
 /// matches `model_input_order` — both frozen in `keypoint_contract.json`.
-struct Keypoints {
+struct Keypoints: Sendable {
     let leftShoulder: Keypoint
     let leftElbow: Keypoint
     let leftWrist: Keypoint
