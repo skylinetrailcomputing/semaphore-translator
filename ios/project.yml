@@ -1,0 +1,46 @@
+# XcodeGen project definition — the committed source of truth for the iOS
+# project. The generated SemaphoreTranslator.xcodeproj is git-ignored;
+# regenerate it with `xcodegen generate` (see ios/README.md).
+name: SemaphoreTranslator
+options:
+  bundleIdPrefix: com.skylinetrailcomputing
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    GENERATE_INFOPLIST_FILE: "YES"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  SemaphoreTranslator:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+  SemaphoreTranslatorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: SemaphoreTranslator
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore.tests
+schemes:
+  SemaphoreTranslator:
+    build:
+      targets:
+        SemaphoreTranslator: all
+        SemaphoreTranslatorTests: [test]
+    test:
+      targets:
+        - SemaphoreTranslatorTests
