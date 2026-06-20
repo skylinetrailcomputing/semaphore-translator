@@ -13,10 +13,19 @@ import Foundation
 struct SemaphoreConfig: Decodable {
     let angleToleranceDeg: Double
     let minKeypointConfidence: Double
+    // Temporal-commit constants (spec §4.4, ADR 0004). Parsed here so the
+    // committer port (#4.2) can build its `CommitTiming` from the same contract
+    // the decoder is built from; the per-frame parity harness ignores them.
+    let commitHoldMs: Double
+    let smoothingWindow: Int
+    let interCharGapMs: Double
 
     enum CodingKeys: String, CodingKey {
         case angleToleranceDeg = "ANGLE_TOLERANCE_DEG"
         case minKeypointConfidence = "MIN_KEYPOINT_CONFIDENCE"
+        case commitHoldMs = "COMMIT_HOLD_MS"
+        case smoothingWindow = "SMOOTHING_WINDOW"
+        case interCharGapMs = "INTER_CHAR_GAP_MS"
     }
 }
 

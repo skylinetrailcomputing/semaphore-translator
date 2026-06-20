@@ -51,6 +51,17 @@ enum ContractLoader {
             minKeypointConfidence: config.minKeypointConfidence)
     }
 
+    /// Parse the frozen temporal-commit constants (spec §4.4) from the bundled
+    /// `semaphore_config.json`. No committer is built here — that is #4.5; this
+    /// only surfaces the constants the live layer will inject.
+    static func makeCommitTiming(bundle: Bundle = .main) throws -> CommitTiming {
+        let config = try load(Config.self, "semaphore_config", bundle)
+        return CommitTiming(
+            smoothingWindow: config.smoothingWindow,
+            commitHoldMs: config.commitHoldMs,
+            interCharGapMs: config.interCharGapMs)
+    }
+
     private static func load<T: Decodable>(_ type: T.Type, _ name: String, _ bundle: Bundle) throws
         -> T
     {
@@ -112,9 +123,29 @@ enum ContractLoader {
     private struct Config: Decodable {
         let angleToleranceDeg: Double
         let minKeypointConfidence: Double
+        let commitHoldMs: Double
+        let smoothingWindow: Int
+        let interCharGapMs: Double
         enum CodingKeys: String, CodingKey {
             case angleToleranceDeg = "ANGLE_TOLERANCE_DEG"
             case minKeypointConfidence = "MIN_KEYPOINT_CONFIDENCE"
+            case commitHoldMs = "COMMIT_HOLD_MS"
+            case smoothingWindow = "SMOOTHING_WINDOW"
+            case interCharGapMs = "INTER_CHAR_GAP_MS"
         }
     }
+}
+
+/// The frozen temporal-commit constants (spec §4.4, ADR 0004), surfaced from the
+/// shared contract so the live layer (#4.5) can build the committer. Kept a plain
+/// value type — like `SemaphoreDecoder`'s plain-value constructor, it carries no
+/// JSON/loader code; `ContractLoader.makeCommitTiming` parses the contract into it.
+struct CommitTiming: Equatable {
+    /// Frames of majority-vote smoothing on the votable pose symbol.
+    let smoothingWindow: Int
+    /// How long a candidate symbol must hold (wall-clock ms) before it commits.
+    let commitHoldMs: Double
+    /// Minimum intervening *indeterminate* gap (ms) before the *same* symbol may
+    /// re-commit. A distinct symbol commits on its hold alone (ADR 0004).
+    let interCharGapMs: Double
 }

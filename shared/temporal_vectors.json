@@ -1,0 +1,7583 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Temporal parity vectors: timed frame sequences -> the string the committer commits. The committer (ADR 0004) is time-dependent, so these are kept separate from test_vectors.json (whose per-frame harness is untimed). Both platform ports (#4.2/#4.3) feed each frame's votable pose symbol + t_ms through their committer and MUST produce identical output. Frames are post-adapter keypoints (the adapter's mirror/y-flip is NOT exercised here; that is the Epic-3 native fixtures).",
+  "_generated_by": "shared/tools/gen_temporal_vectors.py (uv run). Generated, not hand-edited: regenerate after any change to semaphore_alphabet.json or semaphore_config.json. The generator runs the reference committer over every sequence and asserts expected_committed before writing, so running it is the fixture's correctness check.",
+  "_commit_contract": "Per ADR 0004: vote the votable pose symbol (classify output; null = indeterminate is a vote value) over a ring buffer of the last SMOOTHING_WINDOW (5) frames -> plurality candidate, ties to the most-recent occurrence. A determinate candidate held continuously >= COMMIT_HOLD_MS (600) commits: run interpret(symbol, mode) (spec §4.5) for (emit, new mode), so mode flips only on a committed control pose. A distinct symbol commits on its hold alone; the SAME symbol re-commits only after an intervening indeterminate gap >= INTER_CHAR_GAP_MS (300). reset() (true signer-loss) clears the window and sets mode -> LETTERS.",
+  "_format": {
+    "sequence_vectors": "Each is {name, mode_start, frames:[...], expected_committed}. mode_start is always 'LETTERS' (the committer resets to it). Frames are processed in order; expected_committed is the concatenation of every frame's expected_emit.",
+    "frames": "A pose frame is {keypoints, t_ms, expected_symbol, expected_emit}; a reset frame is {reset:true, t_ms, expected_emit:''} and the harness calls committer.reset() instead of process().",
+    "keypoints": "The six shared keypoints, each [x, y, confidence], normalized to [0,1], y-up, signer's perspective (post-adapter). Same shape as test_vectors.json.",
+    "t_ms": "Injected wall-clock time for the frame, in milliseconds.",
+    "expected_symbol": "The votable pose symbol classify() returns for this frame: a letter, 'NUMERALS', 'REST', or null (indeterminate). The committer votes on this, not on the emitted character. Absent on reset frames.",
+    "expected_emit": "The string committed on this exact frame: '' on most frames, the committed letter/digit/space on the frame a commit fires.",
+    "expected_committed": "The full decoded string: concatenation of every expected_emit.",
+    "name": "Human-readable label for debugging. Ignored by the parity harness.",
+    "_note": "Optional human explanation. Ignored by the parity harness."
+  },
+  "sequence_vectors": [
+    {
+      "name": "debounce_spurious_pose",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "A",
+          "expected_emit": "A"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1200,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1300,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1600,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2000,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": "A",
+      "_note": "A commits once; a 2-frame B flicker never out-votes the held A (window of 5); holding A afterwards does not re-commit it."
+    },
+    {
+      "name": "distinct_letters_stream",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "A",
+          "expected_emit": "A"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1200,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1300,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1400,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1500,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1600,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1700,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1800,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 1900,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2000,
+          "expected_symbol": "B",
+          "expected_emit": "B"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2100,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2200,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2300,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 2400,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 2500,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 2600,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 2700,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 2800,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 2900,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 3000,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 3100,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 3200,
+          "expected_symbol": "C",
+          "expected_emit": "C"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 3300,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 3400,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.627782,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.705563,
+              1.0
+            ]
+          },
+          "t_ms": 3500,
+          "expected_symbol": "C",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": "ABC",
+      "_note": "Each distinct held pose commits on its own hold; distinct symbols need no intervening gap."
+    },
+    {
+      "name": "same_letter_needs_gap",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "L",
+          "expected_emit": "L"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1200,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1300,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1400,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1500,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1600,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1700,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1800,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 1900,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.501627,
+              0.592095,
+              1.0
+            ],
+            "left_wrist": [
+              0.603253,
+              0.63419,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.701627,
+              0.592095,
+              1.0
+            ],
+            "right_wrist": [
+              0.803253,
+              0.63419,
+              1.0
+            ]
+          },
+          "t_ms": 2000,
+          "expected_symbol": null,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2100,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2200,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2300,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2400,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2500,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2600,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2700,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2800,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2900,
+          "expected_symbol": "L",
+          "expected_emit": "L"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3000,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3100,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3200,
+          "expected_symbol": "L",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": "LL",
+      "_note": "First L commits; an indeterminate gap re-arms the lock; the second L then commits. Without the gap a held L commits exactly once (case 1)."
+    },
+    {
+      "name": "mode_transitions_through_committer",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1600,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2000,
+          "expected_symbol": "A",
+          "expected_emit": "1"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2400,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2500,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2600,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2700,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2800,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 2900,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 3000,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 3100,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 3200,
+          "expected_symbol": "B",
+          "expected_emit": "2"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 3300,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 3400,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 3500,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 3600,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 3700,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 3800,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 3900,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4000,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4100,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4200,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4300,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4400,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4500,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4600,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.29,
+              0.55,
+              1.0
+            ],
+            "left_wrist": [
+              0.18,
+              0.55,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 4700,
+          "expected_symbol": "J",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 4800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 4900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5000,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5600,
+          "expected_symbol": "A",
+          "expected_emit": "A"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 5900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": "12A",
+      "_note": "Held NUMERALS commits -> NUMERIC (emit ''); A/B -> '1'/'2'; held J pose is the letters-shift -> LETTERS (emit ''); A -> 'A'. Mode flips only on a committed control pose, so a fleeting NUMERALS/J frame can't flip it (#23)."
+    },
+    {
+      "name": "signer_loss_resets_mode",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.66,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.77,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "NUMERALS",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1600,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2000,
+          "expected_symbol": "A",
+          "expected_emit": "1"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "reset": true,
+          "t_ms": 2400,
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2600,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3000,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3100,
+          "expected_symbol": "A",
+          "expected_emit": "A"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3300,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3400,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 3600,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": "1A",
+      "_note": "In NUMERIC the A pose commits '1'; a signer-loss reset() clears state and sets mode -> LETTERS, so the next A commits the letter 'A' (and re-commits despite the prior A, proving the same-symbol lock was cleared)."
+    },
+    {
+      "name": "rest_commits_one_space",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "REST",
+          "expected_emit": " "
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.6,
+              0.44,
+              1.0
+            ],
+            "right_wrist": [
+              0.6,
+              0.33,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "REST",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": " ",
+      "_note": "Both arms down = REST -> a single committed space; holding it does not stream spaces (debounce applies to REST like any symbol)."
+    }
+  ]
+}
