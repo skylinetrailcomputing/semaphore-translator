@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.core.content.ContextCompat
@@ -33,21 +34,27 @@ import kotlinx.coroutines.flow.callbackFlow
  *
  * Each [keypoints] collection owns its own detector + use case and tears down
  * exactly those on cancellation (mirroring iOS's fresh-per-`start()` actor), so
- * the session is safely re-collectable. The Compose `PreviewView` wiring lands in
- * [3.5] (#23); this class produces the keypoint stream that screen will consume.
+ * the session is safely re-collectable. The live debug screen ([3.5], #23)
+ * passes a [Preview] use case so the camera preview and the analysis stream bind
+ * to the same front camera together — the CameraX analogue of iOS sharing one
+ * `AVCaptureSession` between the preview layer and the data output.
  */
 class PoseCaptureSession(
     private val context: Context,
     private val adapter: MlKitPoseAdapter = MlKitPoseAdapter(),
 ) {
     /**
-     * Bind a front-camera [ImageAnalysis] use case to [lifecycleOwner] and emit
-     * adapted [Keypoints] for every frame that yields a full upper-body skeleton.
-     * The flow unbinds *its* use case and closes its detector when the collector
-     * is cancelled.
+     * Bind a front-camera [ImageAnalysis] use case (and, for the live screen, an
+     * optional [preview] use case) to [lifecycleOwner] and emit adapted
+     * [Keypoints] for every frame that yields a full upper-body skeleton. The
+     * flow unbinds *its* use cases and closes its detector when the collector is
+     * cancelled. [preview] is null in headless contexts (no display surface).
      */
     @ExperimentalGetImage
-    fun keypoints(lifecycleOwner: LifecycleOwner): Flow<Keypoints> = callbackFlow {
+    fun keypoints(
+        lifecycleOwner: LifecycleOwner,
+        preview: Preview? = null,
+    ): Flow<Keypoints> = callbackFlow {
         val executor = ContextCompat.getMainExecutor(context)
         val detector =
             PoseDetection.getClient(
@@ -84,11 +91,12 @@ class PoseCaptureSession(
 
         // Suspends rather than blocking the collector's thread (awaitInstance vs
         // the blocking Future.get()), so a Main-dispatched collector can't ANR.
+        val useCases = listOfNotNull(preview, analysis).toTypedArray()
         val provider = ProcessCameraProvider.awaitInstance(context)
-        provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, analysis)
+        provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, *useCases)
 
         awaitClose {
-            provider.unbind(analysis)
+            provider.unbind(*useCases)
             detector.close()
         }
     }
