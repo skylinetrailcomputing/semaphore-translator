@@ -7,10 +7,25 @@
 agp = "9.2.1"
 gson = "2.13.2"
 junit = "4.13.2"
+# Epic 3 (#22) — CameraX capture + ML Kit pose + the first instrumented tests.
+camerax = "1.6.1"
+mlkitPose = "18.0.0-beta5"
+coroutines = "1.11.0"
+androidxTestJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { module = "junit:junit", version.ref = "junit" }
+camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+# Bundled ML Kit pose model — ships the model in the AAR, so it needs no Google
+# Play Services (runs on a bare AOSP/emulator and on-device alike).
+mlkit-pose-detection = { module = "com.google.mlkit:pose-detection", version.ref = "mlkitPose" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

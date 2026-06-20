@@ -1,0 +1,26 @@
+{
+  "_README": "Recorded Android ML Kit body-pose skeletons for the Epic-3 Layer-1 regression test (Issue #22). Frame is ML Kit NATIVE -- image-PIXEL coordinates, top-left origin (y-down), anatomical labels -- i.e. the MlKitPoseAdapter INPUT, pre-normalize/pre-flip. Each is the output of ML Kit Pose Detection (bundled model, STREAM_MODE) run on the committed shared/native_fixtures/pose_<name>.png during Layer-2 calibration on a real device (Pixel 9a, Android 16), captured by MlKitCalibrationTest. Replayed through MlKitPoseAdapter, these must satisfy the same invariants.json the live calibration asserts -- the fast, emulator-free, per-commit guard on the Android adapter (the Layer-2 test re-derives them live on a device; ML Kit needs the Android runtime). Values are [x, y, confidence] in pixels; image_width/image_height are the analysed bitmap's dimensions, used to normalize. Regenerate by running 'cd android && ./gradlew :app:connectedDebugAndroidTest' against a connected device/emulator and pasting the CAPTURED_SKELETON blocks from 'adb logcat -s MlKitCalibration:I'.",
+  "_frame": "ML Kit native: image-pixel [0..w]x[0..h], top-left origin (y-down), anatomical L/R labels.",
+  "skeletons": {
+    "arms_down": {
+      "image_width": 768,
+      "image_height": 1024,
+      "left_shoulder":  [464.9, 272.0, 0.9997],
+      "left_elbow":     [479.9, 399.2, 0.9992],
+      "left_wrist":     [471.2, 513.4, 0.9980],
+      "right_shoulder": [299.8, 270.8, 0.9995],
+      "right_elbow":    [285.1, 392.3, 0.9987],
+      "right_wrist":    [291.5, 511.2, 0.9971]
+    },
+    "right_arm_out": {
+      "image_width": 768,
+      "image_height": 1024,
+      "left_shoulder":  [603.4, 272.6, 0.9995],
+      "left_elbow":     [628.5, 393.8, 0.9967],
+      "left_wrist":     [621.6, 509.1, 0.9920],
+      "right_shoulder": [440.0, 268.8, 0.9993],
+      "right_elbow":    [325.1, 287.2, 0.9991],
+      "right_wrist":    [204.7, 281.2, 0.9903]
+    }
+  }
+}
