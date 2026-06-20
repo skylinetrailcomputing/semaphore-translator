@@ -186,22 +186,25 @@ private val rightColor = Color(0xFFFF9800)
  *
  * **Signer-frame → display-frame mapping** (identical convention to iOS's
  * `SkeletonOverlay`). [Keypoints] are normalized `[0,1]`, **y-up**, in the
- * **signer's** perspective (`+x` = signer's right). The preview is the camera's
- * **observer** view (top-left origin), so the display transform is:
- *   - undo the signer mirror:  `screen_x = (1 − kp.x) · W`
- *   - undo y-up:               `screen_y = (1 − kp.y) · H`
- * This is purely a *display* transform; it never touches the adapter mirror. If
- * the live overlay lands mirrored or rotated on a real device, this mapping and
- * the `PreviewView` mirroring/rotation are the knobs (tuned in lockstep) — a
- * second adapter flip is never the fix (it would desync the platforms and the
- * parity harness). Registration is approximate under FILL_CENTER cropping, fine
- * for the orientation/mirror smoke this screen exists for.
+ * **signer's** perspective (`+x` = signer's right). `PreviewView` shows the front
+ * camera **mirrored** (the natural selfie view — its default), which is the
+ * signer's-perspective view, so `+x` already matches screen-right; only the y-up
+ * needs undoing for the top-left display origin:
+ *   - signer's perspective ↔ mirrored preview:  `screen_x = kp.x · W`
+ *   - undo y-up:                                 `screen_y = (1 − kp.y) · H`
+ * (Verified on a Pixel 9a, #23: with `(1 − x)` the overlay was flipped relative
+ * to the mirrored preview; `x` lands it on the limbs.) This is purely a *display*
+ * transform; it never touches the adapter mirror. If the live overlay ever lands
+ * flipped/rotated, this mapping and the `PreviewView` mirroring/rotation are the
+ * knobs (tuned in lockstep) — a second adapter flip is never the fix (it would
+ * desync the platforms and the parity harness). Registration is approximate under
+ * FILL_CENTER cropping, fine for the orientation/mirror smoke this screen exists for.
  */
 @Composable
 private fun SkeletonOverlay(keypoints: Keypoints?, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val k = keypoints ?: return@Canvas
-        fun at(p: Keypoint) = Offset((1f - p.x.toFloat()) * size.width, (1f - p.y.toFloat()) * size.height)
+        fun at(p: Keypoint) = Offset(p.x.toFloat() * size.width, (1f - p.y.toFloat()) * size.height)
 
         // Torso (shoulder line), then each arm shoulder→elbow→wrist.
         drawLine(Color.White.copy(alpha = 0.7f), at(k.leftShoulder), at(k.rightShoulder), strokeWidth = 6f)
