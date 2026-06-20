@@ -22,7 +22,15 @@ import Vision
 actor PoseCaptureSession {
     enum CaptureError: Error { case noFrontCamera, cannotAddInput, cannotAddOutput }
 
-    private let session = AVCaptureSession()
+    /// The capture session, exposed so the SwiftUI preview layer ([3.5], #23)
+    /// can attach to the *same* session this actor configures and runs. Sharing
+    /// the session between this actor (configuration) and a main-thread
+    /// `AVCaptureVideoPreviewLayer` (display) is the documented AVFoundation
+    /// pattern; since AVFoundation is not `Sendable`-clean, it crosses the
+    /// boundary as `nonisolated(unsafe)` — the same escape the start/stop hops
+    /// below use. The preview is the *display* surface; the decode path still
+    /// runs off the non-mirrored `AVCaptureVideoDataOutput` configured here.
+    nonisolated(unsafe) let session = AVCaptureSession()
     private let videoQueue = DispatchQueue(label: "com.skylinetrailcomputing.semaphore.capture")
     private var handler: PoseSampleHandler?
 

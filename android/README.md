@@ -1,10 +1,12 @@
 # Android — Semaphore Translator
 
-Native Android app (Kotlin; Compose preview / LiteRT classifier land in later
-epics). This holds the app shell, the **cross-platform parity harness**
+Native Android app (Kotlin / Jetpack Compose; LiteRT classifier lands in a later
+epic). This holds the **cross-platform parity harness**
 (Issue #14, ADR [0001](../docs/adr/0001-parity-harness-and-native-project-shape.md)),
-and the **ML Kit pose adapter + CameraX capture path** with its two-layer native
-fixtures (Issue #22, ADR [0002](../docs/adr/0002-android-mlkit-adapter-and-instrumented-tests.md)).
+the **ML Kit pose adapter + CameraX capture path** with its two-layer native
+fixtures (Issue #22, ADR [0002](../docs/adr/0002-android-mlkit-adapter-and-instrumented-tests.md)),
+and the **live debug screen** — Compose preview + skeleton overlay + per-frame
+decode (Issue #23, ADR [0003](../docs/adr/0003-live-debug-preview-and-app-contract-loader.md)).
 
 ## Prerequisites
 
@@ -40,24 +42,44 @@ fixture after a calibration run, paste the `CAPTURED_SKELETON` blocks from
 `adb logcat -d -s MlKitCalibration:I` into
 `app/src/test/resources/mlkit_skeletons.json`.
 
+## Running the live app
+
+```bash
+cd android
+./gradlew :app:installDebug   # device/emulator with a front camera
+```
+
+The screen requests the camera permission, then shows the preview with the
+skeleton overlay and the per-frame decoded character. The live mirror/orientation
+is an **on-device smoke** (no camera in the JVM tests) — confirm the overlay
+tracks and the letter is right; if it looks mirrored/rotated, tune the
+preview/overlay display config, **not** the adapter (ADR 0003).
+
 ## Toolchain notes
 
 AGP 9 provides **built-in Kotlin compilation**, so there is no separate Kotlin
-Gradle plugin. JSON is parsed with **Gson** (reflection, no compiler plugin).
-The pose path uses **CameraX 1.6** + **ML Kit pose (bundled model)** +
-**kotlinx-coroutines**; the bundled ML Kit model needs no Google Play Services.
-Versions are pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
-Rationale in ADRs [0001](../docs/adr/0001-parity-harness-and-native-project-shape.md)
-and [0002](../docs/adr/0002-android-mlkit-adapter-and-instrumented-tests.md).
+Gradle plugin. JSON is parsed with **Gson** (reflection, no compiler plugin) in
+the **tests**; the shipping app loads its bundled contract with the framework's
+`org.json`. The pose path uses **CameraX 1.6** (incl. `camera-view` PreviewView)
++ **ML Kit pose (bundled model)** + **kotlinx-coroutines**; the bundled ML Kit
+model needs no Google Play Services. The UI is **Jetpack Compose** — the Compose
+compiler plugin is applied on top of AGP's built-in Kotlin and **pinned to that
+Kotlin version** (2.2.10; a mismatch fails the build). Versions are pinned in
+[`gradle/libs.versions.toml`](gradle/libs.versions.toml). Rationale in ADRs
+[0001](../docs/adr/0001-parity-harness-and-native-project-shape.md),
+[0002](../docs/adr/0002-android-mlkit-adapter-and-instrumented-tests.md), and
+[0003](../docs/adr/0003-live-debug-preview-and-app-contract-loader.md).
 
 ## Layout
 
 | Path | What |
 |------|------|
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/libs.versions.toml` | Gradle build + version catalog. |
-| `app/build.gradle.kts` | The `:app` Android application module. |
-| `app/src/main/kotlin/.../MainActivity.kt` | Minimal app shell. |
+| `app/build.gradle.kts` | The `:app` Android application module. Stages the contract assets (`copySharedContract`) and enables Compose. |
+| `app/src/main/kotlin/.../MainActivity.kt` | Compose entry point; hosts `SemaphoreScreen`. |
+| `app/src/main/kotlin/.../ui/SemaphoreScreen.kt` | The live debug screen (#23): camera preview + skeleton overlay + per-frame decode + "no signer detected". |
 | `app/src/main/kotlin/.../core/SemaphoreDecoder.kt` | The decode logic ported from `shared/tools/gen_test_vectors.py`, decoupled from the wire format (plain-value constructor; no Gson/loader ships in the app). |
+| `app/src/main/kotlin/.../core/ContractLoader.kt` | App-side loader (#23): parses the bundled `shared/*.json` assets with `org.json` and builds the `SemaphoreDecoder` — mirrors the test harness's `referenceDecoder()`. |
 | `app/src/main/kotlin/.../core/MlKitPoseAdapter.kt` | The **pure** adapter (#22): ML Kit skeleton → frozen `Keypoints` (normalize + y-flip + mirror). No ML Kit / Android imports, so Layer-1 replays it on the JVM. |
 | `app/src/main/kotlin/.../capture/MlKitPoseSource.kt` | The ML Kit binding: `Pose` → `MlKitSkeleton`. The only production code that touches ML Kit pose types. |
 | `app/src/main/kotlin/.../capture/PoseCaptureSession.kt` | CameraX `ImageAnalysis` (front, KEEP_ONLY_LATEST) → ML Kit → adapter → `Flow<Keypoints>`. Compiled + reviewed, not unit-tested. |
