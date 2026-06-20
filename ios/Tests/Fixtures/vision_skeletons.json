@@ -1,22 +1,22 @@
 {
-  "_README": "Recorded Apple Vision body-pose skeletons for the Epic-3 Layer-1 regression test (Issue #21). Frame is Vision NATIVE -- normalized, lower-left origin (y-up), x toward the image's right, anatomical labels -- i.e. the VisionPoseAdapter INPUT, pre-mirror. Each is the output of VNDetectHumanBodyPoseRequest run on the committed shared/native_fixtures/pose_<name>.png (the MPFB CC0 renders) during Layer-2 calibration; see ios/Tests/VisionCalibrationTests.swift and shared/native_fixtures/NATIVE-FIXTURES.md. Replayed through VisionPoseAdapter, these must satisfy the same invariants.json the live calibration asserts -- the fast, camera-free, per-commit guard on the iOS adapter (the Layer-2 test re-derives them live on the simulator). Values are [x, y, confidence]. Regenerate by re-running the generator and extracting the skeletons.",
+  "_README": "Recorded Apple Vision body-pose skeletons for the Epic-3 Layer-1 regression test (Issue #21). Frame is Vision NATIVE -- normalized, lower-left origin (y-up), x toward the image's right, anatomical labels -- i.e. the VisionPoseAdapter INPUT, pre-mirror. Each is the output of VNDetectHumanBodyPoseRequest run on the committed shared/native_fixtures/pose_<name>.png (the MPFB CC0 renders, clothed since Issue #27) during Layer-2 calibration; see ios/Tests/VisionCalibrationTests.swift and shared/native_fixtures/NATIVE-FIXTURES.md. Replayed through VisionPoseAdapter, these must satisfy the same invariants.json the live calibration asserts -- the fast, camera-free, per-commit guard on the iOS adapter (the Layer-2 test re-derives them live on a real device; body pose does not run on the iOS Simulator). Values are [x, y, confidence], captured at 4-decimal precision by the host extractor ios/Tools/extract_vision_skeleton.swift (NATIVE-FIXTURES.md section 6). Regenerate by re-running shared/tools/gen_native_fixtures.py and then 'swift ios/Tools/extract_vision_skeleton.swift shared/native_fixtures/pose_<name>.png' against the committed images.",
   "_frame": "Vision native: normalized [0,1], lower-left origin (y-up), x to image right, anatomical L/R labels.",
   "skeletons": {
     "arms_down": {
-      "left_shoulder":  [0.5992, 0.7340, 0.73],
-      "left_elbow":     [0.6162, 0.6067, 0.82],
-      "left_wrist":     [0.6064, 0.4793, 0.66],
-      "right_shoulder": [0.3878, 0.7329, 0.76],
-      "right_elbow":    [0.3750, 0.6092, 0.74],
-      "right_wrist":    [0.3838, 0.4792, 0.73]
+      "left_shoulder":  [0.5995, 0.7384, 0.7285],
+      "left_elbow":     [0.6246, 0.6115, 0.7485],
+      "left_wrist":     [0.6156, 0.5062, 0.8320],
+      "right_shoulder": [0.3893, 0.7356, 0.7246],
+      "right_elbow":    [0.3639, 0.6114, 0.7871],
+      "right_wrist":    [0.3745, 0.5056, 0.8037]
     },
     "right_arm_out": {
-      "left_shoulder":  [0.7882, 0.7344, 0.72],
-      "left_elbow":     [0.8096, 0.6048, 0.79],
-      "left_wrist":     [0.7981, 0.4839, 0.65],
-      "right_shoulder": [0.5888, 0.7269, 0.64],
-      "right_elbow":    [0.4238, 0.7178, 0.62],
-      "right_wrist":    [0.2727, 0.7282, 0.85]
+      "left_shoulder":  [0.7894, 0.7388, 0.7173],
+      "left_elbow":     [0.8148, 0.6091, 0.7954],
+      "left_wrist":     [0.8086, 0.5082, 0.8247],
+      "right_shoulder": [0.5837, 0.7288, 0.6953],
+      "right_elbow":    [0.4318, 0.7200, 0.6006],
+      "right_wrist":    [0.2717, 0.7282, 0.8433]
     }
   }
 }

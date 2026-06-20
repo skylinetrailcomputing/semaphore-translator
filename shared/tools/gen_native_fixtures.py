@@ -9,10 +9,13 @@ zero faces/bodies/humans on a hand-drawn figure; see NATIVE-FIXTURES.md §6).
 
 So each image is a **3D-rendered human** generated with MPFB
 (https://static.makehumancommunity.org/mpfb.html), the MakeHuman-successor Blender
-add-on. The generated human uses MakeHuman's **CC0** assets (license-clean for an
-OSS repo) and -- even untextured -- is detected by Vision with all six keypoints
-above the 0.5 confidence floor, because the base mesh has real facial/limb
-geometry. Body-pose detection keys on 3D *form*, not photo texture.
+add-on. The human and its clothing are MakeHuman's **CC0** assets (license-clean
+for an OSS repo) and are detected by Vision with all six keypoints above the 0.5
+confidence floor, because the base mesh has real facial/limb geometry. Body-pose
+detection keys on 3D *form*, not photo texture -- so even the untextured grey base
+mesh is detected; the clothing (Issue #27) is a cosmetic upgrade for a nicer
+public-repo asset and does not change the contract (verified: still all six
+keypoints > 0.5 with correct L/R labels after dressing).
 
 The figure is posed via the rig (not pixel-matched to `reference_post_adapter`):
 the invariants are **relational** (NATIVE-FIXTURES.md §4), so any image that
@@ -22,8 +25,17 @@ left, which a correct adapter mirrors to the signer's perspective.
 
 Prerequisites (one-time):
     brew install --cask blender                 # Blender >= 4.2 (extension system)
-    # install the MPFB extension into Blender (id "mpfb"), e.g. from
-    # https://extensions.blender.org/add-ons/mpfb/ , then enable it once.
+    # 1. install the MPFB extension into Blender (id "mpfb"), e.g. from
+    #    https://extensions.blender.org/add-ons/mpfb/ , then enable it once.
+    # 2. install the two CC0 clothing packs MPFB looks for in its clothes dir
+    #    (see CLOTHING below). Easiest: in Blender, MPFB tab -> Assets ->
+    #    "Asset packs", or download + unzip into the MPFB user-data clothes dir:
+    #      https://static.makehumancommunity.org/assets/assetpacks/shirts01.html
+    #      https://static.makehumancommunity.org/assets/assetpacks/pants01.html
+    #    (shirts01_cc0.zip + pants01_cc0.zip; both CC0). The unzipped layout is
+    #    <mpfb-user-data>/clothes/<asset>/<asset>.mhclo, which is what CLOTHING
+    #    resolves to via LocationService. If the assets are missing the script
+    #    raises a FileNotFoundError naming the expected path.
 
 Run:
     blender --background --python shared/tools/gen_native_fixtures.py
@@ -40,7 +52,24 @@ FIXTURES = SHARED / "native_fixtures"
 MPFB_MODULE = "bl_ext.user_default.mpfb"
 
 POSES = ("arms_down", "right_arm_out")
-DOWN = (0, 0, -1)
+
+# A resting "arm down" (position id 0, -90deg) tilted slightly toward the camera
+# (-y) so the hands rest in front of the thighs: a more natural human rest pose,
+# and it lifts the wrists clear of the body silhouette so Vision localizes them
+# with high confidence. The tilt is purely in depth (no x component), so in the
+# orthographic front view the projected arm stays vertical -- the pose still
+# decodes to id 0 (NATIVE-FIXTURES.md section 4 invariants are unaffected).
+REST_DOWN = (0, -0.35, -1)
+
+# CC0 clothing fitted onto the base mesh (Issue #27): a polo shirt whose hem
+# overlaps the trouser waistband (no skin gap / jagged waistband) + full cargo
+# trousers -> a clothed, SFW public-repo asset. Paths are relative to the MPFB
+# user-data dir (resolved via LocationService); install the shirts01 + pants01
+# CC0 packs as described in the module docstring.
+CLOTHING = (
+    "clothes/namuhekam_male_polo_shirt/namuhekam_male_polo_shirt.mhclo",
+    "clothes/cortu_cargo_pants/cortu_cargo_pants.mhclo",
+)
 
 
 def _human_service():
@@ -48,6 +77,32 @@ def _human_service():
     return __import__(
         MPFB_MODULE + ".services.humanservice", fromlist=["HumanService"]
     ).HumanService
+
+
+def _dress(human_service, basemesh):
+    """Fit the CC0 CLOTHING assets onto `basemesh`, rigged to the same armature
+    so they deform with the body when the arms are posed. MAKESKIN materials keep
+    the asset textures; the clothes follow the rig via interpolated weights."""
+    location_service = __import__(
+        MPFB_MODULE + ".services.locationservice", fromlist=["LocationService"]
+    ).LocationService
+    for rel_path in CLOTHING:
+        mhclo = location_service.get_user_data(rel_path)
+        if not Path(mhclo).is_file():
+            raise FileNotFoundError(
+                f"clothing asset not found: {mhclo}\n"
+                "Install the CC0 shirts01 + pants01 packs (see this file's docstring)."
+            )
+        human_service.add_mhclo_asset(
+            mhclo,
+            basemesh,
+            asset_type="Clothes",
+            material_type="MAKESKIN",
+            set_up_rigging=True,
+            interpolate_weights=True,
+            import_subrig=False,
+            import_weights=False,
+        )
 
 
 def _aim(arm, shoulder_bone, end_bone, target_dir):
@@ -80,6 +135,9 @@ def build_and_render(pose_name, out_path):
     arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     bpy.context.view_layer.update()
 
+    _dress(human_service, basemesh)
+    bpy.context.view_layer.update()
+
     # Figure's anatomical right (horizontal) derived from the shoulder line, so
     # it is correct regardless of which way the generated human faces.
     r_sh = arm.matrix_world @ arm.pose.bones["upperarm01.R"].head
@@ -89,11 +147,11 @@ def build_and_render(pose_name, out_path):
     fig_right = fig_right.normalized()
 
     if pose_name == "arms_down":
-        _aim(arm, "upperarm01.R", "wrist.R", DOWN)
-        _aim(arm, "upperarm01.L", "wrist.L", DOWN)
+        _aim(arm, "upperarm01.R", "wrist.R", REST_DOWN)
+        _aim(arm, "upperarm01.L", "wrist.L", REST_DOWN)
     elif pose_name == "right_arm_out":
         _aim(arm, "upperarm01.R", "wrist.R", tuple(fig_right))
-        _aim(arm, "upperarm01.L", "wrist.L", DOWN)
+        _aim(arm, "upperarm01.L", "wrist.L", REST_DOWN)
     else:
         raise ValueError(f"unknown pose {pose_name}")
 
