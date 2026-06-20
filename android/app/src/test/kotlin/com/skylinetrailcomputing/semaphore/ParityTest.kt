@@ -1,6 +1,9 @@
 package com.skylinetrailcomputing.semaphore
 
 import com.skylinetrailcomputing.semaphore.core.Alphabet
+import com.skylinetrailcomputing.semaphore.core.Keypoint
+import com.skylinetrailcomputing.semaphore.core.KeypointContract
+import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.Mode
 import com.skylinetrailcomputing.semaphore.core.SemaphoreConfig
 import com.skylinetrailcomputing.semaphore.core.SemaphoreDecoder
@@ -59,6 +62,29 @@ class ParityTest {
         )
     }
 
+    /**
+     * Build the typed [Keypoints] the decoder now consumes from a fixture's
+     * `[name: [x, y, confidence]]` map. The map shape is a test/fixture artifact
+     * (the shipping adapter builds [Keypoints] directly from native pose output,
+     * Epic 3); only the parity harness goes through the map. The 6 names are the
+     * contract order (`keypoint_contract.json.keypoints.names`); a missing name
+     * is a malformed fixture and fails the test loudly.
+     */
+    private fun keypointsFrom(map: Map<String, List<Double>>): Keypoints {
+        fun point(name: String): Keypoint {
+            val v = requireNotNull(map[name]) { "missing keypoint $name" }
+            return Keypoint(v[0], v[1], v[2])
+        }
+        return Keypoints(
+            leftShoulder = point("left_shoulder"),
+            leftElbow = point("left_elbow"),
+            leftWrist = point("left_wrist"),
+            rightShoulder = point("right_shoulder"),
+            rightElbow = point("right_elbow"),
+            rightWrist = point("right_wrist"),
+        )
+    }
+
     @Test
     fun singlePoseVectors() {
         val decoder = makeDecoder()
@@ -67,7 +93,7 @@ class ParityTest {
 
         for (vector in vectors.singlePoseVectors) {
             val mode = Mode.valueOf(vector.modeBefore)
-            val result = decoder.decodeFrame(vector.keypoints, mode)
+            val result = decoder.decodeFrame(keypointsFrom(vector.keypoints), mode)
             assertEquals("emit mismatch for ${vector.name}", vector.expected, result.emit)
             assertEquals(
                 "position ids mismatch for ${vector.name}",
@@ -86,7 +112,7 @@ class ParityTest {
         for (sequence in vectors.sequenceVectors) {
             var mode = Mode.valueOf(sequence.modeStart)
             for (frame in sequence.frames) {
-                val result = decoder.decodeFrame(frame.keypoints, mode)
+                val result = decoder.decodeFrame(keypointsFrom(frame.keypoints), mode)
                 val label = "${sequence.name}/${frame.name}"
                 assertEquals("emit mismatch for $label", frame.expected, result.emit)
                 assertEquals(
@@ -96,6 +122,45 @@ class ParityTest {
                 )
                 mode = result.mode // thread decoder mode through the sequence
             }
+        }
+    }
+
+    /**
+     * `flatten()` is the input-side analogue of `label_order`: it is the only
+     * thing that exercises the 12-float model input until the Epic-5 classifier
+     * lands, so pin its order to the frozen contract now. Sentinel values are
+     * distinct per (keypoint, component) so any transposition in `flatten()` --
+     * or drift from `model_input_order.floats` -- is caught.
+     */
+    @Test
+    fun flattenMatchesModelInputOrder() {
+        val contract = SharedFiles.load<KeypointContract>("keypoint_contract.json")
+        val names =
+            listOf(
+                "left_shoulder", "left_elbow", "left_wrist",
+                "right_shoulder", "right_elbow", "right_wrist",
+            )
+        // x, y, confidence per keypoint -- all distinct across the whole vector.
+        val map = names.mapIndexed { i, name -> name to listOf(i * 3.0, i * 3.0 + 1, i * 3.0 + 2) }.toMap()
+
+        val flat = keypointsFrom(map).flatten()
+        assertEquals("flatten() length", contract.modelInputOrder.length, flat.size)
+        assertEquals(
+            "contract floats vs declared length",
+            contract.modelInputOrder.length,
+            contract.modelInputOrder.floats.size,
+        )
+
+        contract.modelInputOrder.floats.forEachIndexed { i, spec ->
+            val (name, comp) = spec.split(".") // e.g. "left_shoulder.x"
+            val triple = requireNotNull(map[name]) { "unknown keypoint $name in $spec" }
+            val expected =
+                when (comp) {
+                    "x" -> triple[0]
+                    "y" -> triple[1]
+                    else -> error("model_input_order has a non-x/y component: $spec")
+                }
+            assertEquals("flatten()[$i] != model_input_order $spec", expected, flat[i], 0.0)
         }
     }
 }

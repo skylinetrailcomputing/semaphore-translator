@@ -38,6 +38,14 @@ data class Alphabet(
     @SerializedName("numeric_mode") val numericMode: NumericMode,
 )
 
+// --- keypoint_contract.json ---
+
+data class ModelInputOrder(val floats: List<String>, val length: Int)
+
+data class KeypointContract(
+    @SerializedName("model_input_order") val modelInputOrder: ModelInputOrder,
+)
+
 // --- test_vectors.json ---
 
 data class SinglePoseVector(

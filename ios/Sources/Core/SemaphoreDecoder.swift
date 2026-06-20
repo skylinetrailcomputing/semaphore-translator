@@ -92,15 +92,15 @@ struct SemaphoreDecoder {
     /// Position id for one arm, or nil if indeterminate (angle out of tolerance
     /// or a defining keypoint below the confidence floor). Only shoulder and
     /// wrist define the arm vector; the elbow does not gate.
-    private func armId(shoulder: [Double], wrist: [Double]) -> Int? {
-        if shoulder[2] < minConfidence || wrist[2] < minConfidence { return nil }
-        let angle = atan2(wrist[1] - shoulder[1], wrist[0] - shoulder[0]) * 180 / .pi
+    private func armId(shoulder: Keypoint, wrist: Keypoint) -> Int? {
+        if shoulder.confidence < minConfidence || wrist.confidence < minConfidence { return nil }
+        let angle = atan2(wrist.y - shoulder.y, wrist.x - shoulder.x) * 180 / .pi
         return quantize(angle)
     }
 
-    private func classify(_ kp: [String: [Double]]) -> (left: Int?, right: Int?, symbol: String?) {
-        let left = armId(shoulder: kp["left_shoulder"]!, wrist: kp["left_wrist"]!)
-        let right = armId(shoulder: kp["right_shoulder"]!, wrist: kp["right_wrist"]!)
+    private func classify(_ kp: Keypoints) -> (left: Int?, right: Int?, symbol: String?) {
+        let left = armId(shoulder: kp.leftShoulder, wrist: kp.leftWrist)
+        let right = armId(shoulder: kp.rightShoulder, wrist: kp.rightWrist)
         var symbol: String?
         if let left, let right { symbol = lookup[Pair(left, right)] }
         return (left, right, symbol)
@@ -119,7 +119,7 @@ struct SemaphoreDecoder {
     /// Decode a single post-adapter frame.
     /// - Returns: the emitted string, the resulting mode, and the white-box
     ///   `[left_id, right_id]` (nil where an arm is indeterminate).
-    func decodeFrame(_ kp: [String: [Double]], mode: Mode) -> (emit: String, mode: Mode, ids: [Int?]) {
+    func decodeFrame(_ kp: Keypoints, mode: Mode) -> (emit: String, mode: Mode, ids: [Int?]) {
         let (left, right, symbol) = classify(kp)
         let (emit, newMode) = interpret(symbol, mode)
         return (emit, newMode, [left, right])
