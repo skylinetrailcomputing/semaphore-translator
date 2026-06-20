@@ -4,12 +4,15 @@ import SwiftUI
 /// SwiftUI host for the live camera feed: an `AVCaptureVideoPreviewLayer` bound
 /// to the capture actor's `session` ([3.5], #23).
 ///
-/// **Frame discipline (read alongside `SkeletonOverlay`).** The preview is kept
-/// **non-mirrored** (`isVideoMirrored = false`), matching the non-mirrored
-/// `AVCaptureVideoDataOutput` the adapter is calibrated against and the
-/// observer-perspective fixtures. So the preview, the post-adapter `Keypoints`,
-/// and the overlay all reason in one frame: the camera's observer view. The
-/// single mirror lives in `VisionPoseAdapter` and is **never** touched here.
+/// **Frame discipline (read alongside `SkeletonOverlay`).** The preview is
+/// **mirrored** (`isVideoMirrored = true`) — the natural selfie view, which is
+/// the signer's perspective, so the overlay maps `Keypoints` straight
+/// (`screen_x = x·W`). This is the convention verified on Android (#23). It is
+/// **independent of the analysis path**: the `AVCaptureVideoDataOutput` in
+/// `PoseCaptureSession` stays NON-mirrored (`isVideoMirrored = false`) so the
+/// adapter still sees the observer-perspective buffer it is calibrated against
+/// (the fixtures). The single adapter mirror lives in `VisionPoseAdapter` and is
+/// **never** touched here — mirroring the *preview* only changes display.
 ///
 /// **Orientation is the on-device smoke** (guardrail-d; there is no camera or
 /// body-pose in the simulator). `previewRotationAngle` (portrait = 90°) and the
@@ -36,7 +39,7 @@ struct CameraPreviewView: UIViewRepresentable {
         if let connection = preview.connection {
             if connection.isVideoMirroringSupported {
                 connection.automaticallyAdjustsVideoMirroring = false
-                connection.isVideoMirrored = false
+                connection.isVideoMirrored = true
             }
             if connection.isVideoRotationAngleSupported(Self.previewRotationAngle) {
                 connection.videoRotationAngle = Self.previewRotationAngle

@@ -5,17 +5,21 @@ import SwiftUI
 /// right arm are colored distinctly and labelled so the mirror is legible at a
 /// glance: the signer's RIGHT wrist should appear on the correct side.
 ///
-/// **Signer-frame → display-frame mapping.** `Keypoints` are normalized `[0,1]`,
-/// **y-up**, in the **signer's** perspective (`+x` = signer's right). The preview
-/// is the camera's **observer** view, kept non-mirrored (see `CameraPreviewView`),
-/// with a top-left origin. So the display transform is:
-///   - undo the signer mirror:  `screen_x = (1 − kp.x) · W`  (signer's right → screen left)
-///   - undo y-up:               `screen_y = (1 − kp.y) · H`  (y-up → y-down origin)
+/// **Signer-frame → display-frame mapping** (same convention as Android's
+/// `SkeletonOverlay`, verified there on a Pixel 9a — #23). `Keypoints` are
+/// normalized `[0,1]`, **y-up**, in the **signer's** perspective (`+x` = signer's
+/// right). The preview is **mirrored** for display (the natural selfie view —
+/// `CameraPreviewView` sets `isVideoMirrored = true`), which is the signer's
+/// perspective, so `+x` already matches screen-right; only the y-up needs undoing
+/// for the top-left display origin:
+///   - signer's perspective ↔ mirrored preview:  `screen_x = kp.x · W`
+///   - undo y-up:                                 `screen_y = (1 − kp.y) · H`
 /// This is purely a *display* transform — it never touches the adapter mirror.
-/// If the overlay lands mirrored or upside-down on a real device, this function,
-/// the preview rotation, and the Vision request orientation are the knobs (tuned
-/// in lockstep); a second adapter flip is never the fix (it would desync the
-/// platforms and the parity harness).
+/// If the overlay lands flipped/rotated on a real device, this function, the
+/// preview mirroring/rotation, and the Vision request orientation are the knobs
+/// (tuned in lockstep); a second adapter flip is never the fix (it would desync
+/// the platforms and the parity harness). NOTE: the live mirror was confirmed on
+/// Android; the iOS preview path still wants its own on-device eyeball.
 ///
 /// **Registration is approximate.** The preview uses `.resizeAspectFill`, which
 /// crops the buffer to fill the view, so this linear full-view mapping can drift
@@ -33,7 +37,7 @@ struct SkeletonOverlay: View {
     /// context — can call it without hopping to the main actor (the `View` type
     /// is otherwise inferred `@MainActor`).
     nonisolated static func displayPoint(_ kp: Keypoint, in size: CGSize) -> CGPoint {
-        CGPoint(x: (1 - kp.x) * size.width, y: (1 - kp.y) * size.height)
+        CGPoint(x: kp.x * size.width, y: (1 - kp.y) * size.height)
     }
 
     var body: some View {

@@ -75,20 +75,26 @@ Compose) — the parity discipline is the shared *contract*, never the UI.
   returns nil), so absence is a timeout (~500 ms), not an event. Same shape on
   both platforms (iOS `Task` watchdog; Android coroutine `delay` loop).
 - **The overlay maps signer-frame → display-frame; it never touches the adapter.**
-  `Keypoints` are normalized, y-up, signer's perspective. The preview is the
-  camera's observer view, so the overlay undoes the mirror and the y-up
-  (`screen_x = (1 − x)·W`, `screen_y = (1 − y)·H`) — identical convention on both
-  platforms. The single adapter mirror (fixture-pinned, Pixel-confirmed in #21/#22)
-  is **never** touched here; a flipped overlay is fixed in the preview/overlay
-  display config, not the adapter (a second flip would desync the platforms and
-  the parity harness).
-- **The live mirror + device orientation are the on-device smoke.** There is no
-  camera (and no body pose) in the iOS Simulator, and the JVM unit tests have no
-  camera, so the live orientation/mirror cannot be verified headless. The knobs
-  are isolated and labelled: the preview mirroring/rotation, the Vision request
-  orientation (iOS, still #21's `.up` placeholder) / ML Kit rotation handling
-  (Android), and the one overlay mapping function — tuned in lockstep on a real
-  device. This is exactly the guardrail-(d) human smoke [3.5] exists for.
+  `Keypoints` are normalized, y-up, signer's perspective. The preview is shown
+  **mirrored** (the natural selfie front-camera view, which *is* the signer's
+  perspective), so the overlay maps `screen_x = x·W`, `screen_y = (1 − y)·H` —
+  identical convention on both platforms. The single adapter mirror (fixture-
+  pinned, Pixel-confirmed in #21/#22) is **never** touched here; a flipped overlay
+  is fixed in the preview/overlay display config, not the adapter (a second flip
+  would desync the platforms and the parity harness).
+- **The live mirror was smoke-verified on a Pixel 9a (#23).** The D pose (signer's
+  left arm down, right arm up) read `L 0  R 4` = `D` — the full ML Kit → adapter →
+  decoder pipeline correct on real hardware. The first cut drew the overlay with
+  `(1 − x)`, which was flipped relative to the **mirrored** `PreviewView` (Android
+  mirrors the front camera by default — the initial code wrongly assumed an
+  observer-perspective preview); switching the overlay to `x` and mirroring the
+  iOS preview to match landed the skeleton on the limbs and put both platforms on
+  one convention. Device orientation (portrait) and the iOS preview path remain
+  on-device smoke items: no camera/body-pose in the iOS Simulator or the JVM unit
+  tests, so the knobs (preview mirroring/rotation, the iOS Vision request
+  orientation — still #21's `.up` placeholder, the overlay mapping) are isolated
+  and labelled for a real-device eyeball. This is the guardrail-(d) smoke [3.5]
+  exists for.
 
 ## Implementation notes / consequences
 
