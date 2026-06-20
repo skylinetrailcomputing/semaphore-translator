@@ -3,20 +3,20 @@
   "_frame": "Vision native: normalized [0,1], lower-left origin (y-up), x to image right, anatomical L/R labels.",
   "skeletons": {
     "arms_down": {
-      "left_shoulder":  [0.5993, 0.7329, 0.7524],
-      "left_elbow":     [0.6177, 0.6023, 0.7549],
-      "left_wrist":     [0.6083, 0.4852, 0.5952],
-      "right_shoulder": [0.3871, 0.7314, 0.7690],
-      "right_elbow":    [0.3766, 0.6011, 0.7153],
-      "right_wrist":    [0.3841, 0.4771, 0.5098]
+      "left_shoulder":  [0.5995, 0.7384, 0.7285],
+      "left_elbow":     [0.6246, 0.6115, 0.7485],
+      "left_wrist":     [0.6156, 0.5062, 0.8320],
+      "right_shoulder": [0.3893, 0.7356, 0.7246],
+      "right_elbow":    [0.3639, 0.6114, 0.7871],
+      "right_wrist":    [0.3745, 0.5056, 0.8037]
     },
     "right_arm_out": {
-      "left_shoulder":  [0.7901, 0.7337, 0.7329],
-      "left_elbow":     [0.8097, 0.6012, 0.7476],
-      "left_wrist":     [0.7988, 0.4874, 0.6514],
-      "right_shoulder": [0.5893, 0.7261, 0.6909],
-      "right_elbow":    [0.4192, 0.7186, 0.5547],
-      "right_wrist":    [0.2720, 0.7286, 0.8452]
+      "left_shoulder":  [0.7894, 0.7388, 0.7173],
+      "left_elbow":     [0.8148, 0.6091, 0.7954],
+      "left_wrist":     [0.8086, 0.5082, 0.8247],
+      "right_shoulder": [0.5837, 0.7288, 0.6953],
+      "right_elbow":    [0.4318, 0.7200, 0.6006],
+      "right_wrist":    [0.2717, 0.7282, 0.8433]
     }
   }
 }

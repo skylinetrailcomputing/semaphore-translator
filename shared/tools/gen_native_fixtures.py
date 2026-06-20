@@ -52,14 +52,22 @@ FIXTURES = SHARED / "native_fixtures"
 MPFB_MODULE = "bl_ext.user_default.mpfb"
 
 POSES = ("arms_down", "right_arm_out")
-DOWN = (0, 0, -1)
 
-# CC0 clothing fitted onto the base mesh (Issue #27): a plain crew t-shirt + full
-# cargo trousers -> a clothed, SFW public-repo asset. Paths are relative to the
-# MPFB user-data dir (resolved via LocationService); install the shirts01 +
-# pants01 CC0 packs as described in the module docstring.
+# A resting "arm down" (position id 0, -90deg) tilted slightly toward the camera
+# (-y) so the hands rest in front of the thighs: a more natural human rest pose,
+# and it lifts the wrists clear of the body silhouette so Vision localizes them
+# with high confidence. The tilt is purely in depth (no x component), so in the
+# orthographic front view the projected arm stays vertical -- the pose still
+# decodes to id 0 (NATIVE-FIXTURES.md section 4 invariants are unaffected).
+REST_DOWN = (0, -0.35, -1)
+
+# CC0 clothing fitted onto the base mesh (Issue #27): a polo shirt whose hem
+# overlaps the trouser waistband (no skin gap / jagged waistband) + full cargo
+# trousers -> a clothed, SFW public-repo asset. Paths are relative to the MPFB
+# user-data dir (resolved via LocationService); install the shirts01 + pants01
+# CC0 packs as described in the module docstring.
 CLOTHING = (
-    "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo",
+    "clothes/namuhekam_male_polo_shirt/namuhekam_male_polo_shirt.mhclo",
     "clothes/cortu_cargo_pants/cortu_cargo_pants.mhclo",
 )
 
@@ -139,11 +147,11 @@ def build_and_render(pose_name, out_path):
     fig_right = fig_right.normalized()
 
     if pose_name == "arms_down":
-        _aim(arm, "upperarm01.R", "wrist.R", DOWN)
-        _aim(arm, "upperarm01.L", "wrist.L", DOWN)
+        _aim(arm, "upperarm01.R", "wrist.R", REST_DOWN)
+        _aim(arm, "upperarm01.L", "wrist.L", REST_DOWN)
     elif pose_name == "right_arm_out":
         _aim(arm, "upperarm01.R", "wrist.R", tuple(fig_right))
-        _aim(arm, "upperarm01.L", "wrist.L", DOWN)
+        _aim(arm, "upperarm01.L", "wrist.L", REST_DOWN)
     else:
         raise ValueError(f"unknown pose {pose_name}")
 
