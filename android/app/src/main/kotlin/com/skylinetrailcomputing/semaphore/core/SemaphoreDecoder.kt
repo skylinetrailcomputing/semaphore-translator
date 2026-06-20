@@ -91,15 +91,15 @@ class SemaphoreDecoder(
      * or a defining keypoint below the confidence floor). Only shoulder and
      * wrist define the arm vector; the elbow does not gate.
      */
-    private fun armId(shoulder: List<Double>, wrist: List<Double>): Int? {
-        if (shoulder[2] < minConfidence || wrist[2] < minConfidence) return null
-        val angle = Math.toDegrees(atan2(wrist[1] - shoulder[1], wrist[0] - shoulder[0]))
+    private fun armId(shoulder: Keypoint, wrist: Keypoint): Int? {
+        if (shoulder.confidence < minConfidence || wrist.confidence < minConfidence) return null
+        val angle = Math.toDegrees(atan2(wrist.y - shoulder.y, wrist.x - shoulder.x))
         return quantize(angle)
     }
 
-    private fun classify(kp: Map<String, List<Double>>): Triple<Int?, Int?, String?> {
-        val left = armId(kp.getValue("left_shoulder"), kp.getValue("left_wrist"))
-        val right = armId(kp.getValue("right_shoulder"), kp.getValue("right_wrist"))
+    private fun classify(kp: Keypoints): Triple<Int?, Int?, String?> {
+        val left = armId(kp.leftShoulder, kp.leftWrist)
+        val right = armId(kp.rightShoulder, kp.rightWrist)
         val symbol = if (left != null && right != null) lookup[pairOf(left, right)] else null
         return Triple(left, right, symbol)
     }
@@ -122,7 +122,7 @@ class SemaphoreDecoder(
      * resulting mode, and the white-box `[left_id, right_id]` (null where an
      * arm is indeterminate).
      */
-    fun decodeFrame(kp: Map<String, List<Double>>, mode: Mode): FrameResult {
+    fun decodeFrame(kp: Keypoints, mode: Mode): FrameResult {
         val (left, right, symbol) = classify(kp)
         val (emit, newMode) = interpret(symbol, mode)
         return FrameResult(emit, newMode, listOf(left, right))

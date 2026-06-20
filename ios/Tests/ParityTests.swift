@@ -53,6 +53,27 @@ final class ParityTests: XCTestCase {
         )
     }
 
+    /// Build the typed `Keypoints` the decoder now consumes from a fixture's
+    /// `[name: [x, y, confidence]]` map. The map shape is a test/fixture artifact
+    /// (the shipping adapter builds `Keypoints` directly from native pose output,
+    /// Epic 3); only the parity harness goes through the map. The 6 names are the
+    /// contract order (`keypoint_contract.json.keypoints.names`); a missing name
+    /// is a malformed fixture and fails the test loudly.
+    private func keypoints(from map: [String: [Double]], _ context: String) throws -> Keypoints {
+        func point(_ name: String) throws -> Keypoint {
+            let v = try XCTUnwrap(map[name], "\(context): missing keypoint \(name)")
+            return Keypoint(x: v[0], y: v[1], confidence: v[2])
+        }
+        return Keypoints(
+            leftShoulder: try point("left_shoulder"),
+            leftElbow: try point("left_elbow"),
+            leftWrist: try point("left_wrist"),
+            rightShoulder: try point("right_shoulder"),
+            rightElbow: try point("right_elbow"),
+            rightWrist: try point("right_wrist")
+        )
+    }
+
     func testSinglePoseVectors() throws {
         let decoder = try makeDecoder()
         let vectors = try SharedFiles.load(TestVectors.self, "test_vectors.json")
@@ -60,7 +81,8 @@ final class ParityTests: XCTestCase {
 
         for vector in vectors.singlePoseVectors {
             let mode = try XCTUnwrap(Mode(rawValue: vector.modeBefore), "bad mode in \(vector.name)")
-            let result = decoder.decodeFrame(vector.keypoints, mode: mode)
+            let kp = try keypoints(from: vector.keypoints, vector.name)
+            let result = decoder.decodeFrame(kp, mode: mode)
             XCTAssertEqual(result.emit, vector.expected, "emit mismatch for \(vector.name)")
             XCTAssertEqual(
                 result.ids, vector.expectedPositionIds, "position ids mismatch for \(vector.name)")
@@ -76,13 +98,53 @@ final class ParityTests: XCTestCase {
             var mode = try XCTUnwrap(
                 Mode(rawValue: sequence.modeStart), "bad mode_start in \(sequence.name)")
             for frame in sequence.frames {
-                let result = decoder.decodeFrame(frame.keypoints, mode: mode)
                 let label = "\(sequence.name)/\(frame.name)"
+                let kp = try keypoints(from: frame.keypoints, label)
+                let result = decoder.decodeFrame(kp, mode: mode)
                 XCTAssertEqual(result.emit, frame.expected, "emit mismatch for \(label)")
                 XCTAssertEqual(
                     result.ids, frame.expectedPositionIds, "position ids mismatch for \(label)")
                 mode = result.mode  // thread decoder mode through the sequence
             }
+        }
+    }
+
+    /// `flatten()` is the input-side analogue of `label_order`: it is the only
+    /// thing that exercises the 12-float model input until the Epic-5 classifier
+    /// lands, so pin its order to the frozen contract now. Sentinel values are
+    /// distinct per (keypoint, component) so any transposition in `flatten()` —
+    /// or drift from `model_input_order.floats` — is caught.
+    func testFlattenMatchesModelInputOrder() throws {
+        let contract = try SharedFiles.load(KeypointContract.self, "keypoint_contract.json")
+        let names = [
+            "left_shoulder", "left_elbow", "left_wrist",
+            "right_shoulder", "right_elbow", "right_wrist",
+        ]
+        var map: [String: [Double]] = [:]
+        for (i, name) in names.enumerated() {
+            let base = Double(i) * 3
+            map[name] = [base, base + 1, base + 2]  // x, y, confidence — all distinct
+        }
+
+        let flat = try keypoints(from: map, "flatten contract").flatten()
+        XCTAssertEqual(flat.count, contract.modelInputOrder.length, "flatten() length")
+        XCTAssertEqual(
+            contract.modelInputOrder.floats.count, contract.modelInputOrder.length,
+            "contract floats vs declared length")
+
+        for (i, spec) in contract.modelInputOrder.floats.enumerated() {
+            let parts = spec.split(separator: ".")  // e.g. "left_shoulder.x"
+            let name = String(parts[0])
+            let triple = try XCTUnwrap(map[name], "unknown keypoint \(name) in \(spec)")
+            let expected: Double
+            switch parts.last {
+            case "x": expected = triple[0]
+            case "y": expected = triple[1]
+            default:
+                XCTFail("model_input_order has a non-x/y component: \(spec)")
+                continue
+            }
+            XCTAssertEqual(flat[i], expected, "flatten()[\(i)] != model_input_order \(spec)")
         }
     }
 }
