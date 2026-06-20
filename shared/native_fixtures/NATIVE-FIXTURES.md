@@ -119,11 +119,14 @@ not texture. A rigged 3D human, **even untextured**, is detected with all six
 keypoints above the `MIN_KEYPOINT_CONFIDENCE` floor, because its base mesh carries
 real facial/limb geometry (a *featureless* mannequin, by contrast, makes Vision
 flip the L/R labels — §3b — so the mesh's face matters). The figure is **dressed**
-in CC0 clothing (a t-shirt + trousers, Issue #27) for a nicer public-repo asset;
-detection still clears the floor on all six keypoints with correct L/R labels
-(re-verified after dressing). If an estimator still can't read an image, **swap in
-a real photo of the same pose** — the invariants are relational and image-agnostic,
-so the contract (this file + `invariants.json`) is unaffected by the swap.
+in CC0 clothing (a polo shirt + cargo trousers, Issue #27) for a nicer public-repo
+asset, and its resting arms are tilted slightly toward the camera so the hands rest
+in front of the thighs — a natural rest pose that also lifts the wrists clear of the
+body silhouette, so detection clears the floor on all six keypoints with correct L/R
+labels (re-verified after dressing). If an estimator still can't read an image,
+**swap in a real photo of the same pose** — the invariants are relational and
+image-agnostic, so the contract (this file + `invariants.json`) is unaffected by
+the swap.
 
 The recorded iOS skeleton in `vision_skeletons.json` is captured from these
 committed images by the host tool
