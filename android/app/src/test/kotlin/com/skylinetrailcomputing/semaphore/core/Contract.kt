@@ -18,7 +18,9 @@ data class SemaphoreConfig(
 
 // --- semaphore_alphabet.json ---
 
-data class ArmPair(val left: Int, val right: Int)
+// `ArmPair` (the shared `(left, right)` pair) lives in the `sharedTest` source
+// set alongside the native-fixture DTOs (`core/NativeFixtureContract.kt`), so it
+// is visible to both this `test` set and the instrumented `androidTest` set.
 
 data class Position(val id: Int, @SerializedName("angle_deg") val angleDeg: Double)
 
@@ -47,23 +49,9 @@ data class KeypointContract(
 )
 
 // --- native_fixtures/invariants.json ---
-
-data class NativeInvariant(
-    val kind: String,
-    val lhs: String,
-    val rhs: String,
-    val value: Double? = null, // present only for `abs_diff_lt`
-)
-
-data class NativePose(
-    val name: String,
-    val image: String,
-    @SerializedName("expected_position_ids") val expectedPositionIds: ArmPair,
-    @SerializedName("reference_post_adapter") val referencePostAdapter: Map<String, List<Double>>,
-    val invariants: List<NativeInvariant>,
-)
-
-data class NativeFixtures(val poses: List<NativePose>)
+// `NativeInvariant` / `NativePose` / `NativeFixtures` live in the `sharedTest`
+// source set (`core/NativeFixtureContract.kt`) so the instrumented Layer-2
+// calibration can parse the same file with the same types.
 
 // --- test_vectors.json ---
 

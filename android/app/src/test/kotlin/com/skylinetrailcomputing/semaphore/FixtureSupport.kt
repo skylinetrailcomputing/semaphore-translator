@@ -3,11 +3,9 @@ package com.skylinetrailcomputing.semaphore
 import com.skylinetrailcomputing.semaphore.core.Alphabet
 import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.Keypoints
-import com.skylinetrailcomputing.semaphore.core.NativeInvariant
 import com.skylinetrailcomputing.semaphore.core.SemaphoreConfig
 import com.skylinetrailcomputing.semaphore.core.SemaphoreDecoder
 import com.skylinetrailcomputing.semaphore.core.SharedFiles
-import kotlin.math.abs
 
 // Shared test-only helpers for the fixture suites (parity + native fixtures):
 // the single decoder construction, the map -> typed `Keypoints` bridge, and the
@@ -63,44 +61,10 @@ fun keypointsFrom(map: Map<String, List<Double>>): Keypoints {
     )
 }
 
-// --- native-fixture invariant evaluation ---
-
-/** Resolve a `<keypoint>.<x|y|confidence>` operand, or null if it is malformed. */
-private fun valueOf(operand: String, kp: Keypoints): Double? {
-    val parts = operand.split(".")
-    if (parts.size != 2) return null
-    val point =
-        when (parts[0]) {
-            "left_shoulder" -> kp.leftShoulder
-            "left_elbow" -> kp.leftElbow
-            "left_wrist" -> kp.leftWrist
-            "right_shoulder" -> kp.rightShoulder
-            "right_elbow" -> kp.rightElbow
-            "right_wrist" -> kp.rightWrist
-            else -> return null
-        }
-    return when (parts[1]) {
-        "x" -> point.x
-        "y" -> point.y
-        "confidence" -> point.confidence
-        else -> null
-    }
-}
-
-/**
- * Evaluate one invariant against a [Keypoints], or null if it is malformed
- * (unknown operand/kind, or `abs_diff_lt` missing its `value`).
- */
-fun evaluateInvariant(inv: NativeInvariant, kp: Keypoints): Boolean? {
-    val lhs = valueOf(inv.lhs, kp) ?: return null
-    val rhs = valueOf(inv.rhs, kp) ?: return null
-    return when (inv.kind) {
-        "gt" -> lhs > rhs
-        "lt" -> lhs < rhs
-        "abs_diff_lt" -> inv.value?.let { abs(lhs - rhs) < it }
-        else -> null
-    }
-}
+// The native-fixture invariant evaluator (`evaluateInvariant`) now lives in the
+// `sharedTest` source set (`NativeInvariantEval.kt`) so the instrumented Layer-2
+// calibration shares it; the broken-flip generators below stay here because only
+// the JVM `NativeFixtureTest` (the contract self-test) uses them.
 
 /**
  * A correct output with the horizontal mirror wrong (x not flipped to the
