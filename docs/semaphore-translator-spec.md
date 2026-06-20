@@ -157,11 +157,27 @@ A continuous arm angle is snapped to the nearest 45° position with a tolerance 
 |----------|--------------------|---------|
 | `ANGLE_TOLERANCE_DEG` | 20 | max deviation from a 45° position to accept |
 | `MIN_KEYPOINT_CONFIDENCE` | 0.5 | below this, arm is indeterminate |
-| `COMMIT_HOLD_MS` | 600 | how long a stable character must hold before being committed to output |
-| `INTER_CHAR_GAP_MS` | 300 | min indeterminate gap before next character can commit |
-| `SMOOTHING_WINDOW` | 5 | frames of majority-vote smoothing on predicted character |
+| `COMMIT_HOLD_MS` | 600 | how long a stable pose must hold before being committed to output |
+| `INTER_CHAR_GAP_MS` | 300 | min intervening **indeterminate** gap before the **same** symbol may re-commit (a *distinct* symbol commits on its hold alone) |
+| `SMOOTHING_WINDOW` | 5 | frames of majority-vote smoothing on the predicted **pose symbol** |
 
 These live in a shared `semaphore_config.json` checked into the repo; both platforms load/parse it rather than hardcoding.
+
+The state machine these constants drive — the **temporal committer** (smooth →
+hold-to-commit → debounced mode switch) — is specified in
+[ADR 0004](../docs/adr/0004-temporal-commit-contract.md) and frozen as the timed
+parity fixtures `shared/temporal_vectors.json`. Two points worth lifting here,
+because they refine the table above:
+
+- **Smoothing votes on the mode-independent pose symbol** (the `classify` output:
+  a letter pose / `NUMERALS` / `REST` / indeterminate), never the emitted
+  character — the character depends on `mode`, which is what is unstable
+  frame-to-frame. `mode` is applied once, at commit.
+- **`INTER_CHAR_GAP_MS` gates same-symbol re-commit only.** A distinct symbol
+  streams on its own hold; re-committing the *same* symbol (e.g. the doubled L in
+  `HELLO`) requires an intervening indeterminate gap. A `REST` (both arms down) is
+  a committable space, **not** a gap. This deviates from an earlier literal
+  reading of this row (gating *every* next character) — see ADR 0004 Decision 3.
 
 ### 4.5 Numeric mode state machine (digits)
 
@@ -195,6 +211,14 @@ Contract requirements:
 - The letters-shift only fires in numeric mode; the J pose emits the letter `J` in letter mode. (`DIGIT_MAP` excludes J — `K`=0 — so in numeric mode the J pose is unambiguously the letters-shift.)
 - The mode switch itself emits no character.
 - The parity test set (§6) must include sequences that exercise both mode transitions, so cross-platform state handling is verified, not just stateless single-pose classification.
+
+**Where `interpret` runs in the temporal pipeline.** This `interpret(pose, mode)`
+step is invoked by the temporal committer (§4.4, [ADR 0004](../docs/adr/0004-temporal-commit-contract.md))
+**only at commit** — i.e. on a pose that has survived smoothing and held for
+`COMMIT_HOLD_MS`. So `mode` flips only on a *committed* control pose: a fleeting
+`NUMERALS` or J frame can no longer switch mode (the #23 live symptom). The mode
+state itself persists across frames exactly as written here; it is the *timing of
+when `interpret` fires* that the committer adds, not a change to the FSM above.
 
 > This is the one place v1 steps beyond stateless classification. It is included deliberately: real decoders carry state, and a two-state machine is a gentle, bounded introduction to that.
 

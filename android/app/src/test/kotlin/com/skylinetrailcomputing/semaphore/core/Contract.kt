@@ -14,6 +14,12 @@ import com.google.gson.annotations.SerializedName
 data class SemaphoreConfig(
     @SerializedName("ANGLE_TOLERANCE_DEG") val angleToleranceDeg: Double,
     @SerializedName("MIN_KEYPOINT_CONFIDENCE") val minKeypointConfidence: Double,
+    // Temporal-commit constants (spec §4.4, ADR 0004). Parsed here so the
+    // committer port (#4.3) can build its CommitTiming from the same contract the
+    // decoder is built from; the per-frame parity harness ignores them.
+    @SerializedName("COMMIT_HOLD_MS") val commitHoldMs: Double,
+    @SerializedName("SMOOTHING_WINDOW") val smoothingWindow: Int,
+    @SerializedName("INTER_CHAR_GAP_MS") val interCharGapMs: Double,
 )
 
 // --- semaphore_alphabet.json ---

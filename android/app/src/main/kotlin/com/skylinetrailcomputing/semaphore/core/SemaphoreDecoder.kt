@@ -97,15 +97,28 @@ class SemaphoreDecoder(
         return quantize(angle)
     }
 
-    private fun classify(kp: Keypoints): Triple<Int?, Int?, String?> {
+    private fun classifyArms(kp: Keypoints): Triple<Int?, Int?, String?> {
         val left = armId(kp.leftShoulder, kp.leftWrist)
         val right = armId(kp.rightShoulder, kp.rightWrist)
         val symbol = if (left != null && right != null) lookup[pairOf(left, right)] else null
         return Triple(left, right, symbol)
     }
 
-    /** Map a classified symbol to (emitted string, new mode) per spec §4.5. */
-    private fun interpret(symbol: String?, mode: Mode): Pair<String, Mode> {
+    /**
+     * Stage 1 of the decode: the **mode-independent pose symbol** -- a letter
+     * pose, NUMERALS, REST, or null (indeterminate). This is the temporal
+     * committer's votable unit (ADR 0004, #31): mode is exactly what is unstable
+     * frame-to-frame, so smoothing votes on the pre-mode pose, never the emitted
+     * character. [decodeFrame] composes this with [interpret].
+     */
+    fun classify(kp: Keypoints): String? = classifyArms(kp).third
+
+    /**
+     * Stage 2 of the decode: map a classified symbol to (emitted string, new
+     * mode) per spec §4.5. Exposed so the temporal committer (#4.2/#4.3) can run
+     * it on commit; mode therefore flips only on a *committed* control pose.
+     */
+    fun interpret(symbol: String?, mode: Mode): Pair<String, Mode> {
         if (symbol == null) return "" to mode // indeterminate: emit nothing
         if (symbol == "NUMERALS") return "" to Mode.NUMERIC // numerals sign
         if (symbol == "J" && mode == Mode.NUMERIC) return "" to Mode.LETTERS // letters-shift, numeric only
@@ -123,7 +136,7 @@ class SemaphoreDecoder(
      * arm is indeterminate).
      */
     fun decodeFrame(kp: Keypoints, mode: Mode): FrameResult {
-        val (left, right, symbol) = classify(kp)
+        val (left, right, symbol) = classifyArms(kp)
         val (emit, newMode) = interpret(symbol, mode)
         return FrameResult(emit, newMode, listOf(left, right))
     }
