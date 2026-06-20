@@ -7,7 +7,7 @@ import SwiftUI
 /// **Frame discipline (read alongside `SkeletonOverlay`).** The preview is
 /// **mirrored** (`isVideoMirrored = true`) — the natural selfie view, which is
 /// the signer's perspective, so the overlay maps `Keypoints` straight
-/// (`screen_x = x·W`). This is the convention verified on Android (#23). It is
+/// (`screen_x = x·W`). This convention is smoke-verified on Android and iOS (#23). It is
 /// **independent of the analysis path**: the `AVCaptureVideoDataOutput` in
 /// `PoseCaptureSession` stays NON-mirrored (`isVideoMirrored = false`) so the
 /// adapter still sees the observer-perspective buffer it is calibrated against

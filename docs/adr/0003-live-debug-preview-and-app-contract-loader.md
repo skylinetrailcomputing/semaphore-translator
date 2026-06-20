@@ -89,12 +89,15 @@ Compose) — the parity discipline is the shared *contract*, never the UI.
   mirrors the front camera by default — the initial code wrongly assumed an
   observer-perspective preview); switching the overlay to `x` and mirroring the
   iOS preview to match landed the skeleton on the limbs and put both platforms on
-  one convention. Device orientation (portrait) and the iOS preview path remain
-  on-device smoke items: no camera/body-pose in the iOS Simulator or the JVM unit
-  tests, so the knobs (preview mirroring/rotation, the iOS Vision request
-  orientation — still #21's `.up` placeholder, the overlay mapping) are isolated
-  and labelled for a real-device eyeball. This is the guardrail-(d) smoke [3.5]
-  exists for.
+  one convention. iOS needed one more fix found in its own smoke: the analysis
+  connection is rotated to portrait (`videoRotationAngle = 90`, matching the
+  preview) so Vision — fed `.up` — sees an upright signer; without it the
+  sensor-native landscape buffer made the skeleton come out rotated 90° (#21's
+  `.up` placeholder was only ever correct for an already-upright buffer). **Both
+  platforms then passed the full on-device smoke** (Pixel 9a + iPhone 16):
+  orientation, tracking, L/R + up, per-frame decode (A–D, R), and "no signer
+  detected" — the guardrail-(d) smoke [3.5] exists for. (Numeric-mode entry via the
+  NUMERALS pose and the J letters-shift also worked live; debounced commit is Epic 4.)
 
 ## Implementation notes / consequences
 

@@ -18,8 +18,8 @@ import SwiftUI
 /// If the overlay lands flipped/rotated on a real device, this function, the
 /// preview mirroring/rotation, and the Vision request orientation are the knobs
 /// (tuned in lockstep); a second adapter flip is never the fix (it would desync
-/// the platforms and the parity harness). NOTE: the live mirror was confirmed on
-/// Android; the iOS preview path still wants its own on-device eyeball.
+/// the platforms and the parity harness). The live mirror + portrait orientation
+/// were smoke-confirmed on a Pixel 9a and an iPhone 16 (#23).
 ///
 /// **Registration is approximate.** The preview uses `.resizeAspectFill`, which
 /// crops the buffer to fill the view, so this linear full-view mapping can drift
