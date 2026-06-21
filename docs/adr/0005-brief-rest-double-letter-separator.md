@@ -73,7 +73,11 @@ dwell. Everything else in Decision 2 is unchanged: `last_committed` / `gap_ok`
 bookkeeping, distinct symbols streaming on their hold alone, and the timer
 running off the **voted candidate, not raw frames** (so a port that armed on raw
 frames still fails a boundary fixture). `INTER_CHAR_GAP_MS` is **reused** as the
-re-arm dwell lower bound — same frozen value (300 ms), no new constant added.
+re-arm dwell lower bound — same frozen value at the time of this ADR (300 ms),
+no new constant added. (Later tuned 300 → 200 ms under
+[#51](https://github.com/skylinetrailcomputing/semaphore-translator/issues/51) —
+a shorter brief rest to double a letter; the decision here is unchanged and
+`semaphore_config.json` is the source of truth for the current value.)
 
 Reset semantics (ADR 0004 Decision 4) are unchanged: a true signer-loss `reset()`
 still clears `last_committed`, so a full signer-loss remains a hard boundary

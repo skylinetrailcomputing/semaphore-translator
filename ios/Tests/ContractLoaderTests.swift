@@ -20,7 +20,7 @@ final class ContractLoaderTests: XCTestCase {
         let timing = try ContractLoader.makeCommitTiming()
         XCTAssertEqual(timing.smoothingWindow, 5)
         XCTAssertEqual(timing.commitHoldMs, 600)
-        XCTAssertEqual(timing.interCharGapMs, 300)
+        XCTAssertEqual(timing.interCharGapMs, 200)
     }
 
     /// The shipping decoder loader. Running every `single_pose_vectors` fixture

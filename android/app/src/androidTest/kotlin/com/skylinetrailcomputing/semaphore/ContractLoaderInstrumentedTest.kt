@@ -40,7 +40,7 @@ class ContractLoaderInstrumentedTest {
         val timing = ContractLoader.makeCommitTiming(appContext)
         assertEquals(5, timing.smoothingWindow)
         assertEquals(600.0, timing.commitHoldMs, 0.0)
-        assertEquals(300.0, timing.interCharGapMs, 0.0)
+        assertEquals(200.0, timing.interCharGapMs, 0.0)
     }
 
     /**

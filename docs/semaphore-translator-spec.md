@@ -158,7 +158,7 @@ A continuous arm angle is snapped to the nearest 45° position with a tolerance 
 | `ANGLE_TOLERANCE_DEG` | 20 | max deviation from a 45° position to accept |
 | `MIN_KEYPOINT_CONFIDENCE` | 0.5 | below this, arm is indeterminate |
 | `COMMIT_HOLD_MS` | 600 | how long a stable pose must hold before being committed to output |
-| `INTER_CHAR_GAP_MS` | 300 | min **brief-`REST`** dwell that re-arms the **same** symbol for re-commit — the double-letter separator (a *distinct* symbol commits on its hold alone) |
+| `INTER_CHAR_GAP_MS` | 200 | min **brief-`REST`** dwell that re-arms the **same** symbol for re-commit — the double-letter separator (a *distinct* symbol commits on its hold alone). Tuned 300 → 200 under [#51](https://github.com/skylinetrailcomputing/semaphore-translator/issues/51) so a double needs a shorter rest; `semaphore_config.json` is the source of truth |
 | `SMOOTHING_WINDOW` | 5 | frames of **plurality-vote** smoothing (ties → most recent) on the predicted **pose symbol** |
 
 These live in a shared `semaphore_config.json` checked into the repo; both platforms load/parse it rather than hardcoding.
