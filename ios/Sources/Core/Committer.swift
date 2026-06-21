@@ -44,6 +44,10 @@ final class Committer {
     /// `tMs` the current continuous-indeterminate run began, else `nil`.
     private var indetSince: Int?
 
+    /// The committer's current decoder mode (§4.5), for the live mode badge.
+    /// Read-only — mode flips solely inside `process`, at commit.
+    var currentMode: Mode { mode }
+
     init(decoder: SemaphoreDecoder, timing: CommitTiming) {
         self.decoder = decoder
         self.smoothingWindow = timing.smoothingWindow
