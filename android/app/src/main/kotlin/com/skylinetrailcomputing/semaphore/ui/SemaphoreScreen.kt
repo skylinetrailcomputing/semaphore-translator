@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.Preview
 import androidx.camera.view.PreviewView
@@ -64,7 +65,10 @@ import kotlinx.coroutines.launch
  * SwiftUI's `ContentView`.
  */
 @Composable
-fun SemaphoreScreen(developerMode: Boolean = false) {
+fun SemaphoreScreen(
+    developerMode: Boolean = false,
+    cameraLens: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
+) {
     val context = LocalContext.current
     var hasCamera by remember {
         mutableStateOf(
@@ -87,7 +91,7 @@ fun SemaphoreScreen(developerMode: Boolean = false) {
                 "Semaphore Translator reads flag positions from the camera. " +
                     "Grant camera access to use the live preview.",
             )
-        else -> CameraScreen(developerMode)
+        else -> CameraScreen(developerMode, cameraLens)
     }
 }
 
@@ -103,7 +107,7 @@ private data class PreviewState(
 
 @ExperimentalGetImage
 @Composable
-private fun CameraScreen(developerMode: Boolean) {
+private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
@@ -166,7 +170,7 @@ private fun CameraScreen(developerMode: Boolean) {
             }
         }
 
-        capture.keypoints(lifecycleOwner, preview).collectLatest { frame ->
+        capture.keypoints(lifecycleOwner, preview, cameraLens).collectLatest { frame ->
             // `lastFrameAt` is the watchdog's freshness clock (real-time liveness),
             // distinct from `frame.tMs` (the frame-aligned committer clock, #34) the
             // committer consumes below.
