@@ -58,8 +58,9 @@ import kotlinx.coroutines.launch
  * readout (L/R position ids, mode badge, indeterminate `·`) — is hidden in this
  * clean view and gated behind [developerMode], surfaced by the Developer-mode
  * toggle (#5d). That overlay is still the only visual confirmation of the adapter
- * flips (autonomy guardrail-d), so it is gated, not deleted. [developerMode] is a
- * plain parameter for now; #5d binds it to a persisted setting. The iOS twin is
+ * flips (autonomy guardrail-d), so it is gated, not deleted. [developerMode] is
+ * passed by `SemaphoreApp` from the persisted [AppSettings] flag the Settings
+ * toggle writes (#50); the `false` default is for previews/tests. The iOS twin is
  * SwiftUI's `ContentView`.
  */
 @Composable
