@@ -155,19 +155,23 @@ REST_REARM = 5  # a brief REST that re-arms the same-symbol gate but does NOT co
 REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a space
 
 # Re-arm boundary, empirically pinned against the reference committer for the
-# frozen constants (WINDOW=5, HOLD=600, GAP=300, DT=100): a REST run of
-# REST_GAP_TOO_SHORT frames does NOT re-arm the same-symbol gate (its voted-
-# candidate dwell -- which spans window-flush on both entry and exit, ADR 0004
-# Decision 2 -- stays < INTER_CHAR_GAP_MS), REST_GAP_MIN_REARM does. The pair pins
-# the dwell boundary to a single frame, so an off-by-one in a port's dwell math
-# (>= vs >, or a wrong window-flush assumption) fails exactly one of them.
-# NOTE: unlike the OLD indeterminate-gap pair, this does NOT distinguish a
-# raw-frame from a voted-candidate re-arm -- for REST the two produce identical
-# output at both boundary values (verified, #45 review). The "key off the voted
-# candidate" rule (ADR 0004 Decision 2) is still correct, but in the REST regime
-# it is not separately pinned by a fixture; mirror it from this reference.
-REST_GAP_TOO_SHORT = 3  # -> single commit ("L")
-REST_GAP_MIN_REARM = 4  # -> re-commit ("LL")
+# frozen constants (WINDOW=5, HOLD=600, GAP=200, DT=100). At this cadence the
+# floor is set by the smoothing vote, not the gap: REST needs 3 frames to reach
+# plurality in a window of 5 before it can become the voted candidate at all, and
+# with GAP=200 that vote floor and the dwell threshold coincide --
+#   * REST_GAP_TOO_SHORT (2): REST never reaches plurality (2/5), so it never
+#     becomes the voted candidate and the gate never re-arms -> single "L".
+#   * REST_GAP_MIN_REARM (3): REST wins the vote, and its voted-candidate dwell
+#     (extended by exit window-flush, ADR 0004 Decision 2) reaches exactly
+#     INTER_CHAR_GAP_MS -> re-commit ("LL").
+# The pair still pins the boundary to a single frame: the low side guards the
+# entry vote-flush (a port that lets REST win on 2/5 fails it), the high side
+# guards the dwell ">=" comparison landing exactly on INTER_CHAR_GAP_MS (a port
+# using ">" instead of ">=", or a wrong exit-flush assumption, fails it). Like
+# ADR 0004 Decision 2, the dwell keys off the VOTED candidate, not raw frames --
+# mirror that from this reference.
+REST_GAP_TOO_SHORT = 2  # -> single commit ("L")
+REST_GAP_MIN_REARM = 3  # -> re-commit ("LL")
 
 # Both arms at 22.5deg sit exactly between octants 2 (0deg) and 3 (45deg), beyond
 # ANGLE_TOLERANCE_DEG from either: classify -> None. This is the "indeterminate"
@@ -280,18 +284,20 @@ run_committer(
     "same_letter_rest_too_short",
     [("L", HELD), ("REST", REST_GAP_TOO_SHORT), ("L", HELD)],
     "L",
-    f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: its voted-candidate dwell "
-    "stays < INTER_CHAR_GAP_MS (the run is shorter once you account for window-"
-    "flush), so the second L is suppressed -> single 'L'. Paired with "
-    "same_letter_rest_min_rearms this pins the dwell boundary to one frame.",
+    f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: it never reaches plurality "
+    f"in the {SMOOTHING_WINDOW}-frame window ({REST_GAP_TOO_SHORT}/{SMOOTHING_WINDOW}), "
+    "so REST never becomes the voted candidate and the same-symbol gate never re-arms "
+    "-> single 'L'. Paired with same_letter_rest_min_rearms this pins the boundary to "
+    "one frame (this side guards the entry vote-flush).",
 )
 run_committer(
     "same_letter_rest_min_rearms",
     [("L", HELD), ("REST", REST_GAP_MIN_REARM), ("L", HELD)],
     "LL",
-    f"One frame longer ({REST_GAP_MIN_REARM}) is the minimal REST that DOES re-arm "
-    "-> 'LL'. Paired with same_letter_rest_too_short this pins the boundary to a "
-    "single frame.",
+    f"One frame longer ({REST_GAP_MIN_REARM}) is the minimal REST that DOES re-arm: "
+    "REST wins the vote and its voted dwell (extended by exit window-flush) reaches "
+    "exactly INTER_CHAR_GAP_MS -> 'LL'. Paired with same_letter_rest_too_short this "
+    "pins the boundary to one frame (this side guards the dwell '>=' comparison).",
 )
 
 # 3c. coalesce: an indeterminate off-octant wobble *within* a held letter no longer
