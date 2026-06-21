@@ -1,13 +1,19 @@
 import SwiftUI
 
-/// Minimal app shell. The camera/Vision/Core ML capture path lands in a later
-/// epic; for now the app exists so the parity harness has a host module to
-/// `@testable import` (Issue #14, Epic 2).
+/// App entry. Opens on the no-camera **Home** screen ([5a], #47); the camera —
+/// and therefore the camera-permission prompt — only starts once the user taps
+/// into a mode, so neither fires on first launch. The `NavigationStack` owns the
+/// Home → mode fork (Android's twin is `SemaphoreApp`'s `NavHost`).
 @main
 struct SemaphoreTranslatorApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationStack {
+                HomeView()
+            }
+            // White back chevrons over the dark mode screens (the camera bar is
+            // transparent; see HomeView's Learn link).
+            .tint(.white)
         }
     }
 }
