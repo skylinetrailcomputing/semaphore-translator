@@ -2,7 +2,7 @@ import AVFoundation
 import SwiftUI
 
 /// Drives the live debug screen ([3.5], #23): owns the capture session and the
-/// decoder, consumes the `AsyncStream<Keypoints>`, runs the **rules** decoder
+/// decoder, consumes the `AsyncStream<PoseFrame>`, runs the **rules** decoder
 /// **per frame** (no `COMMIT_HOLD_MS` / `SMOOTHING_WINDOW` smoothing — that is
 /// Epic 4), and publishes the raw readout the overlay + panel render.
 ///
@@ -58,8 +58,8 @@ final class PreviewViewModel: ObservableObject {
             lastFrameAt = .distantPast
             startWatchdog()
             streamTask = Task { [weak self] in
-                for await kp in stream {
-                    self?.handle(kp)
+                for await frame in stream {
+                    self?.handle(frame)
                 }
             }
         } catch {
@@ -75,9 +75,13 @@ final class PreviewViewModel: ObservableObject {
         await capture.stop()
     }
 
-    private func handle(_ kp: Keypoints) {
+    private func handle(_ frame: PoseFrame) {
         guard let decoder else { return }
+        // `lastFrameAt` is the watchdog's freshness clock (real-time liveness),
+        // distinct from `frame.tMs` (the frame-aligned committer clock, #34): the
+        // committer consumes `frame.tMs` when it is wired in at the live layer (#35).
         lastFrameAt = Date()
+        let kp = frame.keypoints
         let result = decoder.decodeFrame(kp, mode: mode)
         mode = result.mode
         keypoints = kp
