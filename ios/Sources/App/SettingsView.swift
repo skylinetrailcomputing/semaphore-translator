@@ -21,7 +21,11 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                // Restore the conventional green on-state track: the app root
+                // sets `.tint(.white)` for the back chevrons, which otherwise
+                // leaks in and paints the toggle's on-track white.
                 Toggle("Developer mode", isOn: $developerMode)
+                    .tint(.green)
             } footer: {
                 Text(
                     "Shows the skeleton overlay and raw per-frame readout in "
