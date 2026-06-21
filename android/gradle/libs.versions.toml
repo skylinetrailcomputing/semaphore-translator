@@ -20,6 +20,10 @@ composeCompiler = "2.2.10"
 composeBom = "2024.12.01"
 activityCompose = "1.9.3"
 lifecycleRuntimeCompose = "2.8.7"
+# Epic 5 (#47) — Compose Navigation for the Home → mode fork. Stays on the 2.8.x
+# line (built against Compose 1.7.x, matching composeBom 2024.12.01); 2.9.x would
+# pull Compose 1.8 in against the pinned BOM.
+navigationCompose = "2.8.9"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
@@ -43,6 +47,8 @@ compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
+# Compose Navigation host for the Home → mode fork (#47).
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
