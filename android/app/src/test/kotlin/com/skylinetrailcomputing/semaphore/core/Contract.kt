@@ -86,3 +86,29 @@ data class TestVectors(
     @SerializedName("single_pose_vectors") val singlePoseVectors: List<SinglePoseVector>,
     @SerializedName("sequence_vectors") val sequenceVectors: List<SequenceVector>,
 )
+
+// --- temporal_vectors.json (ADR 0004; the committer parity fixtures) ---
+
+// A pose frame carries `keypoints` + `expectedSymbol`; a reset frame carries
+// `reset == true` and no keypoints (those keys are absent there, so Gson leaves
+// them at false/null). `expectedSymbol` is also null for an indeterminate pose --
+// but those are told apart from reset frames by `reset`, so the harness only
+// reads `expectedSymbol` on pose frames.
+data class TemporalFrame(
+    val reset: Boolean = false,
+    val keypoints: Map<String, List<Double>>? = null,
+    @SerializedName("t_ms") val tMs: Long,
+    @SerializedName("expected_symbol") val expectedSymbol: String? = null,
+    @SerializedName("expected_emit") val expectedEmit: String,
+)
+
+data class TemporalSequence(
+    val name: String,
+    @SerializedName("mode_start") val modeStart: String,
+    val frames: List<TemporalFrame>,
+    @SerializedName("expected_committed") val expectedCommitted: String,
+)
+
+data class TemporalVectors(
+    @SerializedName("sequence_vectors") val sequenceVectors: List<TemporalSequence>,
+)
