@@ -5,8 +5,9 @@ epic). This holds the **cross-platform parity harness**
 (Issue #14, ADR [0001](../docs/adr/0001-parity-harness-and-native-project-shape.md)),
 the **ML Kit pose adapter + CameraX capture path** with its two-layer native
 fixtures (Issue #22, ADR [0002](../docs/adr/0002-android-mlkit-adapter-and-instrumented-tests.md)),
-and the **live debug screen** — Compose preview + skeleton overlay + per-frame
-decode (Issue #23, ADR [0003](../docs/adr/0003-live-debug-preview-and-app-contract-loader.md)).
+and the **Learn screen** — Compose camera preview with the committed text as the
+hero (Issue #48); the skeleton overlay + per-frame readout are dev-gated debug
+chrome (Issue #23, ADR [0003](../docs/adr/0003-live-debug-preview-and-app-contract-loader.md)).
 
 ## Prerequisites
 
@@ -77,7 +78,7 @@ Kotlin version** (2.2.10; a mismatch fails the build). Versions are pinned in
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/libs.versions.toml` | Gradle build + version catalog. |
 | `app/build.gradle.kts` | The `:app` Android application module. Stages the contract assets (`copySharedContract`) and enables Compose. |
 | `app/src/main/kotlin/.../MainActivity.kt` | Compose entry point; hosts `SemaphoreScreen`. |
-| `app/src/main/kotlin/.../ui/SemaphoreScreen.kt` | The live debug screen (#23): camera preview + skeleton overlay + per-frame decode + "no signer detected". |
+| `app/src/main/kotlin/.../ui/SemaphoreScreen.kt` | The Learn screen (#48): camera preview, committed-text hero, "no signer detected" (NFR4); the skeleton overlay + per-frame readout are dev-gated debug chrome (#23). |
 | `app/src/main/kotlin/.../core/SemaphoreDecoder.kt` | The decode logic ported from `shared/tools/gen_test_vectors.py`, decoupled from the wire format (plain-value constructor; no Gson/loader ships in the app). |
 | `app/src/main/kotlin/.../core/ContractLoader.kt` | App-side loader (#23): parses the bundled `shared/*.json` assets with `org.json` and builds the `SemaphoreDecoder` — mirrors the test harness's `referenceDecoder()`. |
 | `app/src/main/kotlin/.../core/MlKitPoseAdapter.kt` | The **pure** adapter (#22): ML Kit skeleton → frozen `Keypoints` (normalize + y-flip + mirror). No ML Kit / Android imports, so Layer-1 replays it on the JVM. |
