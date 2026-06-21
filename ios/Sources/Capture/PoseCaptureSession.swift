@@ -1,15 +1,28 @@
 import AVFoundation
 import Vision
 
-/// Front-camera capture → Apple Vision body pose → adapter → `Keypoints`,
-/// surfaced as an `AsyncStream` (Issue #21, spec §3.1/§3.2, FR1/FR2).
+/// One capture frame surfaced by `PoseCaptureSession`: the adapted `Keypoints`
+/// plus the frame's **monotonic** capture time in milliseconds (Issue #34, spec
+/// §4.4). `tMs` is taken from the sample buffer's presentation timestamp at
+/// capture, not read at consumption — so the temporal committer (#4.5) is timed
+/// by the frame, not by whenever a view model happens to process it. Only the
+/// deltas between successive `tMs` matter to the committer, so the clock's epoch
+/// is irrelevant; it just has to advance monotonically with the frames.
+struct PoseFrame: Sendable {
+    let keypoints: Keypoints
+    let tMs: Int
+}
+
+/// Front-camera capture → Apple Vision body pose → adapter → `PoseFrame`,
+/// surfaced as an `AsyncStream` (Issue #21, spec §3.1/§3.2, FR1/FR2; the
+/// per-frame timestamp is #34).
 ///
 /// **Swift-6 isolation.** `AVFoundation` is not `Sendable`-clean and the
 /// `AVCaptureVideoDataOutput` delegate fires on a background queue, not on this
 /// actor. So: all session mutation is confined to the actor; the per-frame work
 /// lives on a `@unchecked Sendable` delegate that owns the stream continuation;
 /// the only thing crossing the isolation boundary is an immutable, `Sendable`
-/// `Keypoints`. The blocking `startRunning()`/`stopRunning()` calls hop to a
+/// `PoseFrame`. The blocking `startRunning()`/`stopRunning()` calls hop to a
 /// dedicated queue via `nonisolated(unsafe)` (the idiomatic escape for this
 /// AVFoundation gotcha) rather than block the actor's executor.
 ///
@@ -40,8 +53,8 @@ actor PoseCaptureSession {
 
     /// Configure the front-camera pipeline and start streaming adapted poses.
     /// The stream finishes when its consuming task is cancelled or `stop()` runs.
-    func start() throws -> AsyncStream<Keypoints> {
-        let (stream, continuation) = AsyncStream<Keypoints>.makeStream()
+    func start() throws -> AsyncStream<PoseFrame> {
+        let (stream, continuation) = AsyncStream<PoseFrame>.makeStream()
         let handler = PoseSampleHandler(continuation: continuation)
         self.handler = handler
 
@@ -104,11 +117,11 @@ actor PoseCaptureSession {
 private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
     @unchecked Sendable
 {
-    private let continuation: AsyncStream<Keypoints>.Continuation
+    private let continuation: AsyncStream<PoseFrame>.Continuation
     private let request = VNDetectHumanBodyPoseRequest()
     private let adapter = VisionPoseAdapter()
 
-    init(continuation: AsyncStream<Keypoints>.Continuation) {
+    init(continuation: AsyncStream<PoseFrame>.Continuation) {
         self.continuation = continuation
     }
 
@@ -119,6 +132,16 @@ private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleB
         from connection: AVCaptureConnection
     ) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        // The frame's monotonic capture time (#34): the presentation timestamp,
+        // taken here at capture, not when a view model later consumes the frame.
+        // For `AVCaptureVideoDataOutput` the PTS rides the host time clock, so it
+        // advances monotonically across the stream; the committer only uses deltas.
+        // Guard on `isFinite`, not `pts.isValid`: an indefinite/infinite CMTime is
+        // still "valid" (CMTIME_IS_INDEFINITE = valid + the indefinite flag), and
+        // `CMTimeGetSeconds` maps it to NaN/Inf — which would *trap* in `Int(...)`.
+        let secs = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+        guard secs.isFinite else { return }
+        let tMs = Int((secs * 1000).rounded())
         // The capture connection rotates the buffer to portrait-upright, so `.up`
         // is correct here; the front-camera mirror is handled once in the adapter.
         let requestHandler = VNImageRequestHandler(
@@ -131,6 +154,6 @@ private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleB
         guard let observation = request.results?.first,
             let keypoints = try? adapter.adapt(observation)
         else { return }
-        continuation.yield(keypoints)
+        continuation.yield(PoseFrame(keypoints: keypoints, tMs: tMs))
     }
 }

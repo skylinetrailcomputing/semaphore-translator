@@ -138,8 +138,13 @@ private fun CameraScreen() {
             }
         }
 
-        capture.keypoints(lifecycleOwner, preview).collectLatest { kp ->
+        capture.keypoints(lifecycleOwner, preview).collectLatest { frame ->
+            // `lastFrameAt` is the watchdog's freshness clock (real-time liveness),
+            // distinct from `frame.tMs` (the frame-aligned committer clock, #34): the
+            // committer consumes `frame.tMs` when it is wired in here at the live
+            // layer (#35).
             lastFrameAt = System.currentTimeMillis()
+            val kp = frame.keypoints
             val result = decoder.decodeFrame(kp, mode)
             mode = result.mode
             state =
