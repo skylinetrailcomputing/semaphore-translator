@@ -56,8 +56,13 @@ class Committer:
         (wall-clock) commits — run interpret(symbol, mode) for (emit, new mode).
         Mode therefore flips only on a *committed* control pose (debounced).
       * Same-symbol gate: a distinct symbol commits on its hold alone; the SAME
-        symbol re-commits only after an intervening *indeterminate* gap of
-        >= INTER_CHAR_GAP_MS (so 'LL'/'AA' need a transition between them).
+        symbol re-commits only after an intervening *brief REST* whose voted-
+        candidate dwell lands in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS) -- the
+        conventional double-letter separator (ADR 0005, superseding ADR 0004
+        Decision 3). An indeterminate gap no longer re-arms, so incidental
+        off-octant hold jitter can't double a held letter. A REST held to
+        >= COMMIT_HOLD_MS commits a space instead (the re-arm window is half-open
+        at the top), so a sustained REST never streams spaces.
       * Reset: a short indeterminate gap blocks commit but preserves mode +
         window (handled here); a hard reset() (true signer-loss) clears the
         window and sets mode -> LETTERS, and is called by the live no-signer
@@ -79,8 +84,8 @@ class Committer:
         self.candidate = Committer._UNSET  # voted candidate currently being timed
         self.candidate_since = None
         self.last_committed = None  # last committed symbol (same-symbol lock key)
-        self.gap_ok = True  # has an indeterminate gap been seen since the last commit?
-        self.indet_since = None  # start of the current continuous-indeterminate run
+        self.gap_ok = True  # has a re-arming brief REST been seen since the last commit?
+        self.rest_since = None  # start of the current continuous-REST run (else None)
 
     def _vote(self):
         """Plurality over the window; ties break to the most-recent occurrence.
@@ -107,14 +112,26 @@ class Committer:
             self.candidate = candidate
             self.candidate_since = t_ms
 
-        # A continuous indeterminate run of >= gap re-arms the same-symbol lock.
-        if candidate is None:
-            if self.indet_since is None:
-                self.indet_since = t_ms
-            if t_ms - self.indet_since >= self.gap:
+        # A brief REST -- voted candidate == REST, dwell in [gap, hold) -- re-arms
+        # the same-symbol lock WITHOUT committing a space: the conventional
+        # double-letter separator (ADR 0005, superseding ADR 0004 Decision 3). The
+        # window is half-open at the top because at >= hold the REST commits a space
+        # (the commit step below) instead; that half-open top also stops a sustained
+        # REST from re-arming after its space commits and streaming spaces. An
+        # indeterminate gap no longer re-arms, so incidental off-octant hold jitter
+        # can't double a held letter (FR4). Like the hold timer, this runs off the
+        # VOTED candidate, not the raw incoming symbol (ADR 0004 Decision 2). While
+        # the candidate is REST, rest_since == candidate_since (both were set when
+        # the candidate became REST), so the dwell measured here is the same dwell
+        # the commit step checks against COMMIT_HOLD_MS -- which is what lets the
+        # half-open top (< hold) hand off to the space commit at >= hold.
+        if candidate == "REST":
+            if self.rest_since is None:
+                self.rest_since = t_ms
+            if self.gap <= t_ms - self.rest_since < self.hold:
                 self.gap_ok = True
         else:
-            self.indet_since = None
+            self.rest_since = None
 
         # Commit: a determinate candidate, held long enough, past the same-symbol gate.
         if candidate is not None and t_ms - self.candidate_since >= self.hold:
@@ -130,22 +147,33 @@ class Committer:
 
 DT_MS = 100  # frame interval; >= COMMIT_HOLD_MS / DT_MS frames make a held pose commit
 HELD = 12  # frames to hold a pose so it reliably wins the vote and commits once
-GAP = 9  # indeterminate frames between repeats (comfortably spans > INTER_CHAR_GAP_MS)
 SPURIOUS = 2  # a 1-2 frame flicker must never out-vote a held pose (window of 5)
+WOBBLE = 5  # indeterminate off-octant frames *within* a held letter; post-#40 these
+# must NOT double it (they WOULD have when an indeterminate gap re-armed; ADR 0005)
+REST_REARM = 5  # a brief REST that re-arms the same-symbol gate but does NOT commit
+# a space -- its voted-candidate dwell lands in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)
+REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a space
 
 # Re-arm boundary, empirically pinned against the reference committer for the
-# frozen constants (WINDOW=5, HOLD=600, GAP=300, DT=100): an indeterminate run of
-# GAP_TOO_SHORT frames does NOT re-arm the same-symbol gate (the voted candidate
-# is indeterminate for < INTER_CHAR_GAP_MS), GAP_MIN_REARM does. The gap timer
-# runs off the VOTED candidate, not raw frames, so the run spans window-flush on
-# both entry and exit (ADR 0004 Decision 2) -- a port that armed on raw frames
-# would re-arm earlier and fail one of these two boundary fixtures.
-GAP_TOO_SHORT = 3  # -> single commit ("L")
-GAP_MIN_REARM = 4  # -> re-commit ("LL")
+# frozen constants (WINDOW=5, HOLD=600, GAP=300, DT=100): a REST run of
+# REST_GAP_TOO_SHORT frames does NOT re-arm the same-symbol gate (its voted-
+# candidate dwell -- which spans window-flush on both entry and exit, ADR 0004
+# Decision 2 -- stays < INTER_CHAR_GAP_MS), REST_GAP_MIN_REARM does. The pair pins
+# the dwell boundary to a single frame, so an off-by-one in a port's dwell math
+# (>= vs >, or a wrong window-flush assumption) fails exactly one of them.
+# NOTE: unlike the OLD indeterminate-gap pair, this does NOT distinguish a
+# raw-frame from a voted-candidate re-arm -- for REST the two produce identical
+# output at both boundary values (verified, #45 review). The "key off the voted
+# candidate" rule (ADR 0004 Decision 2) is still correct, but in the REST regime
+# it is not separately pinned by a fixture; mirror it from this reference.
+REST_GAP_TOO_SHORT = 3  # -> single commit ("L")
+REST_GAP_MIN_REARM = 4  # -> re-commit ("LL")
 
 # Both arms at 22.5deg sit exactly between octants 2 (0deg) and 3 (45deg), beyond
-# ANGLE_TOLERANCE_DEG from either: classify -> None. This is the "indeterminate
-# gap" pose (arms mid-transition), NOT REST (both arms straight down = a space).
+# ANGLE_TOLERANCE_DEG from either: classify -> None. This is the "indeterminate"
+# pose (arms mid-transition / incidental hold jitter), which post-#40 NO LONGER
+# re-arms the same-symbol gate -- distinct from REST (both arms straight down = a
+# committable space, which now does the re-arming; ADR 0005).
 INDETERMINATE = "<indeterminate>"
 RESET = "<reset>"
 
@@ -232,34 +260,62 @@ run_committer(
     "intervening gap.",
 )
 
-# 3. the SAME symbol repeats only across an indeterminate gap >= INTER_CHAR_GAP_MS.
+# 3. the SAME symbol repeats only across a BRIEF REST (ADR 0005, superseding ADR
+#    0004 Decision 3): a rest whose voted dwell lands in [GAP, HOLD) re-arms the
+#    lock without committing a space -- the conventional double-letter separator.
 run_committer(
-    "same_letter_needs_gap",
-    [("L", HELD), (INDETERMINATE, GAP), ("L", HELD)],
+    "same_letter_doubles_via_brief_rest",
+    [("L", HELD), ("REST", REST_REARM), ("L", HELD)],
     "LL",
-    "First L commits; an indeterminate gap re-arms the lock; the second L then "
-    "commits. Without the gap a held L commits exactly once (case 1).",
+    "First L commits; a brief REST (dwell in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)) "
+    "re-arms the lock WITHOUT committing a space; the second L then commits -> "
+    "'LL'. Without the rest a held L commits exactly once (case 1).",
 )
 
-# 3a/3b. the re-arm BOUNDARY, pinned on both sides so an off-by-one (or raw-frame
-# vs voted-candidate) gap implementation in a port fails one of the two. See the
-# GAP_TOO_SHORT / GAP_MIN_REARM notes above and ADR 0004 Decision 2.
+# 3a/3b. the brief-REST re-arm BOUNDARY, pinned on both sides so an off-by-one in a
+# port's dwell math fails one of the two. (For REST this does NOT also catch a
+# raw-frame vs voted-candidate re-arm -- they give identical output here; see the
+# REST_GAP_TOO_SHORT / REST_GAP_MIN_REARM notes above and ADR 0004 Decision 2.)
 run_committer(
-    "same_letter_gap_too_short",
-    [("L", HELD), (INDETERMINATE, GAP_TOO_SHORT), ("L", HELD)],
+    "same_letter_rest_too_short",
+    [("L", HELD), ("REST", REST_GAP_TOO_SHORT), ("L", HELD)],
     "L",
-    f"A {GAP_TOO_SHORT}-frame indeterminate gap does NOT re-arm: the voted "
-    "candidate is indeterminate for < INTER_CHAR_GAP_MS (the run is shorter once "
-    "you account for window-flush), so the second L is suppressed -> single 'L'. "
-    "Teeth: a port arming the gap on raw frames would (wrongly) re-commit here.",
+    f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: its voted-candidate dwell "
+    "stays < INTER_CHAR_GAP_MS (the run is shorter once you account for window-"
+    "flush), so the second L is suppressed -> single 'L'. Paired with "
+    "same_letter_rest_min_rearms this pins the dwell boundary to one frame.",
 )
 run_committer(
-    "same_letter_min_gap_rearms",
-    [("L", HELD), (INDETERMINATE, GAP_MIN_REARM), ("L", HELD)],
+    "same_letter_rest_min_rearms",
+    [("L", HELD), ("REST", REST_GAP_MIN_REARM), ("L", HELD)],
     "LL",
-    f"One frame longer ({GAP_MIN_REARM}) is the minimal gap that DOES re-arm -> "
-    "'LL'. Paired with same_letter_gap_too_short this pins the boundary to a "
+    f"One frame longer ({REST_GAP_MIN_REARM}) is the minimal REST that DOES re-arm "
+    "-> 'LL'. Paired with same_letter_rest_too_short this pins the boundary to a "
     "single frame.",
+)
+
+# 3c. coalesce: an indeterminate off-octant wobble *within* a held letter no longer
+#     re-arms (the FR4-robustness half of #40), so a steady letter that jitters off
+#     an octant and back reads as ONE character -- it would have DOUBLED pre-#40.
+run_committer(
+    "coalesce_off_octant_wobble",
+    [("A", HELD), (INDETERMINATE, WOBBLE), ("A", HELD)],
+    "A",
+    f"A held A wobbles off-octant for {WOBBLE} indeterminate frames and returns. "
+    "Indeterminate no longer re-arms the same-symbol gate (ADR 0005), so this "
+    "coalesces to a single 'A'. Pre-#40 the indeterminate gap re-armed and this "
+    "doubled to 'AA' -- the unintended-double bug from the #35 smoke.",
+)
+
+# 3d. contrast to 3: a SUSTAINED REST (dwell >= COMMIT_HOLD_MS) commits a space,
+#     so the same letter on either side reads as 'L L', not 'LL'.
+run_committer(
+    "sustained_rest_spaces_between_letters",
+    [("L", HELD), ("REST", REST_SPACE), ("L", HELD)],
+    "L L",
+    "A sustained REST commits one space (it crosses COMMIT_HOLD_MS); the second L "
+    "then commits as a distinct symbol after that space -> 'L L'. Distinguishes a "
+    "brief rest (double, case 3) from a sustained rest (space + letter).",
 )
 
 # 4. both numeric-mode transitions go THROUGH the committer (debounced mode switch).
@@ -323,9 +379,13 @@ out = {
         f"continuously >= COMMIT_HOLD_MS ({COMMIT_HOLD_MS}) commits: run "
         "interpret(symbol, mode) (spec §4.5) for (emit, new mode), so mode flips "
         "only on a committed control pose. A distinct symbol commits on its hold "
-        "alone; the SAME symbol re-commits only after an intervening indeterminate "
-        f"gap >= INTER_CHAR_GAP_MS ({INTER_CHAR_GAP_MS}). reset() (true signer-"
-        "loss) clears the window and sets mode -> LETTERS."
+        "alone; the SAME symbol re-commits only after an intervening brief REST "
+        f"whose voted dwell lands in [INTER_CHAR_GAP_MS ({INTER_CHAR_GAP_MS}), "
+        f"COMMIT_HOLD_MS ({COMMIT_HOLD_MS})) -- the conventional double-letter "
+        "separator (ADR 0005, superseding ADR 0004 Decision 3); an indeterminate "
+        "gap no longer re-arms. A REST held >= COMMIT_HOLD_MS commits a space "
+        "instead. reset() (true signer-loss) clears the window and sets mode -> "
+        "LETTERS."
     ),
     "_format": {
         "sequence_vectors": (

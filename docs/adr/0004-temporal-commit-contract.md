@@ -91,7 +91,10 @@ Per `process(symbol, t_ms)`:
    re-arm earlier and diverge — the `same_letter_gap_too_short` /
    `same_letter_min_gap_rearms` fixtures (a 3-frame gap that must **not** re-arm
    vs. a 4-frame gap that must) pin this boundary so an off-by-one port fails one
-   of them.
+   of them. (Superseded by ADR 0005: these fixtures were renamed
+   `same_letter_rest_too_short` / `same_letter_rest_min_rearms` and re-based on a
+   brief **REST** — and in the REST regime the boundary pair pins the dwell value
+   but does *not* separately catch a raw-frame vs voted-candidate re-arm.)
 
    > **Effective gap latency.** Because the candidate must first *flip* to
    > indeterminate (the window takes a few frames to fill with nulls) and the
@@ -121,6 +124,17 @@ Consequences that fall out of this, by design:
   need a transition between them, but `AB`/`ABA` stream freely.
 
 ## Decision 3 — The same-symbol gap is *indeterminate*, not `REST`
+
+> **⚠️ Superseded by [ADR 0005](0005-brief-rest-double-letter-separator.md)
+> (2026-06-21).** The #35 on-device smoke confirmed the "revisit" clause at the
+> end of this decision: a **brief REST** is the conventional double-letter
+> separator, and the indeterminate-transition path produced *unintended* doubles
+> from incidental hold jitter. The same-symbol gate now re-arms on a brief REST
+> (voted dwell in `[INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)`), not on an indeterminate
+> gap; indeterminate no longer re-arms. The *rationale* below — gating
+> *same*-symbol re-commit only, so distinct letters stream while doubles need a
+> separator — still stands; only the re-arm **trigger** changed. Kept verbatim as
+> the historical record.
 
 `INTER_CHAR_GAP_MS` gates **same-symbol re-commit only**, and the gap that
 re-arms it is a run of **indeterminate** frames (arms mid-transition, classifying
