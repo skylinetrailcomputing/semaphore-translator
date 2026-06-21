@@ -11,8 +11,10 @@ import org.json.JSONObject
  *
  * @param smoothingWindow frames of majority-vote smoothing on the votable pose symbol.
  * @param commitHoldMs how long a candidate symbol must hold (wall-clock ms) before it commits.
- * @param interCharGapMs minimum intervening *indeterminate* gap (ms) before the
- *   *same* symbol may re-commit; a distinct symbol commits on its hold alone.
+ * @param interCharGapMs minimum *brief-REST* dwell (ms) that re-arms the *same*
+ *   symbol for re-commit (the double-letter separator); a REST held >=
+ *   commitHoldMs commits a space instead, and a distinct symbol commits on its
+ *   hold alone (ADR 0005, superseding ADR 0004 Decision 3).
  */
 data class CommitTiming(
     val smoothingWindow: Int,

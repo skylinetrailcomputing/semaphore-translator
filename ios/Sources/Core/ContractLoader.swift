@@ -145,7 +145,9 @@ struct CommitTiming: Equatable {
     let smoothingWindow: Int
     /// How long a candidate symbol must hold (wall-clock ms) before it commits.
     let commitHoldMs: Double
-    /// Minimum intervening *indeterminate* gap (ms) before the *same* symbol may
-    /// re-commit. A distinct symbol commits on its hold alone (ADR 0004).
+    /// Minimum *brief-`REST`* dwell (ms) that re-arms the *same* symbol for
+    /// re-commit — the double-letter separator; a `REST` held `≥ commitHoldMs`
+    /// commits a space instead. A distinct symbol commits on its hold alone
+    /// (ADR 0005, superseding ADR 0004 Decision 3).
     let interCharGapMs: Double
 }

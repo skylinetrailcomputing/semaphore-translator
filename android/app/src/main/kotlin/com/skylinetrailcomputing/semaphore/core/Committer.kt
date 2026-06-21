@@ -49,11 +49,11 @@ class Committer(
     /** The last committed symbol (the same-symbol lock key). */
     private var lastCommitted: String? = null
 
-    /** Has an intervening indeterminate gap re-armed same-symbol re-commit? */
+    /** Has a re-arming brief REST been seen since the last commit (same-symbol gate)? */
     private var gapOk = true
 
-    /** `tMs` the current continuous-indeterminate run began, else null. */
-    private var indetSince: Long? = null
+    /** `tMs` the current continuous-REST run began, else null. */
+    private var restSince: Long? = null
 
     /**
      * The current decoder mode (§4.5), for the live mode badge. Read-only -- mode
@@ -80,7 +80,7 @@ class Committer(
         candidateSince = 0L
         lastCommitted = null
         gapOk = true
-        indetSince = null
+        restSince = null
     }
 
     /**
@@ -101,15 +101,24 @@ class Committer(
             candidateSince = tMs
         }
 
-        // Gap tracking runs off the VOTED candidate, not the raw incoming symbol:
-        // a port arming the gap on raw indeterminate frames would re-arm earlier
-        // and diverge (ADR 0004 Decision 2; the same_letter_gap_* fixtures pin it).
-        if (candidate == null) {
-            val since = indetSince ?: tMs
-            indetSince = since
-            if ((tMs - since).toDouble() >= interCharGapMs) gapOk = true
+        // A brief REST re-arms the same-symbol lock -- the conventional double-letter
+        // separator (ADR 0005, superseding ADR 0004 Decision 3). The voted candidate
+        // being REST, with its dwell in [interCharGapMs, commitHoldMs), re-arms
+        // WITHOUT committing a space; at >= commitHoldMs the REST commits a space
+        // instead (the commit step below), so the window is half-open at the top --
+        // which also stops a sustained REST re-arming after its space commits and
+        // streaming spaces. An indeterminate gap no longer re-arms, so incidental
+        // off-octant hold jitter can't double a held letter (FR4). Like the hold
+        // timer, this runs off the VOTED candidate, not the raw incoming symbol -- a
+        // port arming on raw frames would re-arm earlier and diverge (ADR 0004
+        // Decision 2; the same_letter_rest_* fixtures pin the boundary).
+        if (candidate == "REST") {
+            val since = restSince ?: tMs
+            restSince = since
+            val dwell = (tMs - since).toDouble()
+            if (dwell >= interCharGapMs && dwell < commitHoldMs) gapOk = true
         } else {
-            indetSince = null
+            restSince = null
         }
 
         // Commit: a determinate candidate, held long enough, past the same-symbol gate.
