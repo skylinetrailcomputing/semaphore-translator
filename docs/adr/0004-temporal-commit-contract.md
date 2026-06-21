@@ -122,6 +122,17 @@ Consequences that fall out of this, by design:
 
 ## Decision 3 — The same-symbol gap is *indeterminate*, not `REST`
 
+> **⚠️ Superseded by [ADR 0005](0005-brief-rest-double-letter-separator.md)
+> (2026-06-21).** The #35 on-device smoke confirmed the "revisit" clause at the
+> end of this decision: a **brief REST** is the conventional double-letter
+> separator, and the indeterminate-transition path produced *unintended* doubles
+> from incidental hold jitter. The same-symbol gate now re-arms on a brief REST
+> (voted dwell in `[INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)`), not on an indeterminate
+> gap; indeterminate no longer re-arms. The *rationale* below — gating
+> *same*-symbol re-commit only, so distinct letters stream while doubles need a
+> separator — still stands; only the re-arm **trigger** changed. Kept verbatim as
+> the historical record.
+
 `INTER_CHAR_GAP_MS` gates **same-symbol re-commit only**, and the gap that
 re-arms it is a run of **indeterminate** frames (arms mid-transition, classifying
 to null) — **not** a `REST`. `REST` (both arms straight down) is a determinate,
