@@ -91,7 +91,10 @@ Per `process(symbol, t_ms)`:
    re-arm earlier and diverge — the `same_letter_gap_too_short` /
    `same_letter_min_gap_rearms` fixtures (a 3-frame gap that must **not** re-arm
    vs. a 4-frame gap that must) pin this boundary so an off-by-one port fails one
-   of them.
+   of them. (Superseded by ADR 0005: these fixtures were renamed
+   `same_letter_rest_too_short` / `same_letter_rest_min_rearms` and re-based on a
+   brief **REST** — and in the REST regime the boundary pair pins the dwell value
+   but does *not* separately catch a raw-frame vs voted-candidate re-arm.)
 
    > **Effective gap latency.** Because the candidate must first *flip* to
    > indeterminate (the window takes a few frames to fill with nulls) and the

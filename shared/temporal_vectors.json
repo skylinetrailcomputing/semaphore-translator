@@ -4411,7 +4411,7 @@
         }
       ],
       "expected_committed": "L",
-      "_note": "A 3-frame REST does NOT re-arm: its voted-candidate dwell stays < INTER_CHAR_GAP_MS (the run is shorter once you account for window-flush), so the second L is suppressed -> single 'L'. Teeth: a port arming the gate on raw frames would (wrongly) re-commit here."
+      "_note": "A 3-frame REST does NOT re-arm: its voted-candidate dwell stays < INTER_CHAR_GAP_MS (the run is shorter once you account for window-flush), so the second L is suppressed -> single 'L'. Paired with same_letter_rest_min_rearms this pins the dwell boundary to one frame."
     },
     {
       "name": "same_letter_rest_min_rearms",

@@ -120,7 +120,11 @@ class Committer:
         # REST from re-arming after its space commits and streaming spaces. An
         # indeterminate gap no longer re-arms, so incidental off-octant hold jitter
         # can't double a held letter (FR4). Like the hold timer, this runs off the
-        # VOTED candidate, not the raw incoming symbol (ADR 0004 Decision 2).
+        # VOTED candidate, not the raw incoming symbol (ADR 0004 Decision 2). While
+        # the candidate is REST, rest_since == candidate_since (both were set when
+        # the candidate became REST), so the dwell measured here is the same dwell
+        # the commit step checks against COMMIT_HOLD_MS -- which is what lets the
+        # half-open top (< hold) hand off to the space commit at >= hold.
         if candidate == "REST":
             if self.rest_since is None:
                 self.rest_since = t_ms
@@ -153,11 +157,15 @@ REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a 
 # Re-arm boundary, empirically pinned against the reference committer for the
 # frozen constants (WINDOW=5, HOLD=600, GAP=300, DT=100): a REST run of
 # REST_GAP_TOO_SHORT frames does NOT re-arm the same-symbol gate (its voted-
-# candidate dwell stays < INTER_CHAR_GAP_MS once you account for window-flush),
-# REST_GAP_MIN_REARM does. The re-arm timer runs off the VOTED candidate, not raw
-# frames, so the REST run spans window-flush on both entry and exit (ADR 0004
-# Decision 2) -- a port that armed on raw frames would re-arm earlier and fail one
-# of these two boundary fixtures.
+# candidate dwell -- which spans window-flush on both entry and exit, ADR 0004
+# Decision 2 -- stays < INTER_CHAR_GAP_MS), REST_GAP_MIN_REARM does. The pair pins
+# the dwell boundary to a single frame, so an off-by-one in a port's dwell math
+# (>= vs >, or a wrong window-flush assumption) fails exactly one of them.
+# NOTE: unlike the OLD indeterminate-gap pair, this does NOT distinguish a
+# raw-frame from a voted-candidate re-arm -- for REST the two produce identical
+# output at both boundary values (verified, #45 review). The "key off the voted
+# candidate" rule (ADR 0004 Decision 2) is still correct, but in the REST regime
+# it is not separately pinned by a fixture; mirror it from this reference.
 REST_GAP_TOO_SHORT = 3  # -> single commit ("L")
 REST_GAP_MIN_REARM = 4  # -> re-commit ("LL")
 
@@ -264,17 +272,18 @@ run_committer(
     "'LL'. Without the rest a held L commits exactly once (case 1).",
 )
 
-# 3a/3b. the brief-REST re-arm BOUNDARY, pinned on both sides so an off-by-one (or
-# raw-frame vs voted-candidate) implementation in a port fails one of the two. See
-# the REST_GAP_TOO_SHORT / REST_GAP_MIN_REARM notes above and ADR 0004 Decision 2.
+# 3a/3b. the brief-REST re-arm BOUNDARY, pinned on both sides so an off-by-one in a
+# port's dwell math fails one of the two. (For REST this does NOT also catch a
+# raw-frame vs voted-candidate re-arm -- they give identical output here; see the
+# REST_GAP_TOO_SHORT / REST_GAP_MIN_REARM notes above and ADR 0004 Decision 2.)
 run_committer(
     "same_letter_rest_too_short",
     [("L", HELD), ("REST", REST_GAP_TOO_SHORT), ("L", HELD)],
     "L",
     f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: its voted-candidate dwell "
     "stays < INTER_CHAR_GAP_MS (the run is shorter once you account for window-"
-    "flush), so the second L is suppressed -> single 'L'. Teeth: a port arming the "
-    "gate on raw frames would (wrongly) re-commit here.",
+    "flush), so the second L is suppressed -> single 'L'. Paired with "
+    "same_letter_rest_min_rearms this pins the dwell boundary to one frame.",
 )
 run_committer(
     "same_letter_rest_min_rearms",

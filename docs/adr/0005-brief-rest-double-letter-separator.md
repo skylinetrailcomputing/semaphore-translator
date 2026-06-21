@@ -91,6 +91,13 @@ distinct from a rest.
   `coalesce_off_octant_wobble`, and the `same_letter_rest_too_short` /
   `same_letter_rest_min_rearms` boundary pair (the REST-dwell analogue of ADR
   0004's `same_letter_gap_*` pair).
+- **"No streamed spaces" is scoped to a *single continuous* REST hold.** The
+  half-open top stops one held REST from emitting more than one space. Two
+  *separate* REST holds split by an intervening non-REST gap each commit a space —
+  the second hold's own dwell re-arms the gate — which is the intended consecutive
+  word-boundary behavior, not streaming. (Re-arm keys off REST, so the in-between
+  gap can be indeterminate or any non-REST pose; only the deliberate second rest
+  produces the second space.)
 - **The live layer (#4.5 / #35) is unaffected** — this is internal to the
   committer; the screens still feed `classify` + `tMs` and render `committedText`.
 - **The contract is re-frozen.** `shared/temporal_vectors.json` regenerated
