@@ -173,6 +173,49 @@ struct TestVectors: Decodable {
     }
 }
 
+// MARK: - temporal_vectors.json (ADR 0004; the committer parity fixtures)
+
+/// One timed frame. A pose frame carries `keypoints` + `expectedSymbol`; a reset
+/// frame carries `reset == true` and no keypoints (`reset`/`keypoints`/
+/// `expectedSymbol` are absent there, hence optional). `expectedSymbol` is also
+/// `nil` for an indeterminate pose — but those frames are told apart from reset
+/// frames by `reset`, so the harness only reads `expectedSymbol` on pose frames.
+struct TemporalFrame: Decodable {
+    let reset: Bool?
+    let keypoints: [String: [Double]]?
+    let tMs: Int
+    let expectedSymbol: String?
+    let expectedEmit: String
+
+    enum CodingKeys: String, CodingKey {
+        case reset, keypoints
+        case tMs = "t_ms"
+        case expectedSymbol = "expected_symbol"
+        case expectedEmit = "expected_emit"
+    }
+}
+
+struct TemporalSequence: Decodable {
+    let name: String
+    let modeStart: String
+    let frames: [TemporalFrame]
+    let expectedCommitted: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, frames
+        case modeStart = "mode_start"
+        case expectedCommitted = "expected_committed"
+    }
+}
+
+struct TemporalVectors: Decodable {
+    let sequenceVectors: [TemporalSequence]
+
+    enum CodingKeys: String, CodingKey {
+        case sequenceVectors = "sequence_vectors"
+    }
+}
+
 // MARK: - locating the shared contract
 
 /// Resolves the repo's `shared/` directory and loads the JSON contract files.
