@@ -4,7 +4,7 @@
   "ANGLE_TOLERANCE_DEG": 20,
   "MIN_KEYPOINT_CONFIDENCE": 0.5,
   "COMMIT_HOLD_MS": 600,
-  "INTER_CHAR_GAP_MS": 300,
+  "INTER_CHAR_GAP_MS": 200,
   "SMOOTHING_WINDOW": 5,
   "_field_notes": {
     "ANGLE_TOLERANCE_DEG": "max deviation from a 45-degree canonical position to accept; beyond this the arm is indeterminate",
