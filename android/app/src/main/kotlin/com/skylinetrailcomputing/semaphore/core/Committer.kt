@@ -109,9 +109,12 @@ class Committer(
         // which also stops a sustained REST re-arming after its space commits and
         // streaming spaces. An indeterminate gap no longer re-arms, so incidental
         // off-octant hold jitter can't double a held letter (FR4). Like the hold
-        // timer, this runs off the VOTED candidate, not the raw incoming symbol -- a
-        // port arming on raw frames would re-arm earlier and diverge (ADR 0004
-        // Decision 2; the same_letter_rest_* fixtures pin the boundary).
+        // timer, this keys off the VOTED candidate, not the raw incoming symbol
+        // (ADR 0004 Decision 2) -- mirror that from the reference. While the
+        // candidate is REST, `restSince` == `candidateSince` (both set when the
+        // candidate became REST), so the dwell here is the dwell the commit step
+        // checks against `commitHoldMs` -- which is what lets the half-open top
+        // (`< commitHoldMs`) hand off to the space commit at `>= commitHoldMs`.
         if (candidate == "REST") {
             val since = restSince ?: tMs
             restSince = since
