@@ -1,12 +1,19 @@
 import SwiftUI
 
-/// The live debug screen ([3.5], #23): camera preview + 6-keypoint skeleton
-/// overlay + per-frame decoded readout, plus the "no signer detected" state
-/// (NFR4). This is the human smoke surface for "is the mirror actually right in
-/// the live app" — there is no PR-preview deploy, so the on-device overlay is
-/// the only visual confirmation of the adapter flips (autonomy guardrail-d).
+/// The **Learn** screen ([5b], #48) — the front-camera view a signer uses to
+/// sign into the camera and read their decode. The committed text is the visual
+/// hero; the "no signer detected" state (NFR4) and clear/reset (FR5) are kept.
+///
+/// The Epic-4 debug chrome — the 6-keypoint skeleton overlay and the raw
+/// per-frame readout (L/R position ids, mode badge, indeterminate `·`) — is
+/// hidden in this clean view and gated behind `developerMode`, surfaced by the
+/// Developer-mode toggle (#5d). That overlay is still the only visual
+/// confirmation of the adapter flips (autonomy guardrail-d), so it is gated, not
+/// deleted. `developerMode` is a plain stored flag for now; #5d binds it to a
+/// persisted setting. The Android twin is `SemaphoreScreen`.
 struct ContentView: View {
     @StateObject private var model = PreviewViewModel()
+    var developerMode = false
 
     var body: some View {
         ZStack {
@@ -36,8 +43,10 @@ struct ContentView: View {
         ZStack {
             CameraPreviewView(capture: model.capture)
                 .ignoresSafeArea()
-            SkeletonOverlay(keypoints: model.keypoints)
-                .ignoresSafeArea()
+            if developerMode {
+                SkeletonOverlay(keypoints: model.keypoints)
+                    .ignoresSafeArea()
+            }
             if model.status == .noSigner {
                 Text("No signer detected")
                     .font(.headline)
@@ -48,39 +57,42 @@ struct ContentView: View {
             }
             VStack(spacing: 12) {
                 Spacer()
-                committedBanner
-                readout
+                committedHero
+                if developerMode { readout }
             }
             .padding()
         }
     }
 
-    /// The committed output (#4.5) — the debounced text the committer emits, the
-    /// user-visible result. Sits directly above the raw readout so committed and
-    /// per-frame are legible side-by-side (the natural smoke surface). Head
-    /// truncation keeps the most-recent characters visible as the string grows.
-    private var committedBanner: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("COMMITTED")
-                    .font(.caption2.bold())
+    /// The committed output (#4.5) as the Learn screen's hero — the debounced
+    /// text the committer emits, large and centered. Empty shows a gentle hint;
+    /// non-empty shows the text plus Clear (FR5). Head truncation keeps the
+    /// most-recent characters visible as the string grows.
+    private var committedHero: some View {
+        VStack(spacing: 12) {
+            if model.committedText.isEmpty {
+                Text("Sign a letter to begin")
+                    .font(.system(.title3, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
-                Text(model.committedText.isEmpty ? "—" : model.committedText)
-                    .font(.system(.title2, design: .monospaced).weight(.semibold))
+            } else {
+                Text(model.committedText)
+                    .font(.system(size: 40, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
                     .truncationMode(.head)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                Button(action: { model.clearCommitted() }) {
+                    Label("Clear", systemImage: "xmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.8))
+                }
             }
-            Button(action: { model.clearCommitted() }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.6))
-            }
-            .disabled(model.committedText.isEmpty)
         }
-        .padding()
-        .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 16))
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 20))
     }
 
     /// Per-frame readout: the position ids per arm, the emitted character, and
