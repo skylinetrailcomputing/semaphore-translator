@@ -110,15 +110,20 @@ class SemaphoreDecoder(
      * committer's votable unit (ADR 0004, #31): mode is exactly what is unstable
      * frame-to-frame, so smoothing votes on the pre-mode pose, never the emitted
      * character. [decodeFrame] composes this with [interpret].
+     *
+     * `internal`: the committer (#4.3) lives in this module; nothing outside it
+     * should reach the pre-mode stages directly (matches Swift's default access).
      */
-    fun classify(kp: Keypoints): String? = classifyArms(kp).third
+    internal fun classify(kp: Keypoints): String? = classifyArms(kp).third
 
     /**
      * Stage 2 of the decode: map a classified symbol to (emitted string, new
      * mode) per spec §4.5. Exposed so the temporal committer (#4.2/#4.3) can run
      * it on commit; mode therefore flips only on a *committed* control pose.
+     *
+     * `internal`: exposed for the in-module committer (#4.3), not the app at large.
      */
-    fun interpret(symbol: String?, mode: Mode): Pair<String, Mode> {
+    internal fun interpret(symbol: String?, mode: Mode): Pair<String, Mode> {
         if (symbol == null) return "" to mode // indeterminate: emit nothing
         if (symbol == "NUMERALS") return "" to Mode.NUMERIC // numerals sign
         if (symbol == "J" && mode == Mode.NUMERIC) return "" to Mode.LETTERS // letters-shift, numeric only

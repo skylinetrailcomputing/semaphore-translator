@@ -159,7 +159,7 @@ A continuous arm angle is snapped to the nearest 45° position with a tolerance 
 | `MIN_KEYPOINT_CONFIDENCE` | 0.5 | below this, arm is indeterminate |
 | `COMMIT_HOLD_MS` | 600 | how long a stable pose must hold before being committed to output |
 | `INTER_CHAR_GAP_MS` | 300 | min intervening **indeterminate** gap before the **same** symbol may re-commit (a *distinct* symbol commits on its hold alone) |
-| `SMOOTHING_WINDOW` | 5 | frames of majority-vote smoothing on the predicted **pose symbol** |
+| `SMOOTHING_WINDOW` | 5 | frames of **plurality-vote** smoothing (ties → most recent) on the predicted **pose symbol** |
 
 These live in a shared `semaphore_config.json` checked into the repo; both platforms load/parse it rather than hardcoding.
 
