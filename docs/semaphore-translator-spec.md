@@ -158,7 +158,7 @@ A continuous arm angle is snapped to the nearest 45° position with a tolerance 
 | `ANGLE_TOLERANCE_DEG` | 20 | max deviation from a 45° position to accept |
 | `MIN_KEYPOINT_CONFIDENCE` | 0.5 | below this, arm is indeterminate |
 | `COMMIT_HOLD_MS` | 600 | how long a stable pose must hold before being committed to output |
-| `INTER_CHAR_GAP_MS` | 300 | min intervening **indeterminate** gap before the **same** symbol may re-commit (a *distinct* symbol commits on its hold alone) |
+| `INTER_CHAR_GAP_MS` | 300 | min **brief-`REST`** dwell that re-arms the **same** symbol for re-commit — the double-letter separator (a *distinct* symbol commits on its hold alone) |
 | `SMOOTHING_WINDOW` | 5 | frames of **plurality-vote** smoothing (ties → most recent) on the predicted **pose symbol** |
 
 These live in a shared `semaphore_config.json` checked into the repo; both platforms load/parse it rather than hardcoding.
@@ -175,9 +175,14 @@ because they refine the table above:
   frame-to-frame. `mode` is applied once, at commit.
 - **`INTER_CHAR_GAP_MS` gates same-symbol re-commit only.** A distinct symbol
   streams on its own hold; re-committing the *same* symbol (e.g. the doubled L in
-  `HELLO`) requires an intervening indeterminate gap. A `REST` (both arms down) is
-  a committable space, **not** a gap. This deviates from an earlier literal
-  reading of this row (gating *every* next character) — see ADR 0004 Decision 3.
+  `HELLO`) requires an intervening **brief `REST`** — flags briefly to the
+  home/down position, the conventional double-letter separator. A `REST` whose
+  voted dwell lands in `[INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)` re-arms the gate
+  without emitting; held to `≥ COMMIT_HOLD_MS` it instead commits a space. An
+  *indeterminate* gap (arms mid-transition) no longer re-arms, so incidental
+  off-octant hold jitter can't double a held letter. This supersedes ADR 0004
+  Decision 3 (which used an indeterminate gap, and itself deviated from a literal
+  reading of this row gating *every* next character) — see ADR 0005.
 
 ### 4.5 Numeric mode state machine (digits)
 
