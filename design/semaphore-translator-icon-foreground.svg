@@ -3,6 +3,11 @@
     <clipPath id="flagL"><rect x="5" y="4" width="48" height="46" rx="3"></rect></clipPath>
     <clipPath id="flagR"><rect x="7" y="4" width="48" height="46" rx="3"></rect></clipPath>
   </defs>
+  <!-- Android adaptive safe-zone: shrink the figure into the central ~66% so
+       the flag tips clear the launcher's circular mask (108dp canvas / 72dp
+       safe zone). The iOS full-bleed master (semaphore-translator-icon.svg) is
+       deliberately NOT shrunk — iOS only rounds the corners. -->
+  <g transform="translate(120,120) scale(0.72) translate(-120,-120)">
   <g transform="translate(120,143) scale(0.94) translate(-120,-120)">
     <g transform="translate(72,8) rotate(-32,30,120)">
       <rect x="24" y="56" width="13" height="64" rx="6.5" fill="#F4E4C8"></rect>
@@ -22,5 +27,6 @@
     <circle cx="120" cy="86" r="24" fill="#F4E4C8"></circle>
     <path d="M94,74 L94,67 Q94,54 107,54 L133,54 Q146,54 146,67 L146,74 Z" fill="#FFFFFF"></path>
     <rect x="94" y="69" width="52" height="7" fill="#E23B2E"></rect>
+  </g>
   </g>
 </svg>
