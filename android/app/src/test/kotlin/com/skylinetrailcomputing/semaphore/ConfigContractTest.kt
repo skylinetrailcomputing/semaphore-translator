@@ -20,6 +20,6 @@ class ConfigContractTest {
         assertEquals(0.5, config.minKeypointConfidence, 0.0)
         assertEquals(600.0, config.commitHoldMs, 0.0)
         assertEquals(5, config.smoothingWindow)
-        assertEquals(300.0, config.interCharGapMs, 0.0)
+        assertEquals(200.0, config.interCharGapMs, 0.0)
     }
 }
