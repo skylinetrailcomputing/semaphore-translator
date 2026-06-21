@@ -13,9 +13,11 @@ struct PoseFrame: Sendable {
     let tMs: Int
 }
 
-/// Front-camera capture → Apple Vision body pose → adapter → `PoseFrame`,
-/// surfaced as an `AsyncStream` (Issue #21, spec §3.1/§3.2, FR1/FR2; the
-/// per-frame timestamp is #34).
+/// Camera capture → Apple Vision body pose → adapter → `PoseFrame`, surfaced as
+/// an `AsyncStream` (Issue #21, spec §3.1/§3.2, FR1/FR2; the per-frame timestamp
+/// is #34). The lens is a `start(cameraPosition:)` parameter (front by default;
+/// Interpret requests the rear lens, #56) — lens *selection* only, the mirror
+/// stays quarantined in `VisionPoseAdapter` (spec §3.2, NFR3).
 ///
 /// **Swift-6 isolation.** `AVFoundation` is not `Sendable`-clean and the
 /// `AVCaptureVideoDataOutput` delegate fires on a background queue, not on this
@@ -33,7 +35,7 @@ struct PoseFrame: Sendable {
 /// live buffer match the observer-perspective fixture the adapter is calibrated
 /// against, so the single mirror in `VisionPoseAdapter` is correct for both.
 actor PoseCaptureSession {
-    enum CaptureError: Error { case noFrontCamera, cannotAddInput, cannotAddOutput }
+    enum CaptureError: Error { case noCamera, cannotAddInput, cannotAddOutput }
 
     /// The capture session, exposed so the SwiftUI preview layer ([3.5], #23)
     /// can attach to the *same* session this actor configures and runs. Sharing
@@ -51,9 +53,12 @@ actor PoseCaptureSession {
     /// receives is upright, matching `CameraPreviewView.previewRotationAngle`.
     static let portraitRotationAngle: CGFloat = 90
 
-    /// Configure the front-camera pipeline and start streaming adapted poses.
-    /// The stream finishes when its consuming task is cancelled or `stop()` runs.
-    func start() throws -> AsyncStream<PoseFrame> {
+    /// Configure the capture pipeline for `cameraPosition` (front by default) and
+    /// start streaming adapted poses. The stream finishes when its consuming task
+    /// is cancelled or `stop()` runs.
+    func start(cameraPosition: AVCaptureDevice.Position = .front) throws
+        -> AsyncStream<PoseFrame>
+    {
         let (stream, continuation) = AsyncStream<PoseFrame>.makeStream()
         let handler = PoseSampleHandler(continuation: continuation)
         self.handler = handler
@@ -63,8 +68,8 @@ actor PoseCaptureSession {
 
         guard
             let camera = AVCaptureDevice.default(
-                .builtInWideAngleCamera, for: .video, position: .front)
-        else { throw CaptureError.noFrontCamera }
+                .builtInWideAngleCamera, for: .video, position: cameraPosition)
+        else { throw CaptureError.noCamera }
 
         let input = try AVCaptureDeviceInput(device: camera)
         guard session.canAddInput(input) else { throw CaptureError.cannotAddInput }
@@ -143,7 +148,7 @@ private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleB
         guard secs.isFinite else { return }
         let tMs = Int((secs * 1000).rounded())
         // The capture connection rotates the buffer to portrait-upright, so `.up`
-        // is correct here; the front-camera mirror is handled once in the adapter.
+        // is correct here; the capture mirror is handled once in the adapter.
         let requestHandler = VNImageRequestHandler(
             cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
         do {
