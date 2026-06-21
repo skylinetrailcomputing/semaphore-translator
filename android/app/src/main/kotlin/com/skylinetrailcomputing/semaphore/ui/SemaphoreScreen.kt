@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,15 +50,20 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * The live debug screen ([3.5], #23): camera preview + 6-keypoint skeleton
- * overlay + per-frame decoded readout, plus the "no signer detected" state
- * (NFR4). The human smoke surface for "is the mirror actually right in the live
- * app" — there is no PR-preview deploy, so this on-device overlay is the only
- * visual confirmation of the adapter flips (autonomy guardrail-d). The Android
- * counterpart to iOS's SwiftUI `ContentView`.
+ * The **Learn** screen ([5b], #48) — the front-camera view a signer uses to sign
+ * into the camera and read their decode. The committed text is the visual hero;
+ * the "no signer detected" state (NFR4) and clear/reset (FR5) are kept.
+ *
+ * The Epic-4 debug chrome — the 6-keypoint skeleton overlay and the raw per-frame
+ * readout (L/R position ids, mode badge, indeterminate `·`) — is hidden in this
+ * clean view and gated behind [developerMode], surfaced by the Developer-mode
+ * toggle (#5d). That overlay is still the only visual confirmation of the adapter
+ * flips (autonomy guardrail-d), so it is gated, not deleted. [developerMode] is a
+ * plain parameter for now; #5d binds it to a persisted setting. The iOS twin is
+ * SwiftUI's `ContentView`.
  */
 @Composable
-fun SemaphoreScreen() {
+fun SemaphoreScreen(developerMode: Boolean = false) {
     val context = LocalContext.current
     var hasCamera by remember {
         mutableStateOf(
@@ -80,7 +86,7 @@ fun SemaphoreScreen() {
                 "Semaphore Translator reads flag positions from the camera. " +
                     "Grant camera access to use the live preview.",
             )
-        else -> CameraScreen()
+        else -> CameraScreen(developerMode)
     }
 }
 
@@ -96,7 +102,7 @@ private data class PreviewState(
 
 @ExperimentalGetImage
 @Composable
-private fun CameraScreen() {
+private fun CameraScreen(developerMode: Boolean) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
@@ -193,7 +199,9 @@ private fun CameraScreen() {
             factory = { previewView },
             modifier = Modifier.fillMaxSize(),
         )
-        SkeletonOverlay(state.keypoints, Modifier.fillMaxSize())
+        if (developerMode) {
+            SkeletonOverlay(state.keypoints, Modifier.fillMaxSize())
+        }
         if (!state.signerPresent) {
             Text(
                 "No signer detected",
@@ -209,8 +217,8 @@ private fun CameraScreen() {
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CommittedBanner(committedText, onClear = { committedText = "" })
-            Readout(state)
+            CommittedHero(committedText, onClear = { committedText = "" })
+            if (developerMode) Readout(state)
         }
     }
 }
@@ -270,46 +278,46 @@ private fun SkeletonOverlay(keypoints: Keypoints?, modifier: Modifier = Modifier
 private data class Quad(val a: Keypoint, val b: Keypoint, val c: Keypoint, val color: Color)
 
 /**
- * The committed output (#4.5) — the debounced text the committer emits, the
- * user-visible result. Sits directly above the raw readout so committed and
- * per-frame are legible side-by-side (the natural smoke surface).
+ * The committed output (#4.5) as the Learn screen's hero — the debounced text the
+ * committer emits, large and centered. Empty shows a gentle hint; non-empty shows
+ * the text plus Clear (FR5). Ellipsis keeps the layout stable as the string grows.
  */
 @Composable
-private fun CommittedBanner(text: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
+private fun CommittedHero(text: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
         modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(Modifier.weight(1f)) {
+        if (text.isEmpty()) {
             Text(
-                "COMMITTED",
+                "Sign a letter to begin",
                 color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
             )
+        } else {
             Text(
-                text.ifEmpty { "—" },
+                text,
                 color = Color.White,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 22.sp,
+                fontSize = 40.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "Clear",
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable(onClick = onClear).padding(8.dp),
             )
         }
-        Text(
-            "CLEAR",
-            color = Color.White.copy(alpha = if (text.isEmpty()) 0.3f else 0.7f),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier =
-                Modifier.clickable(enabled = text.isNotEmpty(), onClick = onClear)
-                    .padding(8.dp),
-        )
     }
 }
 

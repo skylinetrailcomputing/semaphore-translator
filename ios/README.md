@@ -5,8 +5,9 @@ classifier — lands in a later epic). This holds the
 **cross-platform parity harness** (Issue #14 — see
 [`../docs/adr/0001-parity-harness-and-native-project-shape.md`](../docs/adr/0001-parity-harness-and-native-project-shape.md)),
 the **Vision capture → adapter → `Keypoints`** path with its native-fixture
-tests (Issue #21), and the **live debug screen** — SwiftUI preview + skeleton
-overlay + per-frame decode (Issue #23, ADR
+tests (Issue #21), and the **Learn screen** — SwiftUI camera preview with the
+committed text as the hero (Issue #48); the skeleton overlay + per-frame readout
+are dev-gated debug chrome (Issue #23, ADR
 [0003](../docs/adr/0003-live-debug-preview-and-app-contract-loader.md)).
 
 ## Project generation
@@ -57,7 +58,7 @@ preview/overlay display config, **not** the adapter (ADR 0003).
 | Path | What |
 |------|------|
 | `project.yml` | XcodeGen project definition (source of truth); bundles the `shared/*.json` contract as app resources. |
-| `Sources/App/` | SwiftUI live debug screen (#23): `ContentView` (screen + readout), `CameraPreviewView` (preview layer), `PreviewViewModel` (capture + per-frame decode), `SkeletonOverlay` (signer→display overlay). |
+| `Sources/App/` | SwiftUI Learn screen (#48): `ContentView` (clean view — committed-text hero, dev-gated readout + overlay), `CameraPreviewView` (preview layer), `PreviewViewModel` (capture + per-frame decode), `SkeletonOverlay` (signer→display overlay). |
 | `Sources/Core/` | `SemaphoreDecoder.swift` (decode logic ported from `shared/tools/gen_test_vectors.py`); `Keypoints.swift` (the frozen 6-keypoint boundary); `VisionPoseAdapter.swift` (Apple Vision skeleton → `Keypoints`, the two flips applied once each — `shared/ADAPTER-CONTRACT.md`); `ContractLoader.swift` (app-side loader (#23): decodes the bundled `shared/*.json` and builds the decoder — mirrors the test harness's `ReferenceDecoder.make()`). |
 | `Sources/Capture/` | `PoseCaptureSession.swift` — `actor`-wrapped front-camera `AVCaptureSession` → Vision → adapter → `AsyncStream<Keypoints>`, exposing the session for the preview layer (compiled/reviewed; live behaviour is an on-device smoke item). |
 | `Tests/` | `ParityTests.swift` (the harness); `SharedContract.swift` (test-only Decodable models + the `shared/` loader); `NativeFixtureTests.swift` (#20 contract); `VisionAdapterTests.swift` (Layer-1: replay recorded Vision skeletons → adapter → `invariants.json`); `VisionCalibrationTests.swift` (Layer-2: live Vision on the committed images, device-only); `Fixtures/vision_skeletons.json` (recorded skeletons). |
