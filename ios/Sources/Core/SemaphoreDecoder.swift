@@ -98,7 +98,7 @@ struct SemaphoreDecoder {
         return quantize(angle)
     }
 
-    private func classify(_ kp: Keypoints) -> (left: Int?, right: Int?, symbol: String?) {
+    private func classifyArms(_ kp: Keypoints) -> (left: Int?, right: Int?, symbol: String?) {
         let left = armId(shoulder: kp.leftShoulder, wrist: kp.leftWrist)
         let right = armId(shoulder: kp.rightShoulder, wrist: kp.rightWrist)
         var symbol: String?
@@ -106,8 +106,19 @@ struct SemaphoreDecoder {
         return (left, right, symbol)
     }
 
-    /// Map a classified symbol to (emitted string, new mode) per spec §4.5.
-    private func interpret(_ symbol: String?, _ mode: Mode) -> (emit: String, mode: Mode) {
+    /// Stage 1 of the decode: the **mode-independent pose symbol** — a letter
+    /// pose, `NUMERALS`, `REST`, or `nil` (indeterminate). This is the temporal
+    /// committer's votable unit (ADR 0004, #31): mode is exactly what is unstable
+    /// frame-to-frame, so smoothing votes on the pre-mode pose, never the emitted
+    /// character. `decodeFrame` composes this with `interpret`.
+    func classify(_ kp: Keypoints) -> String? {
+        classifyArms(kp).symbol
+    }
+
+    /// Stage 2 of the decode: map a classified symbol to (emitted string, new
+    /// mode) per spec §4.5. Exposed so the temporal committer (#4.2/#4.3) can run
+    /// it on commit; mode therefore flips only on a *committed* control pose.
+    func interpret(_ symbol: String?, _ mode: Mode) -> (emit: String, mode: Mode) {
         guard let symbol else { return ("", mode) }            // indeterminate: emit nothing
         if symbol == "NUMERALS" { return ("", .numeric) }      // numerals sign
         if symbol == "J", mode == .numeric { return ("", .letters) }  // letters-shift, numeric only
@@ -120,7 +131,7 @@ struct SemaphoreDecoder {
     /// - Returns: the emitted string, the resulting mode, and the white-box
     ///   `[left_id, right_id]` (nil where an arm is indeterminate).
     func decodeFrame(_ kp: Keypoints, mode: Mode) -> (emit: String, mode: Mode, ids: [Int?]) {
-        let (left, right, symbol) = classify(kp)
+        let (left, right, symbol) = classifyArms(kp)
         let (emit, newMode) = interpret(symbol, mode)
         return (emit, newMode, [left, right])
     }

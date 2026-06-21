@@ -4,6 +4,23 @@ import android.content.Context
 import org.json.JSONObject
 
 /**
+ * The frozen temporal-commit constants (spec §4.4, ADR 0004), surfaced from the
+ * shared contract so the live layer (#4.5) can build the committer. A plain value
+ * type -- like [SemaphoreDecoder]'s plain-value constructor, it carries no JSON
+ * code; [ContractLoader.makeCommitTiming] parses the contract into it.
+ *
+ * @param smoothingWindow frames of majority-vote smoothing on the votable pose symbol.
+ * @param commitHoldMs how long a candidate symbol must hold (wall-clock ms) before it commits.
+ * @param interCharGapMs minimum intervening *indeterminate* gap (ms) before the
+ *   *same* symbol may re-commit; a distinct symbol commits on its hold alone.
+ */
+data class CommitTiming(
+    val smoothingWindow: Int,
+    val commitHoldMs: Double,
+    val interCharGapMs: Double,
+)
+
+/**
  * Loads the frozen shared contract (`semaphore_alphabet.json` +
  * `semaphore_config.json`) bundled into the app and assembles the
  * [SemaphoreDecoder]. App-side counterpart to the test harness's
@@ -63,6 +80,20 @@ object ContractLoader {
             digitMap = digitMap,
             angleToleranceDeg = config.getDouble("ANGLE_TOLERANCE_DEG"),
             minKeypointConfidence = config.getDouble("MIN_KEYPOINT_CONFIDENCE"),
+        )
+    }
+
+    /**
+     * Parse the frozen temporal-commit constants (spec §4.4) from the bundled
+     * `semaphore_config.json`. No committer is built here -- that is #4.5; this
+     * only surfaces the constants the live layer will inject.
+     */
+    fun makeCommitTiming(context: Context): CommitTiming {
+        val config = JSONObject(readAsset(context, "semaphore_config.json"))
+        return CommitTiming(
+            smoothingWindow = config.getInt("SMOOTHING_WINDOW"),
+            commitHoldMs = config.getDouble("COMMIT_HOLD_MS"),
+            interCharGapMs = config.getDouble("INTER_CHAR_GAP_MS"),
         )
     }
 
