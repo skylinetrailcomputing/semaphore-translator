@@ -22,7 +22,7 @@ struct PoseFrame: Sendable {
 /// actor. So: all session mutation is confined to the actor; the per-frame work
 /// lives on a `@unchecked Sendable` delegate that owns the stream continuation;
 /// the only thing crossing the isolation boundary is an immutable, `Sendable`
-/// `Keypoints`. The blocking `startRunning()`/`stopRunning()` calls hop to a
+/// `PoseFrame`. The blocking `startRunning()`/`stopRunning()` calls hop to a
 /// dedicated queue via `nonisolated(unsafe)` (the idiomatic escape for this
 /// AVFoundation gotcha) rather than block the actor's executor.
 ///
@@ -136,9 +136,12 @@ private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleB
         // taken here at capture, not when a view model later consumes the frame.
         // For `AVCaptureVideoDataOutput` the PTS rides the host time clock, so it
         // advances monotonically across the stream; the committer only uses deltas.
-        let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        guard pts.isValid else { return }
-        let tMs = Int((CMTimeGetSeconds(pts) * 1000).rounded())
+        // Guard on `isFinite`, not `pts.isValid`: an indefinite/infinite CMTime is
+        // still "valid" (CMTIME_IS_INDEFINITE = valid + the indefinite flag), and
+        // `CMTimeGetSeconds` maps it to NaN/Inf — which would *trap* in `Int(...)`.
+        let secs = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+        guard secs.isFinite else { return }
+        let tMs = Int((secs * 1000).rounded())
         // The capture connection rotates the buffer to portrait-upright, so `.up`
         // is correct here; the front-camera mirror is handled once in the adapter.
         let requestHandler = VNImageRequestHandler(
