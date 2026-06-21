@@ -19,9 +19,21 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 /**
- * Front-camera capture → ML Kit body pose → adapter → [Keypoints], surfaced as a
- * [Flow] (Issue #22, spec §3.1/§3.2, FR1/FR2). The Android counterpart to iOS's
- * `PoseCaptureSession` (which surfaces an `AsyncStream`).
+ * One capture frame surfaced by [PoseCaptureSession]: the adapted [Keypoints] plus
+ * the frame's **monotonic** capture time in milliseconds (Issue #34, spec §4.4).
+ * [tMs] comes from the [androidx.camera.core.ImageProxy] timestamp at capture, not
+ * from when a view model later consumes the frame — so the temporal committer
+ * (#4.5) is timed by the frame, not by collection jitter. Only deltas between
+ * successive [tMs] matter to the committer, so the clock's epoch is irrelevant; it
+ * just has to advance monotonically with the frames. The iOS twin is `PoseFrame`.
+ */
+data class PoseFrame(val keypoints: Keypoints, val tMs: Long)
+
+/**
+ * Front-camera capture → ML Kit body pose → adapter → [PoseFrame], surfaced as a
+ * [Flow] (Issue #22, spec §3.1/§3.2, FR1/FR2; the per-frame timestamp is #34). The
+ * Android counterpart to iOS's `PoseCaptureSession` (which surfaces an
+ * `AsyncStream`).
  *
  * **Not unit-tested.** There is no camera in the local JVM unit-test runtime, so
  * this path is compiled and reviewed but its live orientation + mirror behaviour
@@ -54,7 +66,7 @@ class PoseCaptureSession(
     fun keypoints(
         lifecycleOwner: LifecycleOwner,
         preview: Preview? = null,
-    ): Flow<Keypoints> = callbackFlow {
+    ): Flow<PoseFrame> = callbackFlow {
         val executor = ContextCompat.getMainExecutor(context)
         val detector =
             PoseDetection.getClient(
@@ -73,6 +85,11 @@ class PoseCaptureSession(
                 proxy.close()
                 return@setAnalyzer
             }
+            // The frame's monotonic capture time (#34): the ImageProxy timestamp
+            // (ns → ms), read here at capture rather than when the flow is collected.
+            // Captured into a local now, since the async success listener below runs
+            // after the analyzer returns; the committer only uses deltas (#4.5).
+            val tMs = proxy.imageInfo.timestamp / 1_000_000
             val rotation = proxy.imageInfo.rotationDegrees
             // ML Kit returns landmarks in the upright (rotation-applied) frame, so
             // normalize by the upright dimensions: width/height swap at 90°/270°.
@@ -83,7 +100,7 @@ class PoseCaptureSession(
                 .process(InputImage.fromMediaImage(media, rotation))
                 .addOnSuccessListener { pose ->
                     pose.toMlKitSkeleton()?.let { skeleton ->
-                        trySend(adapter.adapt(skeleton, normWidth, normHeight))
+                        trySend(PoseFrame(adapter.adapt(skeleton, normWidth, normHeight), tMs))
                     }
                 }
                 .addOnCompleteListener { proxy.close() }
