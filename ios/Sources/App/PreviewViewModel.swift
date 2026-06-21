@@ -39,6 +39,13 @@ final class PreviewViewModel: ObservableObject {
     /// path unchanged); Interpret passes `.back` for the rear lens (#56). Lens
     /// selection only — the mirror stays quarantined in the adapter (spec §3.2).
     private let cameraPosition: AVCaptureDevice.Position
+    /// Whether the preview is mirrored for display, derived from the lens (#57).
+    /// Front uses the selfie mirror (the signer sees themselves naturally); the
+    /// rear lens must not (you're watching someone else). Drives the preview's
+    /// `isVideoMirrored` and the `SkeletonOverlay` x-map together so the skeleton
+    /// registers against what's shown. Display-only — distinct from the adapter
+    /// mirror, which stays quarantined regardless of lens (spec §3.2, NFR3).
+    var isPreviewMirrored: Bool { cameraPosition == .front }
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
     private var streamTask: Task<Void, Never>?
