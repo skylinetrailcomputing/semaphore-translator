@@ -11,7 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,7 +34,12 @@ import androidx.compose.ui.unit.sp
  * (deferred until a mode is entered). The iOS twin is `HomeView`.
  */
 @Composable
-fun HomeScreen(onLearn: () -> Unit, onInterpret: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(
+    onLearn: () -> Unit,
+    onInterpret: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(modifier.fillMaxSize().background(Color.Black)) {
         Column(
             Modifier.fillMaxSize().padding(24.dp),
@@ -60,6 +70,19 @@ fun HomeScreen(onLearn: () -> Unit, onInterpret: () -> Unit, modifier: Modifier 
                 title = "Interpret semaphore",
                 subtitle = "Read someone else’s flags",
                 onClick = onInterpret,
+            )
+        }
+        // A single gear in the top-end corner is the Settings entry point
+        // ([5d], #50) — kept minimal per the grooming decision. Insets below the
+        // status bar; the iOS twin is `HomeView`'s top-trailing gear overlay.
+        IconButton(
+            onClick = onSettings,
+            modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding().padding(8.dp),
+        ) {
+            Icon(
+                Icons.Filled.Settings,
+                contentDescription = "Settings",
+                tint = Color.White.copy(alpha = 0.8f),
             )
         }
     }

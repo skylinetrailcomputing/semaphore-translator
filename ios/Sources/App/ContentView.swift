@@ -9,11 +9,12 @@ import SwiftUI
 /// hidden in this clean view and gated behind `developerMode`, surfaced by the
 /// Developer-mode toggle (#5d). That overlay is still the only visual
 /// confirmation of the adapter flips (autonomy guardrail-d), so it is gated, not
-/// deleted. `developerMode` is a plain stored flag for now; #5d binds it to a
-/// persisted setting. The Android twin is `SemaphoreScreen`.
+/// deleted. `developerMode` reads the same `@AppStorage` flag the Settings
+/// toggle writes (#50), so the overlay reflects the persisted setting and
+/// updates live when it is flipped. The Android twin is `SemaphoreScreen`.
 struct ContentView: View {
     @StateObject private var model = PreviewViewModel()
-    var developerMode = false
+    @AppStorage(AppSettingsKeys.developerMode) private var developerMode = false
 
     var body: some View {
         ZStack {

@@ -12,10 +12,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,19 +36,28 @@ import androidx.navigation.compose.rememberNavController
  */
 @Composable
 fun SemaphoreApp() {
+    val context = LocalContext.current
     val navController = rememberNavController()
+    // Developer-mode flag ([5d], #50) hoisted here so a single source of truth
+    // feeds both the Settings toggle and the Learn screen. Seeded from the
+    // persisted value, then mirrored to [AppSettings] on each change — so it is
+    // reactive in-session (Learn reflects a flip on the next entry) and survives
+    // launches. The iOS twin is `@AppStorage`, shared across views by key.
+    var developerMode by remember { mutableStateOf(AppSettings.developerMode(context)) }
+
     NavHost(navController, startDestination = Route.HOME) {
         composable(Route.HOME) {
             HomeScreen(
                 onLearn = { navController.navigate(Route.LEARN) },
                 onInterpret = { navController.navigate(Route.INTERPRET) },
+                onSettings = { navController.navigate(Route.SETTINGS) },
             )
         }
         composable(Route.LEARN) {
             // Full-bleed camera screen with a floating back chevron over it — the
             // Android parallel of iOS's transparent nav bar on the Learn screen.
             Box(Modifier.fillMaxSize()) {
-                SemaphoreScreen()
+                SemaphoreScreen(developerMode = developerMode)
                 BackButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.align(Alignment.TopStart),
@@ -53,6 +67,16 @@ fun SemaphoreApp() {
         composable(Route.INTERPRET) {
             InterpretStub(onBack = { navController.popBackStack() })
         }
+        composable(Route.SETTINGS) {
+            SettingsScreen(
+                developerMode = developerMode,
+                onDeveloperModeChange = {
+                    developerMode = it
+                    AppSettings.setDeveloperMode(context, it)
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 
@@ -61,6 +85,7 @@ private object Route {
     const val HOME = "home"
     const val LEARN = "learn"
     const val INTERPRET = "interpret"
+    const val SETTINGS = "settings"
 }
 
 /**

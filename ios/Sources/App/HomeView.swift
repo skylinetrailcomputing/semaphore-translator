@@ -41,9 +41,26 @@ struct HomeView: View {
             }
             .padding(24)
         }
+        // A single gear in the top-trailing corner is the Settings entry point
+        // ([5d], #50) — kept minimal per the grooming decision. Placed as an
+        // overlay (not a nav-bar item) because Home hides its nav bar; the
+        // overlay aligns within the safe area, so it sits below the status bar.
+        .overlay(alignment: .topTrailing) { settingsGear }
         // Home is the landing surface — no nav bar here; the pushed mode screens
         // bring their own (back chevron + optional title).
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var settingsGear: some View {
+        NavigationLink {
+            SettingsView()
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.title2)
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(16)
+                .contentShape(Rectangle())
+        }
     }
 
     private var header: some View {
