@@ -14,6 +14,11 @@ struct SemaphoreTranslatorApp: App {
             // White back chevrons over the dark mode screens (the camera bar is
             // transparent; see HomeView's Learn link).
             .tint(.white)
+            // Every screen hardcodes a black background + white text, so the app
+            // is dark by design. Pin the color scheme so the first system-styled
+            // surface — the Settings `Form` (#50) — renders dark too, which keeps
+            // the white back chevron legible (a light Form would hide it).
+            .preferredColorScheme(.dark)
         }
     }
 }
