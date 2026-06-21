@@ -46,12 +46,41 @@ struct ContentView: View {
                     .padding(.vertical, 10)
                     .background(.black.opacity(0.55), in: Capsule())
             }
-            VStack {
+            VStack(spacing: 12) {
                 Spacer()
+                committedBanner
                 readout
             }
             .padding()
         }
+    }
+
+    /// The committed output (#4.5) — the debounced text the committer emits, the
+    /// user-visible result. Sits directly above the raw readout so committed and
+    /// per-frame are legible side-by-side (the natural smoke surface). Head
+    /// truncation keeps the most-recent characters visible as the string grows.
+    private var committedBanner: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("COMMITTED")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.white.opacity(0.6))
+                Text(model.committedText.isEmpty ? "—" : model.committedText)
+                    .font(.system(.title2, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Button(action: { model.clearCommitted() }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .disabled(model.committedText.isEmpty)
+        }
+        .padding()
+        .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 16))
     }
 
     /// Per-frame readout: the position ids per arm, the emitted character, and

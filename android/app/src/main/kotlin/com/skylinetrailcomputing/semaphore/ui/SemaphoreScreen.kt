@@ -9,6 +9,7 @@ import androidx.camera.core.Preview
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +33,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LifecycleOwner
+import com.skylinetrailcomputing.semaphore.core.Committer
 import com.skylinetrailcomputing.semaphore.core.ContractLoader
 import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.Keypoints
@@ -81,7 +84,7 @@ fun SemaphoreScreen() {
     }
 }
 
-/** State the overlay + readout panel render. Raw per-frame — no smoothing. */
+/** State the overlay + readout panel render. */
 private data class PreviewState(
     val keypoints: Keypoints? = null,
     val leftId: Int? = null,
@@ -98,7 +101,13 @@ private fun CameraScreen() {
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
     val decoder = remember { runCatching { ContractLoader.makeDecoder(context) }.getOrNull() }
-    if (decoder == null) {
+    val committer =
+        remember(decoder) {
+            decoder?.let { d ->
+                runCatching { Committer(d, ContractLoader.makeCommitTiming(context)) }.getOrNull()
+            }
+        }
+    if (decoder == null || committer == null) {
         Message("Contract unavailable", "Couldn’t load the bundled semaphore contract.")
         return
     }
@@ -114,14 +123,17 @@ private fun CameraScreen() {
         }
     }
     var state by remember { mutableStateOf(PreviewState()) }
+    // Hoisted out of PreviewState so the clear button can reset it independently of
+    // the per-frame state; persists across a watchdog reset() like iOS's.
+    var committedText by remember { mutableStateOf("") }
 
     // Build the Preview use case once and point it at the PreviewView's surface,
-    // then collect the keypoint stream bound to the same camera. Per-frame decode,
-    // no smoothing/commit (Epic 4). Mode is threaded across frames because that is
-    // the decoder's own state machine (spec §4.5), not temporal smoothing.
+    // then collect the keypoint stream bound to the same camera. The temporal
+    // committer (#4.5) smooths/holds/debounces per frame; mode lives in the
+    // committer and flips only on a committed control pose (§4.5), so it is no
+    // longer threaded across frames here.
     androidx.compose.runtime.LaunchedEffect(Unit) {
         val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
-        var mode = Mode.LETTERS
         var lastFrameAt = 0L
 
         // Freshness watchdog: the stream simply stops yielding when a signer
@@ -133,27 +145,44 @@ private fun CameraScreen() {
                 if (state.signerPresent &&
                     System.currentTimeMillis() - lastFrameAt > SIGNER_TIMEOUT_MS
                 ) {
-                    state = state.copy(signerPresent = false, keypoints = null)
+                    // True signer-loss: hard-reset the committer (clear window,
+                    // mode → LETTERS). `committedText` is preserved so the word
+                    // just signed stays readable after the arms drop.
+                    committer.reset()
+                    state =
+                        state.copy(
+                            signerPresent = false,
+                            keypoints = null,
+                            mode = committer.currentMode,
+                        )
                 }
             }
         }
 
         capture.keypoints(lifecycleOwner, preview).collectLatest { frame ->
             // `lastFrameAt` is the watchdog's freshness clock (real-time liveness),
-            // distinct from `frame.tMs` (the frame-aligned committer clock, #34): the
-            // committer consumes `frame.tMs` when it is wired in here at the live
-            // layer (#35).
+            // distinct from `frame.tMs` (the frame-aligned committer clock, #34) the
+            // committer consumes below.
             lastFrameAt = System.currentTimeMillis()
             val kp = frame.keypoints
-            val result = decoder.decodeFrame(kp, mode)
-            mode = result.mode
+
+            // Temporal path: classify the mode-independent pose, then let the
+            // committer smooth/hold/debounce it. A non-empty return is a committed
+            // letter/digit/space.
+            val symbol = decoder.classify(kp)
+            val emitted = committer.process(symbol, frame.tMs)
+            if (emitted.isNotEmpty()) committedText += emitted
+
+            // Raw white-box readout: ids are mode-independent; only the per-frame
+            // character is interpreted, in the committer's (possibly just-flipped) mode.
+            val raw = decoder.decodeFrame(kp, committer.currentMode)
             state =
                 PreviewState(
                     keypoints = kp,
-                    leftId = result.ids[0],
-                    rightId = result.ids[1],
-                    character = result.emit,
-                    mode = mode,
+                    leftId = raw.ids[0],
+                    rightId = raw.ids[1],
+                    character = raw.emit,
+                    mode = committer.currentMode,
                     signerPresent = true,
                 )
         }
@@ -176,7 +205,13 @@ private fun CameraScreen() {
                         .padding(horizontal = 16.dp, vertical = 10.dp),
             )
         }
-        Readout(state, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CommittedBanner(committedText, onClear = { committedText = "" })
+            Readout(state)
+        }
     }
 }
 
@@ -233,6 +268,50 @@ private fun SkeletonOverlay(keypoints: Keypoints?, modifier: Modifier = Modifier
 
 /** Carries the two arm joints + color for one limb through the overlay loop. */
 private data class Quad(val a: Keypoint, val b: Keypoint, val c: Keypoint, val color: Color)
+
+/**
+ * The committed output (#4.5) — the debounced text the committer emits, the
+ * user-visible result. Sits directly above the raw readout so committed and
+ * per-frame are legible side-by-side (the natural smoke surface).
+ */
+@Composable
+private fun CommittedBanner(text: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                "COMMITTED",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text.ifEmpty { "—" },
+                color = Color.White,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            "CLEAR",
+            color = Color.White.copy(alpha = if (text.isEmpty()) 0.3f else 0.7f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier =
+                Modifier.clickable(enabled = text.isNotEmpty(), onClick = onClear)
+                    .padding(8.dp),
+        )
+    }
+}
 
 /** Per-frame readout: position ids per arm, emitted character, decoder mode. */
 @Composable

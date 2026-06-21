@@ -55,6 +55,13 @@ class Committer(
     /** `tMs` the current continuous-indeterminate run began, else null. */
     private var indetSince: Long? = null
 
+    /**
+     * The current decoder mode (§4.5), for the live mode badge. Read-only -- mode
+     * flips solely inside [process], at commit.
+     */
+    val currentMode: Mode
+        get() = mode
+
     init {
         reset()
     }
