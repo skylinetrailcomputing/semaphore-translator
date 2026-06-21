@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      No-action-bar theme so neither the Home landing ([5a], #47) nor the
+      full-bleed camera screen shows the framework's default ActionBar — that bar
+      renders `android:label` as a redundant title band over the top of the UI.
+      Parents off the framework Material *dark* theme: no Material Components /
+      AppCompat dependency is needed for a Compose-only app, and a dark base
+      matches the all-black screens (and keeps the status-bar icons light).
+    -->
+    <style name="Theme.SemaphoreTranslator" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
