@@ -30,10 +30,12 @@ import kotlinx.coroutines.flow.callbackFlow
 data class PoseFrame(val keypoints: Keypoints, val tMs: Long)
 
 /**
- * Front-camera capture → ML Kit body pose → adapter → [PoseFrame], surfaced as a
- * [Flow] (Issue #22, spec §3.1/§3.2, FR1/FR2; the per-frame timestamp is #34). The
+ * Camera capture → ML Kit body pose → adapter → [PoseFrame], surfaced as a [Flow]
+ * (Issue #22, spec §3.1/§3.2, FR1/FR2; the per-frame timestamp is #34). The
  * Android counterpart to iOS's `PoseCaptureSession` (which surfaces an
- * `AsyncStream`).
+ * `AsyncStream`). The lens is a [keypoints] parameter (front by default; Interpret
+ * requests the rear lens, #56) — lens *selection* only, the mirror stays
+ * quarantined in [MlKitPoseAdapter] (spec §3.2, NFR3).
  *
  * **Not unit-tested.** There is no camera in the local JVM unit-test runtime, so
  * this path is compiled and reviewed but its live orientation + mirror behaviour
@@ -56,16 +58,19 @@ class PoseCaptureSession(
     private val adapter: MlKitPoseAdapter = MlKitPoseAdapter(),
 ) {
     /**
-     * Bind a front-camera [ImageAnalysis] use case (and, for the live screen, an
-     * optional [preview] use case) to [lifecycleOwner] and emit adapted
-     * [Keypoints] for every frame that yields a full upper-body skeleton. The
-     * flow unbinds *its* use cases and closes its detector when the collector is
-     * cancelled. [preview] is null in headless contexts (no display surface).
+     * Bind an [ImageAnalysis] use case for [cameraLens] (front by default; and,
+     * for the live screen, an optional [preview] use case) to [lifecycleOwner] and
+     * emit adapted [Keypoints] for every frame that yields a full upper-body
+     * skeleton. The flow unbinds *its* use cases and closes its detector when the
+     * collector is cancelled. [preview] is null in headless contexts (no display
+     * surface). [cameraLens] is lens *selection* only — the mirror stays
+     * quarantined in [MlKitPoseAdapter] (spec §3.2).
      */
     @ExperimentalGetImage
     fun keypoints(
         lifecycleOwner: LifecycleOwner,
         preview: Preview? = null,
+        cameraLens: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
     ): Flow<PoseFrame> = callbackFlow {
         val executor = ContextCompat.getMainExecutor(context)
         val detector =
@@ -110,7 +115,7 @@ class PoseCaptureSession(
         // the blocking Future.get()), so a Main-dispatched collector can't ANR.
         val useCases = listOfNotNull(preview, analysis).toTypedArray()
         val provider = ProcessCameraProvider.awaitInstance(context)
-        provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, *useCases)
+        provider.bindToLifecycle(lifecycleOwner, cameraLens, *useCases)
 
         awaitClose {
             provider.unbind(*useCases)

@@ -35,6 +35,10 @@ final class PreviewViewModel: ObservableObject {
     @Published private(set) var committedText: String = ""
 
     let capture = PoseCaptureSession()
+    /// Which lens to drive. Front for the Learn screen (the default keeps that
+    /// path unchanged); Interpret passes `.back` for the rear lens (#56). Lens
+    /// selection only — the mirror stays quarantined in the adapter (spec §3.2).
+    private let cameraPosition: AVCaptureDevice.Position
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
     private var streamTask: Task<Void, Never>?
@@ -46,6 +50,10 @@ final class PreviewViewModel: ObservableObject {
     /// frame (the adapter returns `nil` without a full upper body), so absence
     /// is detected by a freshness watchdog rather than an explicit event.
     private let signerTimeout: TimeInterval = 0.5
+
+    init(cameraPosition: AVCaptureDevice.Position = .front) {
+        self.cameraPosition = cameraPosition
+    }
 
     func start() async {
         if committer == nil {
@@ -64,7 +72,7 @@ final class PreviewViewModel: ObservableObject {
             return
         }
         do {
-            let stream = try await capture.start()
+            let stream = try await capture.start(cameraPosition: cameraPosition)
             status = .noSigner
             lastFrameAt = .distantPast
             startWatchdog()
