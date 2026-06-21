@@ -8,15 +8,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -64,9 +64,11 @@ private object Route {
 }
 
 /**
- * Floating back affordance for the pushed full-bleed screens — the visible
+ * Floating back affordance for the immersive camera screen — the visible
  * counterpart to the system back button (which also pops to Home). Mirrors iOS's
- * nav-bar back chevron. Insets itself below the status bar.
+ * transparent-bar back chevron. The circle gives the icon contrast over a bright
+ * camera frame; the vector [ArrowBack] is geometrically centered (a text glyph
+ * sat low and shifted with the device font). Insets itself below the status bar.
  */
 @Composable
 internal fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -80,6 +82,11 @@ internal fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text("←", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Back",
+            tint = Color.White,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
