@@ -39,6 +39,18 @@ enum ReferenceDecoder {
     }
 }
 
+/// Builds `CommitTiming` from the frozen shared contract — the timing twin of
+/// `ReferenceDecoder.make()`, so the temporal parity harness (#4.2) injects the
+/// exact constants the live layer (#4.5) will, read from the same contract.
+func referenceTiming() throws -> CommitTiming {
+    let config = try SharedFiles.load(SemaphoreConfig.self, "semaphore_config.json")
+    return CommitTiming(
+        smoothingWindow: config.smoothingWindow,
+        commitHoldMs: config.commitHoldMs,
+        interCharGapMs: config.interCharGapMs
+    )
+}
+
 /// Build the typed `Keypoints` the decoder consumes from a fixture's
 /// `[name: [x, y, confidence]]` map (the shape used by both `test_vectors.json`
 /// and `invariants.json`). The map is a fixture artifact; the shipping adapter

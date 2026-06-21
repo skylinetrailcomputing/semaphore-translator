@@ -1,6 +1,7 @@
 package com.skylinetrailcomputing.semaphore
 
 import com.skylinetrailcomputing.semaphore.core.Alphabet
+import com.skylinetrailcomputing.semaphore.core.CommitTiming
 import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.SemaphoreConfig
@@ -36,6 +37,20 @@ fun referenceDecoder(): SemaphoreDecoder {
         digitMap = alphabet.numericMode.digitMap,
         angleToleranceDeg = config.angleToleranceDeg,
         minKeypointConfidence = config.minKeypointConfidence,
+    )
+}
+
+/**
+ * Builds [CommitTiming] from the frozen shared contract -- the timing twin of
+ * [referenceDecoder], so the temporal parity harness (#4.3) injects the exact
+ * constants the live layer (#4.5) will, read from the same contract.
+ */
+fun referenceTiming(): CommitTiming {
+    val config = SharedFiles.load<SemaphoreConfig>("semaphore_config.json")
+    return CommitTiming(
+        smoothingWindow = config.smoothingWindow,
+        commitHoldMs = config.commitHoldMs,
+        interCharGapMs = config.interCharGapMs,
     )
 }
 
