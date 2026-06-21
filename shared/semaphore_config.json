@@ -11,6 +11,6 @@
     "MIN_KEYPOINT_CONFIDENCE": "below this per-keypoint visibility, the arm is indeterminate",
     "COMMIT_HOLD_MS": "how long a stable pose must hold (wall-clock ms) before being committed to output (ADR 0004)",
     "INTER_CHAR_GAP_MS": "minimum intervening indeterminate gap (ms) before the SAME symbol may re-commit; a distinct symbol commits on its hold alone (ADR 0004, deviates from a literal 'next character' reading)",
-    "SMOOTHING_WINDOW": "frames of majority-vote smoothing on the predicted mode-independent pose symbol (the classify output, not the emitted character)"
+    "SMOOTHING_WINDOW": "frames of plurality-vote smoothing (ties to the most-recent occurrence) on the predicted mode-independent pose symbol (the classify output, not the emitted character); see ADR 0004"
   }
 }

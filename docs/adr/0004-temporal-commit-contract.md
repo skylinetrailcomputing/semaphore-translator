@@ -70,11 +70,38 @@ Per `process(symbol, t_ms)`:
    flicker — 1–2 of 5 — can never out-vote a held pose, which is the debounce we
    want; a fuller "no clear winner" window simply trends to whichever value is
    freshest, almost always the indeterminate transition.)
+   **Partial window (pinned for the ports):** before the buffer holds
+   `SMOOTHING_WINDOW` entries — at sequence start, and immediately after
+   `reset()` — vote over however many entries are present; a single-entry buffer
+   returns that entry. Both ports **must** vote on the partial window rather than
+   wait for it to fill; a port that waited would commit the first character
+   `SMOOTHING_WINDOW − 1` frames late. Because `COMMIT_HOLD_MS` (6 frames at the
+   fixtures' cadence) already exceeds `SMOOTHING_WINDOW` (5), this divergence
+   never changes `expected_committed`, only the *frame* a commit lands on — which
+   is why the ports assert the per-frame `expected_emit`, not just the rollup
+   (see Decision 5).
 2. **Hold timer.** If `candidate` changed value, restart it
    (`candidate_since = t_ms`).
-3. **Gap tracking.** While `candidate` is indeterminate, accumulate
-   `indet_since`; once the run reaches `INTER_CHAR_GAP_MS`, set `gap_ok = true`.
-   A determinate candidate clears `indet_since`.
+3. **Gap tracking.** This timer runs off the **voted `candidate`, not the raw
+   incoming `symbol`** — `indet_since` is set when the *candidate* (step 1's
+   plurality result) becomes indeterminate and cleared the moment it becomes any
+   determinate symbol. Once `t_ms - indet_since >= INTER_CHAR_GAP_MS`, set
+   `gap_ok = true`. Pinning it to the voted candidate (not raw frames) is
+   load-bearing: a port that armed the gap on raw indeterminate frames would
+   re-arm earlier and diverge — the `same_letter_gap_too_short` /
+   `same_letter_min_gap_rearms` fixtures (a 3-frame gap that must **not** re-arm
+   vs. a 4-frame gap that must) pin this boundary so an off-by-one port fails one
+   of them.
+
+   > **Effective gap latency.** Because the candidate must first *flip* to
+   > indeterminate (the window takes a few frames to fill with nulls) and the
+   > nulls likewise linger a few frames into the next pose, the wall-clock
+   > indeterminate motion a signer needs before a doubled letter re-commits is
+   > larger than `INTER_CHAR_GAP_MS` alone — roughly `(vote-flip frames) ×
+   > frame-interval + INTER_CHAR_GAP_MS`. That extra term scales with the capture
+   > frame rate, so it shrinks on faster cameras; the fixtures' 100 ms cadence is
+   > illustrative, not a normative part of the contract (the ports replay the
+   > exact `t_ms` values, so the boundary is fixed *for the vectors*).
 4. **Commit.** If `candidate` is determinate **and** held for
    `t_ms - candidate_since >= COMMIT_HOLD_MS` **and** the same-symbol gate passes
    (`candidate != last_committed` **or** `gap_ok`): run
@@ -146,9 +173,18 @@ Two distinct "the signer stopped" cases, deliberately handled at different layer
   #12/#14). It shares the per-frame decode + keypoint geometry with
   `gen_test_vectors.py` via a new `shared/tools/_semaphore_ref.py`, so the two
   fixture sets cannot drift (one Python reference, two generators).
+- **Ports assert per-frame, not just the rollup.** Each frame carries
+  `expected_symbol` (the votable unit) and `expected_emit` (what commits on that
+  exact frame); `expected_committed` is their concatenation. The ports' canonical
+  assertion is the **per-frame** `expected_emit` — it pins *when* each commit
+  lands, which is what catches a partial-window or off-by-one-gap port whose final
+  string happens to match (Decision 2). `expected_committed` is the convenience
+  rollup / self-validation anchor.
 - **Coverage:** debounce (a 1–2 frame spurious pose never commits), distinct-letter
-  streaming, same-symbol repeat needing a gap, both mode transitions *through* the
-  committer, a signer-loss reset, and `REST` as an ordinary committable space.
+  streaming, same-symbol repeat needing a gap, the gap **boundary** pinned on both
+  sides (a 3-frame gap that must not re-arm, a 4-frame gap that must), both mode
+  transitions *through* the committer, a signer-loss reset, and `REST` as an
+  ordinary committable space.
 
 ## Consequences
 

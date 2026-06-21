@@ -130,8 +130,18 @@ class Committer:
 
 DT_MS = 100  # frame interval; >= COMMIT_HOLD_MS / DT_MS frames make a held pose commit
 HELD = 12  # frames to hold a pose so it reliably wins the vote and commits once
-GAP = 9  # indeterminate frames between repeats (spans > INTER_CHAR_GAP_MS)
+GAP = 9  # indeterminate frames between repeats (comfortably spans > INTER_CHAR_GAP_MS)
 SPURIOUS = 2  # a 1-2 frame flicker must never out-vote a held pose (window of 5)
+
+# Re-arm boundary, empirically pinned against the reference committer for the
+# frozen constants (WINDOW=5, HOLD=600, GAP=300, DT=100): an indeterminate run of
+# GAP_TOO_SHORT frames does NOT re-arm the same-symbol gate (the voted candidate
+# is indeterminate for < INTER_CHAR_GAP_MS), GAP_MIN_REARM does. The gap timer
+# runs off the VOTED candidate, not raw frames, so the run spans window-flush on
+# both entry and exit (ADR 0004 Decision 2) -- a port that armed on raw frames
+# would re-arm earlier and fail one of these two boundary fixtures.
+GAP_TOO_SHORT = 3  # -> single commit ("L")
+GAP_MIN_REARM = 4  # -> re-commit ("LL")
 
 # Both arms at 22.5deg sit exactly between octants 2 (0deg) and 3 (45deg), beyond
 # ANGLE_TOLERANCE_DEG from either: classify -> None. This is the "indeterminate
@@ -231,6 +241,27 @@ run_committer(
     "commits. Without the gap a held L commits exactly once (case 1).",
 )
 
+# 3a/3b. the re-arm BOUNDARY, pinned on both sides so an off-by-one (or raw-frame
+# vs voted-candidate) gap implementation in a port fails one of the two. See the
+# GAP_TOO_SHORT / GAP_MIN_REARM notes above and ADR 0004 Decision 2.
+run_committer(
+    "same_letter_gap_too_short",
+    [("L", HELD), (INDETERMINATE, GAP_TOO_SHORT), ("L", HELD)],
+    "L",
+    f"A {GAP_TOO_SHORT}-frame indeterminate gap does NOT re-arm: the voted "
+    "candidate is indeterminate for < INTER_CHAR_GAP_MS (the run is shorter once "
+    "you account for window-flush), so the second L is suppressed -> single 'L'. "
+    "Teeth: a port arming the gap on raw frames would (wrongly) re-commit here.",
+)
+run_committer(
+    "same_letter_min_gap_rearms",
+    [("L", HELD), (INDETERMINATE, GAP_MIN_REARM), ("L", HELD)],
+    "LL",
+    f"One frame longer ({GAP_MIN_REARM}) is the minimal gap that DOES re-arm -> "
+    "'LL'. Paired with same_letter_gap_too_short this pins the boundary to a "
+    "single frame.",
+)
+
 # 4. both numeric-mode transitions go THROUGH the committer (debounced mode switch).
 run_committer(
     "mode_transitions_through_committer",
@@ -271,8 +302,11 @@ out = {
         "are kept separate from test_vectors.json (whose per-frame harness is "
         "untimed). Both platform ports (#4.2/#4.3) feed each frame's votable pose "
         "symbol + t_ms through their committer and MUST produce identical output. "
-        "Frames are post-adapter keypoints (the adapter's mirror/y-flip is NOT "
-        "exercised here; that is the Epic-3 native fixtures)."
+        "Assert the PER-FRAME expected_emit (it pins WHEN each commit lands, "
+        "catching a partial-window or off-by-one-gap port whose final string still "
+        "matches); expected_committed is the convenience rollup. Frames are "
+        "post-adapter keypoints (the adapter's mirror/y-flip is NOT exercised "
+        "here; that is the Epic-3 native fixtures)."
     ),
     "_generated_by": (
         "shared/tools/gen_temporal_vectors.py (uv run). Generated, not hand-"
