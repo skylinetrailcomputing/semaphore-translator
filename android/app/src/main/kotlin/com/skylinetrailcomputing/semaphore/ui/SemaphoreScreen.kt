@@ -205,7 +205,11 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector) {
             modifier = Modifier.fillMaxSize(),
         )
         if (developerMode) {
-            SkeletonOverlay(state.keypoints, Modifier.fillMaxSize())
+            // `PreviewView` auto-mirrors the front lens and auto-un-mirrors the
+            // rear (CameraX default), so the preview itself needs no knob; the
+            // overlay's x-map must follow it, keyed off the same lens (#57).
+            val mirrored = cameraLens.lensFacing == CameraSelector.LENS_FACING_FRONT
+            SkeletonOverlay(state.keypoints, mirrored, Modifier.fillMaxSize())
         }
         if (!state.signerPresent) {
             Text(
@@ -239,14 +243,18 @@ private val rightColor = Color(0xFFFF9800)
  *
  * **Signer-frame → display-frame mapping** (identical convention to iOS's
  * `SkeletonOverlay`). [Keypoints] are normalized `[0,1]`, **y-up**, in the
- * **signer's** perspective (`+x` = signer's right). `PreviewView` shows the front
- * camera **mirrored** (the natural selfie view — its default), which is the
- * signer's-perspective view, so `+x` already matches screen-right; only the y-up
- * needs undoing for the top-left display origin:
- *   - signer's perspective ↔ mirrored preview:  `screen_x = kp.x · W`
- *   - undo y-up:                                 `screen_y = (1 − kp.y) · H`
- * (Verified on a Pixel 9a, #23: with `(1 − x)` the overlay was flipped relative
- * to the mirrored preview; `x` lands it on the limbs.) This is purely a *display*
+ * **signer's** perspective (`+x` = signer's right). The x-map follows whatever the
+ * `PreviewView` shows, keyed off the lens-derived [mirrored] flag (#57):
+ * `PreviewView` auto-**mirrors** the front camera (natural selfie view, its
+ * default) and auto-**un-mirrors** the rear, so:
+ *   - front, mirrored preview: `+x` already matches screen-right →
+ *     `screen_x = kp.x · W`
+ *   - rear, un-mirrored preview: undo the signer→observer flip →
+ *     `screen_x = (1 − kp.x) · W`
+ *   - undo y-up (both):                          `screen_y = (1 − kp.y) · H`
+ * (Front verified on a Pixel 9a, #23: with `(1 − x)` the overlay was flipped
+ * relative to the mirrored preview; `x` lands it on the limbs. The rear x-flip was
+ * confirmed on a throwaway scratch branch, #57.) This is purely a *display*
  * transform; it never touches the adapter mirror. If the live overlay ever lands
  * flipped/rotated, this mapping and the `PreviewView` mirroring/rotation are the
  * knobs (tuned in lockstep) — a second adapter flip is never the fix (it would
@@ -254,10 +262,17 @@ private val rightColor = Color(0xFFFF9800)
  * FILL_CENTER cropping, fine for the orientation/mirror smoke this screen exists for.
  */
 @Composable
-private fun SkeletonOverlay(keypoints: Keypoints?, modifier: Modifier = Modifier) {
+private fun SkeletonOverlay(
+    keypoints: Keypoints?,
+    mirrored: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Canvas(modifier) {
         val k = keypoints ?: return@Canvas
-        fun at(p: Keypoint) = Offset(p.x.toFloat() * size.width, (1f - p.y.toFloat()) * size.height)
+        fun at(p: Keypoint): Offset {
+            val x = if (mirrored) p.x.toFloat() else (1f - p.x.toFloat())
+            return Offset(x * size.width, (1f - p.y.toFloat()) * size.height)
+        }
 
         // Torso (shoulder line), then each arm shoulder→elbow→wrist.
         drawLine(Color.White.copy(alpha = 0.7f), at(k.leftShoulder), at(k.rightShoulder), strokeWidth = 6f)

@@ -5,9 +5,14 @@ import SwiftUI
 /// to the capture actor's `session` ([3.5], #23).
 ///
 /// **Frame discipline (read alongside `SkeletonOverlay`).** The preview is
-/// **mirrored** (`isVideoMirrored = true`) — the natural selfie view, which is
-/// the signer's perspective, so the overlay maps `Keypoints` straight
-/// (`screen_x = x·W`). This convention is smoke-verified on Android and iOS (#23). It is
+/// **mirrored for the front lens** (`isVideoMirrored = true`) — the natural
+/// selfie view, which is the signer's perspective, so the overlay maps
+/// `Keypoints` straight (`screen_x = x·W`). For the **rear lens** (Interpret,
+/// #56/#57) the preview must **not** be mirrored — you're watching someone else
+/// — so `mirrored` is `false` and the overlay flips to `screen_x = (1 − x)·W`.
+/// `mirrored` is lens-derived by `PreviewViewModel.isPreviewMirrored` and
+/// threaded into both knobs together so they stay in lockstep. This convention
+/// is smoke-verified on Android and iOS (#23; rear via #57). It is
 /// **independent of the analysis path**: the `AVCaptureVideoDataOutput` in
 /// `PoseCaptureSession` stays NON-mirrored (`isVideoMirrored = false`) so the
 /// adapter still sees the observer-perspective buffer it is calibrated against
@@ -28,6 +33,11 @@ struct CameraPreviewView: UIViewRepresentable {
     /// `makeUIView`, where the `nonisolated(unsafe)` access is well-defined.
     let capture: PoseCaptureSession
 
+    /// Whether to mirror the preview for display (lens-derived, #57): `true` for
+    /// the front selfie view, `false` for the rear lens. The matching
+    /// `SkeletonOverlay` must receive the same flag so its x-map stays in lockstep.
+    let mirrored: Bool
+
     /// Portrait. Kept here as the single preview-orientation knob for the smoke.
     static let previewRotationAngle: CGFloat = 90
 
@@ -39,7 +49,7 @@ struct CameraPreviewView: UIViewRepresentable {
         if let connection = preview.connection {
             if connection.isVideoMirroringSupported {
                 connection.automaticallyAdjustsVideoMirroring = false
-                connection.isVideoMirrored = true
+                connection.isVideoMirrored = mirrored
             }
             if connection.isVideoRotationAngleSupported(Self.previewRotationAngle) {
                 connection.videoRotationAngle = Self.previewRotationAngle
