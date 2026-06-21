@@ -5,12 +5,16 @@
 """Generate shared/test_vectors.json from the frozen alphabet + config.
 
 Per pose, places the six post-adapter keypoints so each arm vector hits
-its exact canonical octant angle, then runs the generated geometry back
-through an embedded reference decoder (quantize -> order-insensitive
-lookup -> numeric-mode state machine) and asserts the emitted output
-matches the intended symbol before writing. Running this script IS the
-fixture's correctness check; re-run after any change to
-semaphore_alphabet.json or semaphore_config.json.
+its exact canonical octant angle (geometry from _semaphore_ref.make_kp),
+then runs the generated geometry back through the shared reference decoder
+(_semaphore_ref: quantize -> order-insensitive lookup -> numeric-mode
+state machine) and asserts the emitted output matches the intended symbol
+before writing. Running this script IS the fixture's correctness check;
+re-run after any change to semaphore_alphabet.json or semaphore_config.json.
+
+The reference decoder + keypoint geometry live in _semaphore_ref.py, shared
+with gen_temporal_vectors.py so the per-frame and timed fixtures cannot
+drift from each other (one Python reference, two generators).
 
 Frame (spec sec 4.2, post-adapter): x increases toward the signer's
 right, y increases up, angle measured CCW from +x. Position ids 0..7 sit
@@ -23,153 +27,19 @@ here.
 """
 
 import json
-import math
-from pathlib import Path
 
-SHARED = Path(__file__).resolve().parent.parent
-ALPHABET = json.loads((SHARED / "semaphore_alphabet.json").read_text())
-CONFIG = json.loads((SHARED / "semaphore_config.json").read_text())
-
-TOL = CONFIG["ANGLE_TOLERANCE_DEG"]
-MIN_CONF = CONFIG["MIN_KEYPOINT_CONFIDENCE"]
-
-# id -> angle, read from the alphabet's position model (single source of truth)
-OCTANT = {
-    p["id"]: p["angle_deg"]
-    for p in ALPHABET["_position_model"]["positions"].values()
-}
-LETTERS = ALPHABET["letters"]
-DIGIT_MAP = ALPHABET["numeric_mode"]["digit_map"]
-NUMERALS = ALPHABET["control_signals"]["NUMERALS"]
-REST = ALPHABET["control_signals"]["REST"]
-
-
-# --- reference decoder (mirrors spec 4.3 + 4.5; both platforms must match) ---
-
-
-def build_lookup():
-    """Order-insensitive (sorted-pair) lookup; fails loud on any collision."""
-    table = {}
-    pairs = [(sym, ids["left"], ids["right"]) for sym, ids in LETTERS.items()]
-    pairs.append(("NUMERALS", NUMERALS["left"], NUMERALS["right"]))
-    pairs.append(("REST", REST["left"], REST["right"]))
-    for sym, left, right in pairs:
-        key = tuple(sorted((left, right)))
-        if key in table:
-            raise SystemExit(
-                f"alphabet collision under order-insensitive match: "
-                f"{sym} and {table[key]} both map to {key}"
-            )
-        table[key] = sym
-    return table
-
-
-LOOKUP = build_lookup()
-
-
-def circ_diff(a, b):
-    return abs(((a - b + 180) % 360) - 180)
-
-
-def quantize(angle):
-    """Snap to nearest octant; None if farther than TOL from every octant."""
-    best_id, best = None, 1e9
-    for id_, oct_angle in OCTANT.items():
-        d = circ_diff(angle, oct_angle)
-        if d < best:
-            best, best_id = d, id_
-    return best_id if best <= TOL else None
-
-
-def arm_id(shoulder, wrist):
-    """Position id for one arm, or None if indeterminate (angle or confidence)."""
-    if shoulder[2] < MIN_CONF or wrist[2] < MIN_CONF:
-        return None
-    angle = math.degrees(math.atan2(wrist[1] - shoulder[1], wrist[0] - shoulder[0]))
-    return quantize(angle)
-
-
-def classify(kp):
-    left = arm_id(kp["left_shoulder"], kp["left_wrist"])
-    right = arm_id(kp["right_shoulder"], kp["right_wrist"])
-    sym = None
-    if left is not None and right is not None:
-        sym = LOOKUP.get(tuple(sorted((left, right))))
-    return left, right, sym
-
-
-def interpret(sym, mode):
-    """Map a classified symbol to (emitted_char, new_mode). Spec 4.5, with
-    REST -> ' ' (space; mode persists) per the 2026-06-19 decision."""
-    if sym is None:
-        return "", mode  # indeterminate: emit nothing, mode unchanged
-    if sym == "NUMERALS":
-        return "", "NUMERIC"  # numerals sign
-    if sym == "J" and mode == "NUMERIC":
-        return "", "LETTERS"  # J pose = letters sign, but ONLY as the exit from numeric mode
-    if sym == "REST":
-        return " ", mode  # space; numeric mode is NOT reset by a rest
-    if mode == "NUMERIC" and sym in DIGIT_MAP:
-        return DIGIT_MAP[sym], mode
-    return sym, mode  # in LETTERS mode the J pose lands here -> 'J'
-
-
-def decode_frame(kp, mode):
-    left, right, sym = classify(kp)
-    emit, new_mode = interpret(sym, mode)
-    return emit, new_mode, [left, right]
-
-
-# --- keypoint geometry (post-adapter: x -> signer's right, y up) ---
-
-R_SH = (0.60, 0.55)  # right_shoulder; note right_shoulder.x > left_shoulder.x
-L_SH = (0.40, 0.55)  # left_shoulder
-L_ARM = 0.22  # shoulder -> wrist length (normalized); elbow at the midpoint
-
-
-def _rd(v):
-    return round(v, 6)
-
-
-def make_kp(
-    left_id,
-    right_id,
-    *,
-    left_angle=None,
-    right_angle=None,
-    left_wrist_conf=1.0,
-    right_wrist_conf=1.0,
-    left_shoulder_conf=1.0,
-    right_shoulder_conf=1.0,
-):
-    """Six keypoints placing each arm at its octant angle (or an override)."""
-    la = OCTANT[left_id] if left_angle is None else left_angle
-    ra = OCTANT[right_id] if right_angle is None else right_angle
-
-    def arm(sh, angle, wrist_conf, shoulder_conf):
-        th = math.radians(angle)
-        cos, sin = math.cos(th), math.sin(th)
-        elbow = [_rd(sh[0] + 0.5 * L_ARM * cos), _rd(sh[1] + 0.5 * L_ARM * sin), 1.0]
-        wrist = [_rd(sh[0] + L_ARM * cos), _rd(sh[1] + L_ARM * sin), wrist_conf]
-        return [_rd(sh[0]), _rd(sh[1]), shoulder_conf], elbow, wrist
-
-    l_sh, l_el, l_wr = arm(L_SH, la, left_wrist_conf, left_shoulder_conf)
-    r_sh, r_el, r_wr = arm(R_SH, ra, right_wrist_conf, right_shoulder_conf)
-    return {
-        "left_shoulder": l_sh,
-        "left_elbow": l_el,
-        "left_wrist": l_wr,
-        "right_shoulder": r_sh,
-        "right_elbow": r_el,
-        "right_wrist": r_wr,
-    }
-
-
-def validate_ranges(kp, where):
-    for name, (x, y, c) in kp.items():
-        for val, lbl in ((x, "x"), (y, "y"), (c, "confidence")):
-            if not 0.0 <= val <= 1.0:
-                raise SystemExit(f"{where}: {name}.{lbl}={val} out of [0,1]")
+from _semaphore_ref import (  # the single Python reference both generators share
+    ALPHABET,
+    LETTERS,
+    MIN_CONF,
+    NUMERALS,
+    REST,
+    SHARED,
+    TOL,
+    decode_frame,
+    make_kp,
+    validate_ranges,
+)
 
 
 # --- vector builders ---
