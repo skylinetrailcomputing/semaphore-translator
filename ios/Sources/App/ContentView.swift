@@ -42,10 +42,10 @@ struct ContentView: View {
 
     private var cameraStack: some View {
         ZStack {
-            CameraPreviewView(capture: model.capture)
+            CameraPreviewView(capture: model.capture, mirrored: model.isPreviewMirrored)
                 .ignoresSafeArea()
             if developerMode {
-                SkeletonOverlay(keypoints: model.keypoints)
+                SkeletonOverlay(keypoints: model.keypoints, mirrored: model.isPreviewMirrored)
                     .ignoresSafeArea()
             }
             if model.status == .noSigner {
