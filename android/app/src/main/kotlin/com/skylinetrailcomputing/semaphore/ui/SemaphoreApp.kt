@@ -1,5 +1,6 @@
 package com.skylinetrailcomputing.semaphore.ui
 
+import androidx.camera.core.CameraSelector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -65,7 +66,21 @@ fun SemaphoreApp() {
             }
         }
         composable(Route.INTERPRET) {
-            InterpretStub(onBack = { navController.popBackStack() })
+            // The same shared camera+decode screen as Learn, only rear-facing
+            // (#46/#60) — full-bleed with a floating back chevron over it. Lens +
+            // display mirror are handled inside [SemaphoreScreen]; the decode path
+            // is identical (ADR 0006 — rear needs no adapter change).
+            Box(Modifier.fillMaxSize()) {
+                SemaphoreScreen(
+                    developerMode = developerMode,
+                    cameraLens = CameraSelector.DEFAULT_BACK_CAMERA,
+                    emptyHint = "Point at someone signing",
+                )
+                BackButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
+            }
         }
         composable(Route.SETTINGS) {
             SettingsScreen(

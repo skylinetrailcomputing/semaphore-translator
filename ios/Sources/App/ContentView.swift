@@ -1,8 +1,11 @@
+import AVFoundation
 import SwiftUI
 
-/// The **Learn** screen ([5b], #48) — the front-camera view a signer uses to
-/// sign into the camera and read their decode. The committed text is the visual
-/// hero; the "no signer detected" state (NFR4) and clear/reset (FR5) are kept.
+/// The shared camera+decode screen — driven by **Learn** (front lens, #48) and
+/// **Interpret** (rear lens, #46/#60), which differ only by `cameraPosition` +
+/// display mirror (lens-derived in `PreviewViewModel`) and the empty-state hint.
+/// The committed text is the visual hero; the "no signer detected" state (NFR4)
+/// and clear/reset (FR5) are kept.
 ///
 /// The Epic-4 debug chrome — the 6-keypoint skeleton overlay and the raw
 /// per-frame readout (L/R position ids, mode badge, indeterminate `·`) — is
@@ -13,8 +16,24 @@ import SwiftUI
 /// toggle writes (#50), so the overlay reflects the persisted setting and
 /// updates live when it is flipped. The Android twin is `SemaphoreScreen`.
 struct ContentView: View {
-    @StateObject private var model = PreviewViewModel()
+    @StateObject private var model: PreviewViewModel
     @AppStorage(AppSettingsKeys.developerMode) private var developerMode = false
+    /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
+    /// "Point at someone signing" for Interpret). The only behavioral difference
+    /// between the two modes beyond lens + display mirror.
+    private let emptyHint: String
+
+    /// `cameraPosition` is injected into the `@StateObject` via
+    /// `StateObject(wrappedValue:)` (the autoclosure is evaluated once, so each
+    /// mode's NavigationLink destination gets its own view model). Defaults keep
+    /// the Learn call site (`ContentView()`) front-facing and unchanged.
+    init(
+        cameraPosition: AVCaptureDevice.Position = .front,
+        emptyHint: String = "Sign a letter to begin"
+    ) {
+        _model = StateObject(wrappedValue: PreviewViewModel(cameraPosition: cameraPosition))
+        self.emptyHint = emptyHint
+    }
 
     var body: some View {
         ZStack {
@@ -72,7 +91,7 @@ struct ContentView: View {
     private var committedHero: some View {
         VStack(spacing: 12) {
             if model.committedText.isEmpty {
-                Text("Sign a letter to begin")
+                Text(emptyHint)
                     .font(.system(.title3, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
             } else {
