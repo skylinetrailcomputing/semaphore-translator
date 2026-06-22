@@ -22,17 +22,25 @@ struct ContentView: View {
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
     private let emptyHint: String
+    /// Whether this screen is a passage drill (6a-2, #70) — derived from a non-nil
+    /// `drillTargets`. Drives the drill HUD; the free-form path is otherwise intact.
+    private let isDrill: Bool
 
     /// `cameraPosition` is injected into the `@StateObject` via
     /// `StateObject(wrappedValue:)` (the autoclosure is evaluated once, so each
     /// mode's NavigationLink destination gets its own view model). Defaults keep
     /// the Learn call site (`ContentView()`) front-facing and unchanged.
+    /// `drillTargets` (6a-2, #70) turns the same screen into a passage drill.
     init(
         cameraPosition: AVCaptureDevice.Position = .front,
-        emptyHint: String = "Sign a letter to begin"
+        emptyHint: String = "Sign a letter to begin",
+        drillTargets: String? = nil
     ) {
-        _model = StateObject(wrappedValue: PreviewViewModel(cameraPosition: cameraPosition))
+        _model = StateObject(
+            wrappedValue: PreviewViewModel(
+                cameraPosition: cameraPosition, drillTargets: drillTargets))
         self.emptyHint = emptyHint
+        self.isDrill = drillTargets != nil
     }
 
     var body: some View {
@@ -67,7 +75,7 @@ struct ContentView: View {
                 SkeletonOverlay(keypoints: model.keypoints, mirrored: model.isPreviewMirrored)
                     .ignoresSafeArea()
             }
-            if model.status == .noSigner {
+            if model.status == .noSigner, !(isDrill && (model.drillHUD?.complete ?? false)) {
                 Text("No signer detected")
                     .font(.headline)
                     .foregroundStyle(.white)
@@ -76,12 +84,81 @@ struct ContentView: View {
                     .background(.black.opacity(0.55), in: Capsule())
             }
             VStack(spacing: 12) {
+                if isDrill, let hud = model.drillHUD, !hud.complete {
+                    drillTargetCard(hud)
+                }
                 Spacer()
                 committedHero
                 if developerMode { readout }
             }
             .padding()
+            if isDrill, let hud = model.drillHUD, hud.complete {
+                celebrationOverlay
+            }
         }
+    }
+
+    /// The drill HUD hero (6a-2, #70): the letter to sign next, a progress bar
+    /// through the passage, and an `index / count` tally. The card flashes green on
+    /// a matched commit and red on a miss (stay-until-success — a miss never
+    /// advances), then settles back to neutral.
+    private func drillTargetCard(_ hud: DrillHUD) -> some View {
+        VStack(spacing: 10) {
+            Text("Sign this letter")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.75))
+            Text(targetGlyph(hud.target))
+                .font(.system(size: 72, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            ProgressView(value: Double(hud.index), total: Double(max(hud.count, 1)))
+                .tint(.white)
+            Text("\(hud.index) / \(hud.count)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(drillCardColor, in: RoundedRectangle(cornerRadius: 20))
+        .animation(.easeOut(duration: 0.2), value: model.drillFlash)
+        .animation(.easeOut(duration: 0.2), value: hud.index)
+    }
+
+    /// Neutral by default; tinted briefly by the last commit's success/miss flash.
+    private var drillCardColor: Color {
+        switch model.drillFlash {
+        case .hit: return Color.green.opacity(0.55)
+        case .miss: return Color.red.opacity(0.5)
+        case .none: return Color.black.opacity(0.55)
+        }
+    }
+
+    /// The current target as a glyph: a visible `␣` for a SPACE target, a checkmark
+    /// once the passage is complete (no current target).
+    private func targetGlyph(_ target: Character?) -> String {
+        guard let target else { return "✓" }
+        return target == " " ? "␣" : String(target)
+    }
+
+    /// The small celebration shown on COMPLETE (6a-2): a centered card with a
+    /// replay affordance that calls `resetDrill()` to run the passage again.
+    private var celebrationOverlay: some View {
+        VStack(spacing: 16) {
+            Text("🎉").font(.system(size: 64))
+            Text("Passage complete!")
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+            Button(action: { model.resetDrill() }) {
+                Label("Practice again", systemImage: "arrow.counterclockwise")
+                    .font(.headline)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(.white.opacity(0.2), in: Capsule())
+                    .foregroundStyle(.white)
+            }
+        }
+        .padding(32)
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 24))
+        .transition(.scale.combined(with: .opacity))
     }
 
     /// The committed output (#4.5) as the Learn screen's hero — the debounced
@@ -103,10 +180,15 @@ struct ContentView: View {
                     .truncationMode(.head)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
-                Button(action: { model.clearCommitted() }) {
-                    Label("Clear", systemImage: "xmark.circle.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.8))
+                // Clear is the free-form reset; in a drill, "Practice again" on the
+                // celebrate card is the reset path, so Clear is hidden to avoid
+                // desyncing the visible text from the drill's target index.
+                if !isDrill {
+                    Button(action: { model.clearCommitted() }) {
+                        Label("Clear", systemImage: "xmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
                 }
             }
         }
