@@ -71,6 +71,14 @@ under "App Store / Play Store paperwork" above). No first-launch
 disclaimer-reliance screen is warranted (the app makes no claim a user
 relies on); a plain "About" note suffices.
 
+**Update (6b-9, #87):** although not *warranted*, an
+education/entertainment-only first-launch disclaimer gate was added
+electively — a version-refreshing click-through shown before the Home
+fork on both platforms, distilled from the EULA. This *exceeds* the
+Tier-A minimum. The "First-launch disclaimer screen" box under "In-app
+surfaces" above stays unchecked until **6b-8** records it moving
+waived → satisfied at the final go/no-go.
+
 ## Sign-off
 
 - [ ] All items above either checked or explicitly waived (with

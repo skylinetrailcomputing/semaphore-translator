@@ -5,19 +5,20 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-// Stage just the two contract JSONs the decoder needs into a generated assets
-// dir, copied straight from shared/ at build time. The shipping app must carry
-// the contract on-device (it can't read ../shared/ at runtime), but this keeps
-// shared/ the single source — no hand-maintained copy that could silently drift
-// (the ADR 0001 Decision 2 rule). Surgical on purpose: pointing an asset dir at
-// all of shared/ would also package the PNG fixtures, test vectors, and Python
-// tools into the APK.
+// Stage just the JSONs the app needs into a generated assets dir, copied
+// straight from shared/ at build time: the two contract files the decoder needs,
+// plus the first-launch disclaimer doc (#87). The shipping app must carry these
+// on-device (it can't read ../shared/ at runtime), but this keeps shared/ the
+// single source — no hand-maintained copy that could silently drift (the ADR
+// 0001 Decision 2 rule). Surgical on purpose: pointing an asset dir at all of
+// shared/ would also package the PNG fixtures, test vectors, and Python tools
+// into the APK.
 val sharedContractAssets = layout.buildDirectory.dir("generated/sharedContract/assets")
 
 val copySharedContract by
     tasks.registering(Copy::class) {
         from(rootProject.file("../shared")) {
-            include("semaphore_alphabet.json", "semaphore_config.json")
+            include("semaphore_alphabet.json", "semaphore_config.json", "disclaimer.json")
         }
         into(sharedContractAssets)
     }

@@ -3,23 +3,43 @@ package com.skylinetrailcomputing.semaphore.ui
 import android.content.Context
 
 /**
- * Lean app-settings persistence ([5d], #50). The only setting today is a
- * developer-mode flag that gates the Learn screen's skeleton overlay + raw
- * per-frame readout. Backed by [android.content.SharedPreferences] — synchronous
- * and zero-dependency, the natural parity match for iOS's `@AppStorage`
- * (`UserDefaults`); DataStore's async Flow surface would be overkill for one
- * boolean. Contract knobs (angle-tolerance, commit-hold) are deliberately out of
- * scope (FR7). The iOS twin is `@AppStorage("developerMode")`.
+ * Lean app-settings persistence ([5d], #50). Backed by
+ * [android.content.SharedPreferences] — synchronous and zero-dependency, the
+ * natural parity match for iOS's `@AppStorage` (`UserDefaults`); DataStore's
+ * async Flow surface would be overkill here. Holds the developer-mode flag that
+ * gates the Learn screen's skeleton overlay + raw per-frame readout, plus the
+ * first-launch disclaimer consent ([6b-9], #87). Contract knobs (angle-tolerance,
+ * commit-hold) are deliberately out of scope (FR7). The iOS twin is `@AppStorage`
+ * (`developerMode` + the `DisclaimerKeys`).
  */
 object AppSettings {
     private const val PREFS = "semaphore.settings"
     private const val KEY_DEVELOPER_MODE = "developer_mode"
+    private const val KEY_DISCLAIMER_HASH = "disclaimer_accepted_hash"
+    private const val KEY_DISCLAIMER_AT = "disclaimer_accepted_at"
 
     fun developerMode(context: Context): Boolean =
         prefs(context).getBoolean(KEY_DEVELOPER_MODE, false)
 
     fun setDeveloperMode(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_DEVELOPER_MODE, enabled).apply()
+    }
+
+    /**
+     * SHA-256 hex of the disclaimer doc the user last accepted ([6b-9], #87), or
+     * empty if never accepted. Compared against the bundled doc's hash to decide
+     * whether to re-show the gate. The iOS twin is `@AppStorage("disclaimerAcceptedHash")`.
+     */
+    fun acceptedDisclaimerHash(context: Context): String =
+        prefs(context).getString(KEY_DISCLAIMER_HASH, "") ?: ""
+
+    /** Persist disclaimer consent: the accepted hash + a local epoch-millis timestamp. */
+    fun recordDisclaimerAccepted(context: Context, hash: String, atEpochMillis: Long) {
+        prefs(context)
+            .edit()
+            .putString(KEY_DISCLAIMER_HASH, hash)
+            .putLong(KEY_DISCLAIMER_AT, atEpochMillis)
+            .apply()
     }
 
     private fun prefs(context: Context) =
