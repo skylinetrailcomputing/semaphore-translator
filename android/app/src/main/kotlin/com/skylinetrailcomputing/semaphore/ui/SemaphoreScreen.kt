@@ -91,7 +91,8 @@ fun SemaphoreScreen(
         !hasCamera ->
             Message(
                 "Camera access needed",
-                "Semaphore Translator reads flag positions from the camera. " +
+                "Semaphore Translator reads semaphore flag positions from the camera " +
+                    "on-device. Frames are processed live and never stored or transmitted. " +
                     "Grant camera access to use the live preview.",
             )
         else -> CameraScreen(developerMode, cameraLens, emptyHint)
