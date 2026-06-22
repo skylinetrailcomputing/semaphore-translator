@@ -1,0 +1,18 @@
+{
+  "_doc": "First-launch disclaimer shown by both apps before the Home screen (Epic 6b, #87). Language-neutral and loaded verbatim by iOS and Android so the text — and the SHA-256 consent hash both platforms compute over this file's raw bytes — are identical. The hash is the consent key: editing ANY byte here (including `version`) changes the hash, which re-shows the gate on next launch (the 'version-refreshing click-through'). This is the distilled, in-app summary; the full, governing texts are the hosted EULA and Privacy Policy linked below.",
+  "version": "2026-06-22.1",
+  "title": "Before you start",
+  "body": [
+    "Semaphore Translator is for learning, practice, and entertainment only.",
+    "It estimates flag-semaphore arm positions from your camera using on-device pose estimation, and it can misread or miss a position. Results are best-effort and are not a guarantee.",
+    "Don't rely on it for emergencies, safety-critical or operational use, navigation, or passing along important information. The worst case is a wrong character on your screen — keep your use to where that is harmless.",
+    "Camera frames are processed live on your device and are never stored or transmitted. The app needs no network and works fully offline.",
+    "This is pre-release beta software, provided “as is”, without warranty of any kind. It may change or be withdrawn at any time."
+  ],
+  "agreement": "By tapping “Agree & Continue” you confirm you have read this notice and agree to the End User License Agreement and Privacy Policy.",
+  "links": {
+    "eula": "https://skylinetrailcomputing.github.io/semaphore-translator-legal/eula.html",
+    "privacy": "https://skylinetrailcomputing.github.io/semaphore-translator-legal/privacy.html"
+  },
+  "accept_label": "Agree & Continue"
+}

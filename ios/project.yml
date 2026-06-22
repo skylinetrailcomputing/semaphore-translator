@@ -28,6 +28,10 @@ targets:
         buildPhase: resources
       - path: ../shared/semaphore_config.json
         buildPhase: resources
+      # The first-launch disclaimer doc (#87), bundled verbatim so the gate's
+      # SHA-256 consent hash matches Android's over the same bytes.
+      - path: ../shared/disclaimer.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore
