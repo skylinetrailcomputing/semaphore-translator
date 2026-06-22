@@ -1,6 +1,7 @@
 package com.skylinetrailcomputing.semaphore.ui
 
 import android.content.Context
+import com.skylinetrailcomputing.semaphore.core.PassageSource
 import org.json.JSONObject
 
 /** One bundled sight-read stock passage (Epic 6a, #71 / 6a-3). iOS twin: `StockPassage`. */
@@ -49,7 +50,23 @@ data class StockPassages(val passages: List<StockPassage>) {
                     add(StockPassage(o.getString("id"), o.getString("hint"), o.getString("text")))
                 }
             }
-            return StockPassages(list)
+            // Defence-in-depth: drop any entry whose text isn't a valid drill passage
+            // (empty, not already-clean, or over the cap) so a malformed bundled asset
+            // fails soft per-entry rather than starting an empty/garbled drill. The
+            // checked-in file is asserted well-formed by SanitizeParityTest; this
+            // guards a future edit that ships without the tests.
+            return StockPassages(list.filter(::isValid))
+        }
+
+        /**
+         * A stock entry is usable iff its text sanitises to itself (already-clean),
+         * is non-empty, and is within the target cap — the same invariants the
+         * generator + parity tests assert on the checked-in file.
+         */
+        private fun isValid(passage: StockPassage): Boolean {
+            val sanitized = PassageSource.sanitize(passage.text)
+            return sanitized.isNotEmpty() && sanitized == passage.text &&
+                sanitized.length <= PassageSource.MAX_TARGETS
         }
     }
 }

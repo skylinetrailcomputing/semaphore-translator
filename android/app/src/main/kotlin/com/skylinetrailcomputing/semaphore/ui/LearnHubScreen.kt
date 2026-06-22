@@ -120,12 +120,10 @@ fun CustomPassageScreen(
             )
             OutlinedTextField(
                 value = text,
-                // Bound a pathological paste so sanitising stays cheap; the sanitised
-                // cap (below) is the user-facing limit.
-                onValueChange = {
-                    text = if (it.length > PassageSource.MAX_TARGETS * 2)
-                        it.take(PassageSource.MAX_TARGETS * 2) else it
-                },
+                // No raw-length cap: the sanitiser is O(n)-cheap and the *visible*
+                // sanitised counter (below) is the only bound, so input is never
+                // silently truncated.
+                onValueChange = { text = it },
                 label = { Text("Your passage") },
                 keyboardOptions =
                     KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
@@ -175,6 +173,8 @@ private fun PreviewCard(sanitized: String, withinCap: Boolean) {
                 fontFamily = FontFamily.Monospace,
                 fontSize = 18.sp,
             )
+            // length == target count: the sanitiser's output is pure ASCII, so one
+            // Char is exactly one drill target.
             Text(
                 "${sanitized.length} / ${PassageSource.MAX_TARGETS}",
                 color = if (withinCap) Color.White.copy(alpha = 0.6f) else Color.Red,

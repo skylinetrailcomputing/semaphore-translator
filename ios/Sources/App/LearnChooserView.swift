@@ -59,14 +59,16 @@ struct LearnChooserView: View {
 struct CustomPassageView: View {
     @State private var text = "HELLO"
 
-    /// The exact target string the drill will run — the sanitiser is the single
-    /// source of truth, so the preview can't disagree with what's drilled.
-    private var sanitized: String { PassageSource.sanitize(text) }
-    private var withinCap: Bool { sanitized.count <= PassageSource.maxTargets }
-    private var canStart: Bool { !sanitized.isEmpty && withinCap }
-
     var body: some View {
-        ZStack {
+        // Sanitise once per render (the Kotlin twin computes it once per
+        // recomposition too); the sanitiser is the single source of truth, so the
+        // preview can't disagree with what's drilled. No raw-length cap: the
+        // sanitiser is O(n)-cheap and the *visible* sanitised counter (below) is the
+        // only bound, so input is never silently truncated.
+        let sanitized = PassageSource.sanitize(text)
+        let withinCap = sanitized.count <= PassageSource.maxTargets
+        let canStart = !sanitized.isEmpty && withinCap
+        return ZStack {
             Color.black.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 20) {
                 Text("Type anything — letters, digits, and spaces. Other characters "
@@ -81,15 +83,8 @@ struct CustomPassageView: View {
                     .padding()
                     .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                     .foregroundStyle(.white)
-                    // Bound a pathological paste so sanitising stays cheap; the
-                    // sanitised cap (below) is the user-facing limit.
-                    .onChange(of: text) { _, new in
-                        if new.count > PassageSource.maxTargets * 2 {
-                            text = String(new.prefix(PassageSource.maxTargets * 2))
-                        }
-                    }
 
-                previewCard
+                previewCard(sanitized: sanitized, withinCap: withinCap)
 
                 Spacer()
 
@@ -121,7 +116,7 @@ struct CustomPassageView: View {
     /// so trims/collapses are legible), with a target counter. Empty-state copy names
     /// the supported set so a field of only-dropped characters doesn't read as a
     /// broken Start button.
-    private var previewCard: some View {
+    private func previewCard(sanitized: String, withinCap: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Preview")
                 .font(.caption)
@@ -136,6 +131,8 @@ struct CustomPassageView: View {
                     .foregroundStyle(.white)
                     .lineLimit(3)
                     .truncationMode(.tail)
+                // `count` == target count: the sanitiser's output is pure ASCII, so
+                // one Character is exactly one drill target.
                 Text("\(sanitized.count) / \(PassageSource.maxTargets)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(withinCap ? .white.opacity(0.6) : .red)

@@ -97,6 +97,18 @@
       "_note": "A run of only separators -> empty (no leading flush)."
     },
     {
+      "name": "crlf_collapse",
+      "input": "A\r\nB",
+      "expected": "A B",
+      "_note": "Windows CRLF (CR+LF) run collapses to one SPACE (clipboard paste)."
+    },
+    {
+      "name": "lone_cr_separator",
+      "input": "A\rB",
+      "expected": "A B",
+      "_note": "A bare CR is a separator like LF."
+    },
+    {
       "name": "punct_concatenates",
       "input": "READY-SET-GO",
       "expected": "READYSETGO",

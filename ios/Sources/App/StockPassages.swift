@@ -30,6 +30,21 @@ struct StockPassages: Decodable, Equatable {
         guard let url = bundle.url(forResource: "stock_passages", withExtension: "json") else {
             throw LoadError.missingResource("stock_passages.json")
         }
-        return try JSONDecoder().decode(StockPassages.self, from: Data(contentsOf: url))
+        let decoded = try JSONDecoder().decode(StockPassages.self, from: Data(contentsOf: url))
+        // Defence-in-depth: drop any entry whose text isn't a valid drill passage
+        // (empty, not already-clean, or over the cap) so a malformed bundled asset
+        // fails soft per-entry rather than starting an empty/garbled drill. The
+        // checked-in file is asserted well-formed by `SanitizeParityTests`; this
+        // guards a future edit that ships without the tests.
+        return StockPassages(passages: decoded.passages.filter(isValid))
+    }
+
+    /// A stock entry is usable iff its text sanitises to itself (already-clean),
+    /// is non-empty, and is within the target cap — the same invariants the
+    /// generator + parity tests assert on the checked-in file.
+    static func isValid(_ passage: StockPassage) -> Bool {
+        let sanitized = PassageSource.sanitize(passage.text)
+        return !sanitized.isEmpty && sanitized == passage.text
+            && sanitized.count <= PassageSource.maxTargets
     }
 }
