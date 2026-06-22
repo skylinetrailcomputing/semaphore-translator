@@ -1,9 +1,8 @@
 import SwiftUI
 
 /// The passive **About** surface ([6b-4], #82) — the always-reachable counterpart
-/// to the first-launch disclaimer gate ([6b-9], #87). Reached from the Settings
-/// surface (today's `SettingsView`; the 6a-4 regular-user surface, #72, will
-/// re-home the entry row). Shows the app version/build, a one-line AS-IS beta
+/// to the first-launch disclaimer gate ([6b-9], #87). Reached from the regular-user
+/// `SettingsView` ([6a-4], #72). Shows the app version/build, a one-line AS-IS beta
 /// notice, and links to the *hosted* EULA + Privacy Policy. The links reuse the
 /// URLs from the bundled `disclaimer.json` (via `DisclaimerDocument`) — the same
 /// single source the gate uses, so About and the gate can never point at

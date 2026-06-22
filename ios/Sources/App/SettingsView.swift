@@ -1,43 +1,30 @@
 import SwiftUI
 
-/// Persisted app-settings keys. Centralized so the Settings toggle and the Learn
-/// screen (`ContentView`) bind to the *same* `UserDefaults` key — no stringly
-/// drift between the writer and the reader. The Android twin is `AppSettings`.
-enum AppSettingsKeys {
-    static let developerMode = "developerMode"
-}
-
-/// The lean **Settings** surface ([5d], #50). Hosts the Developer-mode toggle
-/// (which gates the Learn screen's skeleton overlay + raw per-frame readout — the
-/// maintainer smoke surface) and the **About** entry ([6b-4], #82). The toggle is
-/// `@AppStorage`, so flipping it here updates the same `UserDefaults` flag
-/// `ContentView` reads — persisted across launches, no manual save. Contract knobs
-/// (angle-tolerance, commit-hold) are deliberately out of scope (FR7); if ever
-/// surfaced they'd be dev-only runtime overrides, never mutating the frozen JSON.
-/// The 6a-4 regular-user surface (#72) will re-home the About row out of this
-/// dev-ish screen. The Android twin is `SettingsScreen`.
+/// The regular-user **Settings** surface ([6a-4], #72) — the gear destination from
+/// Home. Distinct from the dev-ish `DeveloperSettingsView` it was split from: this
+/// is the surface a beta tester sees, and the home for the assist/practice-mode
+/// toggles (6a-5 #73, 6a-6 #74) that land in their own section above About. It
+/// hosts the always-reachable **About** entry ([6b-4], #82) and a **Developer**
+/// row that pushes the maintainer smoke surface one level deeper, off this
+/// user-facing screen. The Android twin is `SettingsScreen`.
 struct SettingsView: View {
-    @AppStorage(AppSettingsKeys.developerMode) private var developerMode = false
-
     var body: some View {
         Form {
-            Section {
-                // Restore the conventional green on-state track: the app root
-                // sets `.tint(.white)` for the back chevrons, which otherwise
-                // leaks in and paints the toggle's on-track white.
-                Toggle("Developer mode", isOn: $developerMode)
-                    .tint(.green)
-            } footer: {
-                Text(
-                    "Shows the skeleton overlay and raw per-frame readout in "
-                    + "Learn mode — the maintainer smoke surface.")
-            }
+            // Assist & practice-mode toggles (6a-5 #73, 6a-6 #74) land here as
+            // their own section — the primary regular-user content. Until then,
+            // About + Developer are the only rows in the closed-beta cut.
 
-            // The always-reachable About/privacy surface ([6b-4], #82): app
-            // version, AS-IS beta line, and the hosted EULA + Privacy links.
             Section {
+                // The always-reachable About/privacy surface ([6b-4], #82): app
+                // version, AS-IS beta line, and the hosted EULA + Privacy links.
                 NavigationLink("About") {
                     AboutView()
+                }
+                // Developer mode lives one level deeper ([5d], #50): it's a
+                // maintainer smoke surface, not regular-user config, so it gets its
+                // own screen rather than a toggle on this surface.
+                NavigationLink("Developer") {
+                    DeveloperSettingsView()
                 }
             }
         }
