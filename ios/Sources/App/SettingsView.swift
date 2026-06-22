@@ -7,14 +7,15 @@ enum AppSettingsKeys {
     static let developerMode = "developerMode"
 }
 
-/// The lean **Settings** surface ([5d], #50). Its only content for now is the
-/// Developer-mode toggle, which gates the Learn screen's skeleton overlay + raw
-/// per-frame readout (the maintainer smoke surface). The toggle is `@AppStorage`,
-/// so flipping it here updates the same `UserDefaults` flag `ContentView` reads —
-/// persisted across launches, no manual save. Contract knobs (angle-tolerance,
-/// commit-hold) are deliberately out of scope (FR7); if ever surfaced they'd be
-/// dev-only runtime overrides, never mutating the frozen JSON. The Android twin
-/// is `SettingsScreen`.
+/// The lean **Settings** surface ([5d], #50). Hosts the Developer-mode toggle
+/// (which gates the Learn screen's skeleton overlay + raw per-frame readout — the
+/// maintainer smoke surface) and the **About** entry ([6b-4], #82). The toggle is
+/// `@AppStorage`, so flipping it here updates the same `UserDefaults` flag
+/// `ContentView` reads — persisted across launches, no manual save. Contract knobs
+/// (angle-tolerance, commit-hold) are deliberately out of scope (FR7); if ever
+/// surfaced they'd be dev-only runtime overrides, never mutating the frozen JSON.
+/// The 6a-4 regular-user surface (#72) will re-home the About row out of this
+/// dev-ish screen. The Android twin is `SettingsScreen`.
 struct SettingsView: View {
     @AppStorage(AppSettingsKeys.developerMode) private var developerMode = false
 
@@ -30,6 +31,14 @@ struct SettingsView: View {
                 Text(
                     "Shows the skeleton overlay and raw per-frame readout in "
                     + "Learn mode — the maintainer smoke surface.")
+            }
+
+            // The always-reachable About/privacy surface ([6b-4], #82): app
+            // version, AS-IS beta line, and the hosted EULA + Privacy links.
+            Section {
+                NavigationLink("About") {
+                    AboutView()
+                }
             }
         }
         .navigationTitle("Settings")
