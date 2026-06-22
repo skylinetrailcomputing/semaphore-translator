@@ -1,10 +1,10 @@
 # ADR 0006 — The rear camera needs no decode-path change (the §3.2 mirror seam)
 
-- **Status:** Proposed (provisional). The decision below is recorded and supported
-  by static evidence, the parity harness, a machine-checked twin table, and a
-  prior on-device scratch smoke. It flips to **Accepted** only when the live
-  per-letter sign-off (see *Live verification protocol*) is attached — the one
-  acceptance gate this ADR cannot close by argument.
+- **Status:** Accepted (2026-06-22). The decision below was confirmed on-device on
+  **both** platforms — see *Acceptance* at the end. It was originally recorded as
+  Proposed (provisional), pending the live per-letter sign-off that the static
+  evidence, the parity harness, and the machine-checked twin table could not close
+  by argument; that sign-off has now passed.
 - **Issue:** [#58](https://github.com/skylinetrailcomputing/semaphore-translator/issues/58)
   ([5.2c], the rear-camera "risk ticket"); part of epic
   [#46](https://github.com/skylinetrailcomputing/semaphore-translator/issues/46).
@@ -233,10 +233,39 @@ welcome but not required to close #58.
 - **A dev-only coordinate probe ships** (behind Developer mode, #50), reusable for
   #59. It is consumer-side logging only — no behavior change, nothing logged when
   Developer mode is off.
-- **This ADR stays Proposed until the live per-letter sign-off is attached** to
-  #58 (both devices). On a *pass*, flip to Accepted and record the probe lines +
-  the per-letter results. On a *fail*, the fix is confined to the adapter /
-  capture-mirror config (NFR3) and this ADR is rewritten around the pinned flip.
+- **The live per-letter sign-off passed on both devices (2026-06-22)** — this ADR
+  is now Accepted; see *Acceptance*. Had it failed, the fix would have been
+  confined to the adapter / capture-mirror config (NFR3) with this ADR rewritten
+  around the pinned flip.
+
+## Acceptance (2026-06-22 — live rear read passed both platforms)
+
+The live per-letter rear read passed on both target devices, flipping this ADR
+Proposed → Accepted. Verification ran on a throwaway `scratch/58-rear-verify`
+branch (rear-pinned the Learn entry at the two #56 call sites; built on this PR
+branch so it carried the probe; never merged, deleted after). The decode path
+shipped here is byte-unchanged.
+
+- **Android (Pixel 9a) — numeric, full A–Z.** Rear lens pointed at the NATO A–Z
+  reference video; the `SemaphoreProbe` coordinate probe captured all 26 letters.
+  **Every letter decoded to itself, never its mirror twin:** `A→A` (not G),
+  `K→K` (not V), `Q→Q` (not Y); the canary `L→{5,1}→L` held (not INDETERMINATE);
+  and the top check `T→{4,3}→T` — **not** NUMERALS. Both arm orderings of each
+  letter mapped to the one canonical class (order-insensitive matching), all four
+  symmetric controls (D/N/R/U) and both sides of every twin pair were correct, and
+  the chirality was numerically right throughout (`R.sh.x > L.sh.x`; right-arm-out
+  poses had `R.wr.x > R.sh.x`). Zero mis-decodes across the alphabet.
+- **iOS (iPhone 16) — on-screen read, full A–Z.** Same rear-pinned build via Xcode,
+  Developer mode on; the committed text matched the A–Z video and the mode badge
+  stayed **LETTERS** throughout (a flipped `T` would have flipped it to NUMERIC).
+  The `log` CLI cannot stream a connected device and iOS 26.5 blocks the usual
+  device-log relays, so iOS was a visual read rather than the numeric probe —
+  sufficient for the per-letter mirror verdict (the on-screen ids + committed
+  letter are the quantized geometry).
+
+Both platforms confirm: **no flip, no adapter change, decode path unchanged.** The
+parity harness stays the downstream regression net; the camera-side geometry is
+now empirically pinned per platform (Epic-3 discipline).
 
 ## How to run
 
