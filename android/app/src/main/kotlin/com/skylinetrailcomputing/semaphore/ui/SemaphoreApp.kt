@@ -28,6 +28,52 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 /**
+ * The app's composition root. On launch it shows the first-launch disclaimer gate
+ * ([6b-9], #87) until the user accepts the *current* disclaimer doc, then mounts
+ * [MainNavHost] (the Home → mode fork). Consent is keyed on the doc's content
+ * hash (persisted via [AppSettings]), so the gate reappears only when the bundled
+ * `shared/disclaimer.json` changes. The iOS twin is `SemaphoreTranslatorApp`'s
+ * `RootView`.
+ */
+@Composable
+fun SemaphoreApp() {
+    val context = LocalContext.current
+    // Load the bundled first-launch disclaimer once. A packaging failure (missing
+    // or corrupt asset) is captured so the gate fails closed rather than silently
+    // skipping it.
+    val disclaimer = remember { runCatching { DisclaimerDocument.loadFromAssets(context) } }
+    val document = disclaimer.getOrNull()
+    // Seeded from the persisted hash; flipped true on accept. The gate reappears
+    // only when the bundled doc's hash stops matching the stored one.
+    var accepted by remember {
+        mutableStateOf(
+            document != null &&
+                !DisclaimerDocument.needsConsent(
+                    acceptedHash = AppSettings.acceptedDisclaimerHash(context),
+                    documentHash = document.contentHash,
+                )
+        )
+    }
+
+    when {
+        document == null -> DisclaimerUnavailableScreen()
+        !accepted ->
+            DisclaimerGateScreen(
+                document,
+                onAccept = {
+                    AppSettings.recordDisclaimerAccepted(
+                        context,
+                        document.contentHash,
+                        System.currentTimeMillis(),
+                    )
+                    accepted = true
+                },
+            )
+        else -> MainNavHost()
+    }
+}
+
+/**
  * The app's navigation host ([5a], #47). Opens on the no-camera [HomeScreen] and
  * forks to the two camera modes. The camera (and its permission prompt) only
  * starts once a mode destination composes — `NavHost` composes just the current
@@ -36,7 +82,7 @@ import androidx.navigation.compose.rememberNavController
  * the camera. The iOS twin is `SemaphoreTranslatorApp`'s `NavigationStack`.
  */
 @Composable
-fun SemaphoreApp() {
+private fun MainNavHost() {
     val context = LocalContext.current
     val navController = rememberNavController()
     // Developer-mode flag ([5d], #50) hoisted here so a single source of truth
