@@ -1,5 +1,6 @@
 import AVFoundation
 import SwiftUI
+import os
 
 /// Drives the live debug screen ([3.5], #23): owns the capture session, the
 /// decoder, and the temporal `Committer` (#4.5). It consumes the
@@ -51,6 +52,15 @@ final class PreviewViewModel: ObservableObject {
     private var streamTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
     private var lastFrameAt = Date.distantPast
+
+    /// Dev-only coordinate probe (#58 / ADR 0006). The geometry-seam smoke for the
+    /// rear lens: a flipped analysis buffer would mirror-twin every asymmetric
+    /// letter *silently*, so this logs the post-adapter geometry the decode rests
+    /// on so a maintainer can read it numerically off-device.
+    private static let probeLog = Logger(
+        subsystem: "com.skylinetrailcomputing.semaphore", category: "geometry-probe")
+    /// Throttle the probe to one line per id change (not per frame).
+    private var lastProbeIds: (Int?, Int?)?
 
     /// If no full skeleton arrives for this long, declare "no signer detected"
     /// (NFR4). The capture stream simply stops yielding when a signer leaves the
@@ -138,6 +148,34 @@ final class PreviewViewModel: ObservableObject {
         character = raw.emit
         mode = committer.currentMode
         status = .tracking
+
+        logProbe(kp: kp, leftId: raw.ids[0], rightId: raw.ids[1], char: raw.emit)
+    }
+
+    /// Dev-only coordinate probe (#58 / ADR 0006): when developer mode is on, log
+    /// the post-adapter, signer's-perspective x of each shoulder/wrist plus the
+    /// quantized ids + emitted char, once per id change. The numeric backstop for
+    /// the rear-camera mirror smoke: for a correctly-oriented read the signer's
+    /// right shoulder must sit at greater x than the left (`R.sh.x > L.sh.x`) and
+    /// an arm extended to the signer's right has `wrist.x > shoulder.x`; a flipped
+    /// rear buffer inverts both. Reads *post-adapter* coords deliberately — the
+    /// adapter transform is byte-pinned by the native fixtures, so any rear
+    /// chirality fault surfaces here, in the consumer, with no need to instrument
+    /// the quarantined capture path (spec §3.2).
+    private func logProbe(kp: Keypoints, leftId: Int?, rightId: Int?, char: String) {
+        guard UserDefaults.standard.bool(forKey: AppSettingsKeys.developerMode) else { return }
+        if let last = lastProbeIds, last.0 == leftId, last.1 == rightId { return }
+        lastProbeIds = (leftId, rightId)
+        let lens = cameraPosition == .back ? "rear" : "front"
+        func f(_ v: Double) -> String { String(format: "%.3f", v) }
+        let l = leftId.map(String.init) ?? "—"
+        let r = rightId.map(String.init) ?? "—"
+        let c = char.isEmpty ? "·" : char
+        let msg =
+            "lens=\(lens) ids=[\(l),\(r)] char=\(c)  "
+            + "L(sh.x=\(f(kp.leftShoulder.x)) wr.x=\(f(kp.leftWrist.x))) "
+            + "R(sh.x=\(f(kp.rightShoulder.x)) wr.x=\(f(kp.rightWrist.x)))"
+        Self.probeLog.debug("\(msg, privacy: .public)")
     }
 
     private func startWatchdog() {
