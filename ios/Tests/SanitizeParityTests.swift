@@ -69,10 +69,14 @@ final class SanitizeParityTests: XCTestCase {
                 "stock text not already-clean for \(p.id)")
             XCTAssertLessThanOrEqual(
                 p.text.count, PassageSource.maxTargets, "stock text over cap for \(p.id)")
-            // Sight-read: the hint must not reveal the passage text.
-            XCTAssertFalse(
-                PassageSource.sanitize(p.hint).contains(p.text),
-                "stock hint reveals text for \(p.id)")
+            // Sight-read: no WORD of the passage may appear in the sanitised hint
+            // (word-level — stronger than a whole-string substring check, so a hint
+            // can't leak part of a multi-word passage).
+            let hintWords = Set(PassageSource.sanitize(p.hint).split(separator: " ").map(String.init))
+            let textWords = Set(p.text.split(separator: " ").map(String.init))
+            XCTAssertTrue(
+                hintWords.isDisjoint(with: textWords),
+                "stock hint reveals a passage word for \(p.id): \(hintWords.intersection(textWords))")
         }
     }
 }

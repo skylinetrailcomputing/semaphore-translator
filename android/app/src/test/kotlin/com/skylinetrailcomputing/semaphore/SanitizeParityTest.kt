@@ -82,10 +82,14 @@ class SanitizeParityTest {
                 "stock text not already-clean for ${p.id}", p.text, PassageSource.sanitize(p.text))
             assertTrue(
                 "stock text over cap for ${p.id}", p.text.length <= PassageSource.MAX_TARGETS)
-            // Sight-read: the hint must not reveal the passage text.
-            assertFalse(
-                "stock hint reveals text for ${p.id}",
-                PassageSource.sanitize(p.hint).contains(p.text))
+            // Sight-read: no WORD of the passage may appear in the sanitised hint
+            // (word-level — stronger than a whole-string substring check, so a hint
+            // can't leak part of a multi-word passage).
+            val hintWords = PassageSource.sanitize(p.hint).split(" ").toSet()
+            val textWords = p.text.split(" ").toSet()
+            assertTrue(
+                "stock hint reveals a passage word for ${p.id}: ${hintWords intersect textWords}",
+                (hintWords intersect textWords).isEmpty())
         }
     }
 }

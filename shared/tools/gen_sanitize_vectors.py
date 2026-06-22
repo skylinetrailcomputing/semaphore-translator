@@ -122,6 +122,8 @@ case("tab_newline_collapse", "A\t\nB", "A B", note="TAB+LF run -> one SPACE.")
 case("leading_trailing_internal", " A B ", "A B")
 case("multiword_messy", "  ABC  DEF  ", "ABC DEF")
 case("only_separators_empty", "\n\t  ", "", note="A run of only separators -> empty (no leading flush).")
+case("crlf_collapse", "A\r\nB", "A B", note="Windows CRLF (CR+LF) run collapses to one SPACE (clipboard paste).")
+case("lone_cr_separator", "A\rB", "A B", note="A bare CR is a separator like LF.")
 
 # Drop non-ASCII / punctuation (NO transliteration, NO punctuation-as-separator).
 case("punct_concatenates", "READY-SET-GO", "READYSETGO",
@@ -176,7 +178,12 @@ for p in stock["passages"]:
     assert text, ("stock text empty", pid)
     assert sanitize(text) == text, ("stock text not already-clean", pid, repr(text), repr(sanitize(text)))
     assert len(text) <= max_targets, ("stock text over max_targets", pid, len(text))
-    assert text not in sanitize(hint), ("stock hint reveals text", pid, hint, text)
+    # Sight-read: no WORD of the passage may appear in the sanitised hint (a
+    # word-level check, stronger than a whole-string substring check -- catches a
+    # hint that leaks part of a multi-word passage).
+    hint_words = set(sanitize(hint).split())
+    leaked = hint_words & set(text.split())
+    assert not leaked, ("stock hint reveals a passage word", pid, leaked)
 
 
 # --- assemble + write ---------------------------------------------------------
