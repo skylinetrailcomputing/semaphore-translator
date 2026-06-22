@@ -272,6 +272,37 @@ struct DrillVectors: Decodable {
     }
 }
 
+// MARK: - source_contract.json (Epic 6a #71; the passage-source contract)
+
+/// The light, machine-checkable slice of the source contract: `version`, the frozen
+/// `supported_chars` output alphabet (37 strings: SPACE, 0-9, A-Z), and the
+/// `max_targets` cap. The behavioural enforcement is `sanitize_vectors.json`.
+struct SourceContract: Decodable {
+    let version: String
+    let supportedChars: [String]
+    let maxTargets: Int
+
+    enum CodingKeys: String, CodingKey {
+        case version
+        case supportedChars = "supported_chars"
+        case maxTargets = "max_targets"
+    }
+}
+
+// MARK: - sanitize_vectors.json (Epic 6a #71; the passage-source parity fixtures)
+
+/// One sanitisation vector: a raw `input` and the `expected` sanitised target
+/// string. Driven through the shipping `PassageSource.sanitize`.
+struct SanitizeCase: Decodable {
+    let name: String
+    let input: String
+    let expected: String
+}
+
+struct SanitizeVectors: Decodable {
+    let cases: [SanitizeCase]
+}
+
 // MARK: - locating the shared contract
 
 /// Resolves the repo's `shared/` directory and loads the JSON contract files.
