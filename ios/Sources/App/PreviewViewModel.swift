@@ -2,6 +2,24 @@ import AVFoundation
 import SwiftUI
 import os
 
+/// A snapshot of the drill HUD (6a-2, #70), republished on every commit while a
+/// drill is active. `nil` on the free-form Learn/Interpret screens. Mirrors the
+/// `DrillSession` getters so the view never touches the engine directly.
+struct DrillHUD: Equatable {
+    /// The character to sign next (`DrillSession.currentTarget`); `nil` once complete.
+    let target: Character?
+    /// Targets matched so far (the resulting index after the last commit).
+    let index: Int
+    /// Total targets in the passage.
+    let count: Int
+    /// Reached the end of the passage — the celebrate signal.
+    let complete: Bool
+}
+
+/// The transient success/miss highlight for the drill target card. Cleared a beat
+/// after each commit so the card settles back to neutral.
+enum DrillFlash: Equatable { case hit, miss }
+
 /// Drives the live debug screen ([3.5], #23): owns the capture session, the
 /// decoder, and the temporal `Committer` (#4.5). It consumes the
 /// `AsyncStream<PoseFrame>` and, per frame, runs the mode-independent `classify`
@@ -34,6 +52,11 @@ final class PreviewViewModel: ObservableObject {
     /// emit the committer returns. Persists across a no-signer `reset()` (that
     /// clears the committer's *internal* state, not the text already signed).
     @Published private(set) var committedText: String = ""
+    /// Live drill HUD state (6a-2, #70), or `nil` when this screen isn't a drill.
+    /// Republished on every commit the drill observes; the view reads only this.
+    @Published private(set) var drillHUD: DrillHUD?
+    /// The transient highlight for the last drill commit; auto-clears after a beat.
+    @Published private(set) var drillFlash: DrillFlash?
 
     let capture = PoseCaptureSession()
     /// Which lens to drive. Front for the Learn screen (the default keeps that
@@ -49,8 +72,14 @@ final class PreviewViewModel: ObservableObject {
     var isPreviewMirrored: Bool { cameraPosition == .front }
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
+    /// The drill engine (6a-1, ADR 0007) for a passage-drill screen, or `nil` for
+    /// free-form Learn/Interpret. Strictly downstream of the committer: it observes
+    /// only committed characters and never the decode/adapter/commit core.
+    private let drill: DrillSession?
     private var streamTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
+    /// Clears `drillFlash` a beat after the last commit; cancelled if another lands.
+    private var flashTask: Task<Void, Never>?
     private var lastFrameAt = Date.distantPast
 
     /// Dev-only coordinate probe (#58 / ADR 0006). The geometry-seam smoke for the
@@ -68,8 +97,22 @@ final class PreviewViewModel: ObservableObject {
     /// is detected by a freshness watchdog rather than an explicit event.
     private let signerTimeout: TimeInterval = 0.5
 
-    init(cameraPosition: AVCaptureDevice.Position = .front) {
+    /// `drillTargets` is the passage to drill (6a-2, #70); `nil` is free-form
+    /// Learn/Interpret (unchanged). Each platform builds its own `DrillSession`
+    /// from the same hardcoded starter passage — the custom source lands in 6a-3.
+    init(cameraPosition: AVCaptureDevice.Position = .front, drillTargets: String? = nil) {
         self.cameraPosition = cameraPosition
+        if let drillTargets {
+            let session = DrillSession(targets: drillTargets)
+            self.drill = session
+            self.drillHUD = DrillHUD(
+                target: session.currentTarget,
+                index: session.index,
+                count: session.count,
+                complete: session.isComplete)
+        } else {
+            self.drill = nil
+        }
     }
 
     func start() async {
@@ -109,6 +152,53 @@ final class PreviewViewModel: ObservableObject {
         committedText = ""
     }
 
+    /// Feed one committed character to the drill (6a-2, #70). Stay-until-success is
+    /// the engine's own policy — a hit advances, a miss is a no-op — so the view
+    /// only renders the resulting HUD + a brief success/miss flash. No-op once the
+    /// passage is complete (so post-celebrate commits don't flash).
+    private func observeDrill(_ emitted: String) {
+        guard let drill, !drill.isComplete else { return }
+        // A rest between letters commits a SPACE; don't penalise that as a miss
+        // unless a space is actually the current target (6a-2 smoke nit). A rest is
+        // natural signing rhythm, not a wrong attempt — only a wrong *letter* misses.
+        // A space still advances when the target IS a space (multi-word 6a-3 sources).
+        if emitted == " ", drill.currentTarget != " " { return }
+        let step = drill.observe(emitted)
+        drillHUD = DrillHUD(
+            target: drill.currentTarget,
+            index: step.index,
+            count: drill.count,
+            complete: step.complete)
+        flash(step.matched ? .hit : .miss)
+    }
+
+    private func flash(_ kind: DrillFlash) {
+        drillFlash = kind
+        flashTask?.cancel()
+        flashTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard let self, !Task.isCancelled else { return }
+            self.drillFlash = nil
+        }
+    }
+
+    /// Replay the passage from the first target (the celebrate-screen "Practice
+    /// again", 6a-2). Caller-driven `reset()` — same discipline as the committer's.
+    /// Clears the committed readout and the committer window so the rerun is clean.
+    func resetDrill() {
+        guard let drill else { return }
+        drill.reset()
+        committer?.reset()
+        committedText = ""
+        drillFlash = nil
+        flashTask?.cancel()
+        drillHUD = DrillHUD(
+            target: drill.currentTarget,
+            index: drill.index,
+            count: drill.count,
+            complete: drill.isComplete)
+    }
+
     func stop() async {
         streamTask?.cancel()
         streamTask = nil
@@ -137,7 +227,10 @@ final class PreviewViewModel: ObservableObject {
         // smooth/hold/debounce it. A non-empty return is a committed letter/digit/space.
         let symbol = decoder.classify(kp)
         let emitted = committer.process(symbol, at: frame.tMs)
-        if !emitted.isEmpty { committedText += emitted }
+        if !emitted.isEmpty {
+            committedText += emitted
+            observeDrill(emitted)
+        }
 
         // Raw white-box readout: ids are mode-independent; only the per-frame
         // character is interpreted, in the committer's (possibly just-flipped) mode.

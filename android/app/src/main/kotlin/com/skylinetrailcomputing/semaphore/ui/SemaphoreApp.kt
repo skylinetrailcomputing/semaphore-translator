@@ -49,9 +49,20 @@ fun SemaphoreApp() {
     NavHost(navController, startDestination = Route.HOME) {
         composable(Route.HOME) {
             HomeScreen(
-                onLearn = { navController.navigate(Route.LEARN) },
+                onLearn = { navController.navigate(Route.LEARN_HUB) },
                 onInterpret = { navController.navigate(Route.INTERPRET) },
                 onSettings = { navController.navigate(Route.SETTINGS) },
+            )
+        }
+        composable(Route.LEARN_HUB) {
+            // The Learn fork ([6a], #70): a no-camera chooser between free-form
+            // practice and a guided passage drill. Both push the same camera screen
+            // below, so nothing camera-related runs here. The iOS twin is
+            // `LearnChooserView`.
+            LearnHubScreen(
+                onFreePractice = { navController.navigate(Route.LEARN) },
+                onDrill = { navController.navigate(Route.DRILL) },
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Route.LEARN) {
@@ -59,6 +70,22 @@ fun SemaphoreApp() {
             // Android parallel of iOS's transparent nav bar on the Learn screen.
             Box(Modifier.fillMaxSize()) {
                 SemaphoreScreen(developerMode = developerMode)
+                BackButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
+            }
+        }
+        composable(Route.DRILL) {
+            // The same front-camera screen as free-form Learn, driven as a passage
+            // drill by an injected target string (6a-2, #70). The drill HUD +
+            // celebrate live in [SemaphoreScreen]; the custom source lands in 6a-3.
+            Box(Modifier.fillMaxSize()) {
+                SemaphoreScreen(
+                    developerMode = developerMode,
+                    emptyHint = "Sign the letter shown above",
+                    drillTargets = STARTER_PASSAGE,
+                )
                 BackButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.align(Alignment.TopStart),
@@ -98,7 +125,9 @@ fun SemaphoreApp() {
 /** Navigation routes for the [SemaphoreApp] graph. */
 private object Route {
     const val HOME = "home"
+    const val LEARN_HUB = "learn_hub"
     const val LEARN = "learn"
+    const val DRILL = "drill"
     const val INTERPRET = "interpret"
     const val SETTINGS = "settings"
 }
