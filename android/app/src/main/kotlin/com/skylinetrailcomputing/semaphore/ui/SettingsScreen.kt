@@ -3,20 +3,15 @@ package com.skylinetrailcomputing.semaphore.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -24,19 +19,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * The lean **Settings** surface ([5d], #50). Hosts the Developer-mode toggle
- * (which gates the Learn screen's skeleton overlay + raw per-frame readout — the
- * maintainer smoke surface) and the **About** entry ([6b-4], #82). The toggle's
- * state is hoisted to `SemaphoreApp`, which persists each change via [AppSettings]
- * and passes the current value down — so it survives launches and the Learn screen
- * sees the same flag. Contract knobs (angle-tolerance, commit-hold) are
- * deliberately out of scope (FR7). The 6a-4 regular-user surface (#72) will
- * re-home the About row out of this dev-ish screen.
+ * The regular-user **Settings** surface ([6a-4], #72) — the gear destination from
+ * Home. Distinct from the dev-ish [DeveloperSettingsScreen] it was split from: this
+ * is the surface a beta tester sees, and the home for the assist/practice-mode
+ * toggles (6a-5 #73, 6a-6 #74) that land in their own section above About. It hosts
+ * the always-reachable **About** entry ([6b-4], #82) and a **Developer** row that
+ * pushes the maintainer smoke surface one level deeper, off this user-facing
+ * screen.
  *
  * Uses a Scaffold + [TopAppBar] (Up arrow + title) — the conventional Android
  * affordance for a non-immersive pushed screen, paralleling the titled inline nav
@@ -46,9 +39,8 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    developerMode: Boolean,
-    onDeveloperModeChange: (Boolean) -> Unit,
     onAbout: () -> Unit,
+    onDeveloper: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -73,48 +65,28 @@ fun SettingsScreen(
         },
     ) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Developer mode", color = Color.White, fontSize = 17.sp)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Shows the skeleton overlay and raw per-frame readout in " +
-                            "Learn mode — the maintainer smoke surface.",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 13.sp,
-                    )
-                }
-                Spacer(Modifier.width(16.dp))
-                Switch(
-                    checked = developerMode,
-                    onCheckedChange = onDeveloperModeChange,
-                    colors =
-                        SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF4CAF50),
-                            uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.20f),
-                            uncheckedBorderColor = Color.White.copy(alpha = 0.30f),
-                        ),
-                )
-            }
-            // The always-reachable About/privacy surface ([6b-4], #82): app
-            // version, AS-IS beta line, and the hosted EULA + Privacy links.
-            Row(
-                Modifier.fillMaxWidth().clickable(onClick = onAbout).padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "About",
-                    color = Color.White,
-                    fontSize = 17.sp,
-                    modifier = Modifier.weight(1f),
-                )
-                Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 22.sp)
-            }
+            // Assist & practice-mode toggles (6a-5 #73, 6a-6 #74) land here as their
+            // own section — the primary regular-user content. Until then, About +
+            // Developer are the only rows in the closed-beta cut.
+
+            // The always-reachable About/privacy surface ([6b-4], #82): app version,
+            // AS-IS beta line, and the hosted EULA + Privacy links.
+            SettingsRow("About", onClick = onAbout)
+            // Developer mode lives one level deeper ([5d], #50): a maintainer smoke
+            // surface, not regular-user config, so it gets its own screen.
+            SettingsRow("Developer", onClick = onDeveloper)
         }
+    }
+}
+
+/** A tappable settings row — label on the lead, a disclosure chevron on the end. */
+@Composable
+private fun SettingsRow(label: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
+        Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 22.sp)
     }
 }
