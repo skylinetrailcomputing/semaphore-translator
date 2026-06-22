@@ -37,11 +37,10 @@ import androidx.compose.ui.unit.sp
  * the same flag. Contract knobs (angle-tolerance, commit-hold) are deliberately
  * out of scope (FR7).
  *
- * Mirrors [InterpretStub]'s Scaffold + [TopAppBar] (Up arrow + title) — the
- * conventional Android affordance for a non-immersive pushed screen, paralleling
- * the titled inline nav bar on iOS's `SettingsView`. Colors are set explicitly
- * because the app isn't wrapped in a `MaterialTheme`. The iOS twin is
- * `SettingsView`.
+ * Uses a Scaffold + [TopAppBar] (Up arrow + title) — the conventional Android
+ * affordance for a non-immersive pushed screen, paralleling the titled inline nav
+ * bar on iOS's `SettingsView`. Colors are set explicitly because the app isn't
+ * wrapped in a `MaterialTheme`. The iOS twin is `SettingsView`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -29,7 +29,17 @@ struct HomeView: View {
                             systemImage: "figure.wave")
                     }
                     NavigationLink {
-                        InterpretStubView()
+                        // The same shared camera+decode screen as Learn, only
+                        // rear-facing (#46/#60). Same transparent, title-less nav
+                        // bar so the rear camera fills the screen under just the
+                        // back chevron. Lens + display mirror are handled inside
+                        // by `PreviewViewModel`; the decode path is identical
+                        // (ADR 0006 — rear needs no adapter change).
+                        ContentView(
+                            cameraPosition: .back,
+                            emptyHint: "Point at someone signing")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbarBackground(.hidden, for: .navigationBar)
                     } label: {
                         ModePill(
                             title: "Interpret semaphore",

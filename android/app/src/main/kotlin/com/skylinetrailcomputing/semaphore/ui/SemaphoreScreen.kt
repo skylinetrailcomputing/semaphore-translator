@@ -51,9 +51,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * The **Learn** screen ([5b], #48) — the front-camera view a signer uses to sign
- * into the camera and read their decode. The committed text is the visual hero;
- * the "no signer detected" state (NFR4) and clear/reset (FR5) are kept.
+ * The shared camera+decode screen — driven by **Learn** (front lens, #48) and
+ * **Interpret** (rear lens, #46/#60), which differ only by [cameraLens] + the
+ * lens-derived display mirror and the empty-state [emptyHint]. The committed text
+ * is the visual hero; the "no signer detected" state (NFR4) and clear/reset (FR5)
+ * are kept.
  *
  * The Epic-4 debug chrome — the 6-keypoint skeleton overlay and the raw per-frame
  * readout (L/R position ids, mode badge, indeterminate `·`) — is hidden in this
@@ -68,6 +70,7 @@ import kotlinx.coroutines.launch
 fun SemaphoreScreen(
     developerMode: Boolean = false,
     cameraLens: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
+    emptyHint: String = "Sign a letter to begin",
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -91,7 +94,7 @@ fun SemaphoreScreen(
                 "Semaphore Translator reads flag positions from the camera. " +
                     "Grant camera access to use the live preview.",
             )
-        else -> CameraScreen(developerMode, cameraLens)
+        else -> CameraScreen(developerMode, cameraLens, emptyHint)
     }
 }
 
@@ -107,7 +110,7 @@ private data class PreviewState(
 
 @ExperimentalGetImage
 @Composable
-private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector) {
+private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector, emptyHint: String) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
@@ -259,7 +262,7 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector) {
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CommittedHero(committedText, onClear = { committedText = "" })
+            CommittedHero(committedText, emptyHint, onClear = { committedText = "" })
             if (developerMode) Readout(state)
         }
     }
@@ -336,7 +339,12 @@ private data class Quad(val a: Keypoint, val b: Keypoint, val c: Keypoint, val c
  * the text plus Clear (FR5). Ellipsis keeps the layout stable as the string grows.
  */
 @Composable
-private fun CommittedHero(text: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
+private fun CommittedHero(
+    text: String,
+    emptyHint: String,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier
             .fillMaxWidth()
@@ -347,7 +355,7 @@ private fun CommittedHero(text: String, onClear: () -> Unit, modifier: Modifier 
     ) {
         if (text.isEmpty()) {
             Text(
-                "Sign a letter to begin",
+                emptyHint,
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 18.sp,
             )
