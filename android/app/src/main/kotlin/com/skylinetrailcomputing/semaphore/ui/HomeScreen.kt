@@ -90,10 +90,11 @@ fun HomeScreen(
 
 /**
  * One tappable mode option on Home — title + subtitle, trailing chevron, in a
- * rounded card. The iOS twin is `HomeView`'s `ModePill`.
+ * rounded card. Reused by the Learn chooser ([6a], #70). The iOS twin is
+ * `HomeView`'s `ModePill`.
  */
 @Composable
-private fun ModePill(title: String, subtitle: String, onClick: () -> Unit) {
+internal fun ModePill(title: String, subtitle: String, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
