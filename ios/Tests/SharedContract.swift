@@ -216,6 +216,62 @@ struct TemporalVectors: Decodable {
     }
 }
 
+// MARK: - drill_contract.json (Epic 6a #69; descriptive frozen contract)
+
+/// The light, machine-checkable slice of the drill contract. The full file is a
+/// human-readable spec (like keypoint_contract.json's prose sections); only the
+/// `version` + `states` are asserted, to anchor the doc to the code so it can't
+/// silently rot. The behavioural enforcement is `drill_vectors.json`.
+struct DrillContract: Decodable {
+    let version: String
+    let states: [String]
+}
+
+// MARK: - drill_vectors.json (Epic 6a #69; the drill-engine parity fixtures)
+
+/// One drill step. An emit step carries `emit` + `expectedMatched`; a reset step
+/// carries `reset == true` and neither (the harness calls `reset()` instead of
+/// `observe(_:)`) — so those two are optional, like `TemporalFrame`'s reset split.
+/// `expectedIndex` / `expectedComplete` are present on both. The drill engine is
+/// downstream of the committer, so a step carries only an emitted character — no
+/// keypoints, no timing.
+struct DrillStepVector: Decodable {
+    let reset: Bool?
+    let emit: String?
+    let expectedMatched: Bool?
+    let expectedIndex: Int
+    let expectedComplete: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case reset, emit
+        case expectedMatched = "expected_matched"
+        case expectedIndex = "expected_index"
+        case expectedComplete = "expected_complete"
+    }
+}
+
+struct DrillSequence: Decodable {
+    let name: String
+    let targets: String
+    let steps: [DrillStepVector]
+    let expectedFinalIndex: Int
+    let expectedFinalComplete: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, targets, steps
+        case expectedFinalIndex = "expected_final_index"
+        case expectedFinalComplete = "expected_final_complete"
+    }
+}
+
+struct DrillVectors: Decodable {
+    let sequenceVectors: [DrillSequence]
+
+    enum CodingKeys: String, CodingKey {
+        case sequenceVectors = "sequence_vectors"
+    }
+}
+
 // MARK: - locating the shared contract
 
 /// Resolves the repo's `shared/` directory and loads the JSON contract files.

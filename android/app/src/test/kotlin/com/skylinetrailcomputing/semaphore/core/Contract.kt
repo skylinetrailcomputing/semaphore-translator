@@ -112,3 +112,41 @@ data class TemporalSequence(
 data class TemporalVectors(
     @SerializedName("sequence_vectors") val sequenceVectors: List<TemporalSequence>,
 )
+
+// --- drill_contract.json (Epic 6a #69; descriptive frozen contract) ---
+
+// The light, machine-checkable slice of the drill contract. The full file is a
+// human-readable spec (like keypoint_contract.json's prose sections); only
+// `version` + `states` are asserted, to anchor the doc to the code so it can't
+// silently rot. The behavioural enforcement is drill_vectors.json.
+data class DrillContract(
+    val version: String,
+    val states: List<String>,
+)
+
+// --- drill_vectors.json (Epic 6a #69; the drill-engine parity fixtures) ---
+
+// An emit step carries `emit` + `expectedMatched`; a reset step carries
+// `reset == true` and neither (the harness calls reset() instead of observe), so
+// those two are nullable -- like TemporalFrame's reset split. The drill engine is
+// downstream of the committer, so a step carries only an emitted character -- no
+// keypoints, no timing.
+data class DrillStepVector(
+    val reset: Boolean = false,
+    val emit: String? = null,
+    @SerializedName("expected_matched") val expectedMatched: Boolean? = null,
+    @SerializedName("expected_index") val expectedIndex: Int,
+    @SerializedName("expected_complete") val expectedComplete: Boolean,
+)
+
+data class DrillSequence(
+    val name: String,
+    val targets: String,
+    val steps: List<DrillStepVector>,
+    @SerializedName("expected_final_index") val expectedFinalIndex: Int,
+    @SerializedName("expected_final_complete") val expectedFinalComplete: Boolean,
+)
+
+data class DrillVectors(
+    @SerializedName("sequence_vectors") val sequenceVectors: List<DrillSequence>,
+)
