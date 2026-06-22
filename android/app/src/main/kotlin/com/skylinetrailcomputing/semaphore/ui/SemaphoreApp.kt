@@ -162,8 +162,14 @@ private fun MainNavHost() {
                     developerMode = it
                     AppSettings.setDeveloperMode(context, it)
                 },
+                onAbout = { navController.navigate(Route.ABOUT) },
                 onBack = { navController.popBackStack() },
             )
+        }
+        composable(Route.ABOUT) {
+            // The passive About/privacy surface ([6b-4], #82) — pushed from
+            // Settings. No camera; the iOS twin is `AboutView`.
+            AboutScreen(onBack = { navController.popBackStack() })
         }
     }
 }
@@ -176,6 +182,7 @@ private object Route {
     const val DRILL = "drill"
     const val INTERPRET = "interpret"
     const val SETTINGS = "settings"
+    const val ABOUT = "about"
 }
 
 /**
