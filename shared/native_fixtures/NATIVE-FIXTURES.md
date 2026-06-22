@@ -169,7 +169,69 @@ mirror-broken and a y-flip-broken variant each violate at least one invariant.
 [#21]/[#22] add the Layer-1/Layer-2 cases that feed real adapter output through
 the same invariants.
 
-## 8. Cross-references
+## 8. Rear-camera coverage (Epic 5.2 — does this contract cover the rear lens?)
+
+**Yes — unchanged, by construction.** Epic 5.2's Interpret mode reads a *second*
+signer through the **rear** camera. The natural worry is the §3.2 horizontal
+mirror: a wrong rear flip is the one fault the parity harness is blind to (§1),
+and because matching is order-insensitive (spec §4.3) it would mis-map each
+left↔right-asymmetric letter to its **mirror twin** — silently and plausibly.
+[ADR 0006](../../docs/adr/0006-rear-camera-decode-geometry.md) (Issue
+[#58](https://github.com/skylinetrailcomputing/semaphore-translator/issues/58))
+settled the question: **the rear lens needs no decode-path change**, and
+therefore **this contract and its fixtures already cover it**.
+
+Why the *existing, front-derived* fixtures pin the rear adapter math:
+
+- **The fixtures are observer-perspective (§2), and so is a rear buffer.** The
+  invariants live in a frame where the signer **faces the camera** — the
+  observer's view. With capture-mirroring **off** (iOS `isVideoMirrored = false`,
+  set unconditionally with `automaticallyAdjustsVideoMirroring = false`; CameraX
+  never mirrors the `ImageAnalysis` path), a *rear* photo of someone facing the
+  camera has the **same handedness** as a front capture: the subject's right hand
+  on the viewer's left. That is exactly the handedness the `1 − x` mirror is
+  calibrated against (ADR 0006 §Why-3). The fixtures are therefore
+  **lens-agnostic** — they pin the *adapter*, and a single adapter serves both
+  lenses.
+- **Rotation can't introduce a handedness difference.** The only per-lens capture
+  difference is the upright rotation, and a rotation (det = +1) cannot flip
+  chirality — a wrong rotation is a *loud* whole-skeleton failure that corrupts
+  even the mirror-symmetric letters, not a selective twin (ADR 0006 §Why-1). So
+  there is no meaningful lens-specific invariant to add.
+
+What that means for the two layers (§5), both **unchanged**:
+
+| Surface | Covers the rear lens because… |
+|---|---|
+| **Layer-1 regression** — `NativeFixtureTests` / `NativeFixtureTest`, `VisionAdapterTests` / `MlKitAdapterTest` | replays the frozen observer-perspective skeletons through the *same* adapter the rear lens uses; the recorded geometry is camera-agnostic. |
+| **Layer-2 calibration** — `VisionCalibrationTests` / `MlKitCalibrationTest` | runs the real estimator on the observer-perspective `pose_*.png` and asserts the invariants on the shared adapter output — the per-platform flip pin, identical for both lenses. |
+| **Twin-table check** — [`../tools/check_mirror_twins.py`](../tools/check_mirror_twins.py) | machine-derives the mirror-twin map the live rear protocol keys off, so the "a flip *would* be catchable" argument can't silently rot if the (frozen) alphabet is ever touched. |
+
+**No new rear fixture (#59 task 2 — collapsed).** Because #58 found no rear
+difference, #59's conditional "add a rear-perspective render" collapses to this
+note. A horizontal flip of `pose_right_arm_out.png` would assert nothing the
+existing observer-perspective pose doesn't already — same adapter, so a
+duplicated "rear" fixture would only restate the front one. Were a rear flip
+*ever* required (it isn't), NFR3 confines the fix to the adapter / capture-mirror
+config, and the right artifact would then be a rear-perspective fixture **plus**
+new invariants — not a silent change here.
+
+**Live smoke (#59 task 3 — the primary acceptance, satisfied).** The static +
+parity + twin-table evidence shows the geometry is *unchanged* and that a flip
+*would* be caught; only a live read shows it is *correct*. That read is recorded
+in [ADR 0006 §Acceptance](../../docs/adr/0006-rear-camera-decode-geometry.md): a
+full **A–Z rear read** against the NATO reference video
+([youtube.com/shorts/rhyFSHz3dwc](https://www.youtube.com/shorts/rhyFSHz3dwc), a
+human signer facing the camera) on **both** target devices (iPhone 16 +
+Pixel 9a), with **zero mirror-twin errors** — every letter decoded to itself, the
+canary `L` held, and the top check `T → T` (not NUMERALS). A dev-only coordinate
+probe (behind Developer mode, #50) backs the numeric read: iOS `os.Logger`
+category `geometry-probe`, Android Logcat tag `SemaphoreProbe`, both logging
+post-adapter shoulder/wrist x once per id change. #59 adopts that read as its
+smoke evidence rather than repeating it; the next fresh, routed-through-real-UI
+A–Z read happens naturally once Interpret is wired to the rear lens (#60).
+
+## 9. Cross-references
 
 - [`invariants.json`](invariants.json) — machine-readable form of this contract.
 - [`../ADAPTER-CONTRACT.md`](../ADAPTER-CONTRACT.md) — the adapter spec; §7
@@ -180,3 +242,7 @@ the same invariants.
   Blender + MPFB renderer (CC0 humans).
 - [`../test_vectors.json`](../test_vectors.json) — the complementary post-adapter
   parity fixtures (#14).
+- [`../../docs/adr/0006-rear-camera-decode-geometry.md`](../../docs/adr/0006-rear-camera-decode-geometry.md)
+  — the rear-lens "no decode-path change" decision (§8 above; #58).
+- [`../tools/check_mirror_twins.py`](../tools/check_mirror_twins.py) — machine-checked
+  mirror-twin table the rear live protocol keys off (#58 / ADR 0006).
