@@ -198,13 +198,25 @@ private fun MainNavHost() {
             }
         }
         composable(Route.SETTINGS) {
+            // The regular-user settings surface ([6a-4], #72): About + a Developer
+            // row. The dev-mode toggle itself lives one level deeper on the
+            // DEVELOPER route, off this user-facing screen.
             SettingsScreen(
+                onAbout = { navController.navigate(Route.ABOUT) },
+                onDeveloper = { navController.navigate(Route.DEVELOPER) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Route.DEVELOPER) {
+            // The dev-ish settings split out by 6a-4 (#72) — the Developer-mode
+            // toggle (maintainer smoke surface). State stays hoisted here so the
+            // Learn screen sees the same flag and it persists across launches.
+            DeveloperSettingsScreen(
                 developerMode = developerMode,
                 onDeveloperModeChange = {
                     developerMode = it
                     AppSettings.setDeveloperMode(context, it)
                 },
-                onAbout = { navController.navigate(Route.ABOUT) },
                 onBack = { navController.popBackStack() },
             )
         }
@@ -226,6 +238,7 @@ private object Route {
     const val DRILL = "drill"
     const val INTERPRET = "interpret"
     const val SETTINGS = "settings"
+    const val DEVELOPER = "developer"
     const val ABOUT = "about"
 }
 
