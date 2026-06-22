@@ -32,6 +32,10 @@ targets:
       # SHA-256 consent hash matches Android's over the same bytes.
       - path: ../shared/disclaimer.json
         buildPhase: resources
+      # The Learn sight-read stock passages (#71), bundled verbatim so the picker
+      # shows the same list as Android (`StockPassages.loadBundled`).
+      - path: ../shared/stock_passages.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore
