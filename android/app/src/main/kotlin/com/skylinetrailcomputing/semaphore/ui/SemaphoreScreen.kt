@@ -146,6 +146,8 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector) {
     androidx.compose.runtime.LaunchedEffect(Unit) {
         val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
         var lastFrameAt = 0L
+        // Dev-only coordinate probe (#58 / ADR 0006); throttled to one line per id change.
+        var lastProbeIds: Pair<Int?, Int?>? = null
 
         // Freshness watchdog: the stream simply stops yielding when a signer
         // leaves the frame (no full upper-body skeleton → no emit), so absence is
@@ -187,6 +189,37 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector) {
             // Raw white-box readout: ids are mode-independent; only the per-frame
             // character is interpreted, in the committer's (possibly just-flipped) mode.
             val raw = decoder.decodeFrame(kp, committer.currentMode)
+
+            // Dev-only coordinate probe (#58 / ADR 0006): log the post-adapter,
+            // signer's-perspective x of each shoulder/wrist + ids + char, once per
+            // id change. The numeric backstop for the rear-camera mirror smoke: a
+            // correctly-oriented read has the signer's right shoulder at greater x
+            // than the left (R.sh.x > L.sh.x) and `wrist.x > shoulder.x` for an arm
+            // extended to the signer's right; a flipped rear buffer inverts both.
+            // Reads post-adapter coords on purpose — the adapter transform is
+            // byte-pinned by the native fixtures, so any rear chirality fault shows
+            // up here without instrumenting the quarantined capture path (spec §3.2).
+            if (developerMode) {
+                val ids = raw.ids[0] to raw.ids[1]
+                if (ids != lastProbeIds) {
+                    lastProbeIds = ids
+                    val lens =
+                        if (cameraLens.lensFacing == CameraSelector.LENS_FACING_FRONT) "front"
+                        else "rear"
+                    android.util.Log.d(
+                        "SemaphoreProbe",
+                        "lens=%s ids=[%s,%s] char=%s  L(sh.x=%.3f wr.x=%.3f) R(sh.x=%.3f wr.x=%.3f)"
+                            .format(
+                                lens,
+                                raw.ids[0]?.toString() ?: "—",
+                                raw.ids[1]?.toString() ?: "—",
+                                raw.emit.ifEmpty { "·" },
+                                kp.leftShoulder.x, kp.leftWrist.x,
+                                kp.rightShoulder.x, kp.rightWrist.x,
+                            ),
+                    )
+                }
+            }
             state =
                 PreviewState(
                     keypoints = kp,
