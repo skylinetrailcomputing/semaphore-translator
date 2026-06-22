@@ -13,9 +13,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,6 +93,14 @@ private fun MainNavHost() {
     // reactive in-session (Learn reflects a flip on the next entry) and survives
     // launches. The iOS twin is `@AppStorage`, shared across views by key.
     var developerMode by remember { mutableStateOf(AppSettings.developerMode(context)) }
+    // The active drill passage (6a-3, #71), set by the custom/stock source just
+    // before it navigates to the DRILL route. rememberSaveable so it survives a
+    // configuration change / process death (a plain remember would drop it and the
+    // restored DRILL route would build an empty-complete session); the string is
+    // small (capped at PassageSource.MAX_TARGETS) so it's safe in saved state. It is
+    // always overwritten on each onStart, so a stale value can't reach the screen,
+    // and the DRILL route null-guards regardless.
+    var drillTargets by rememberSaveable { mutableStateOf<String?>(null) }
 
     NavHost(navController, startDestination = Route.HOME) {
         composable(Route.HOME) {
@@ -101,13 +111,14 @@ private fun MainNavHost() {
             )
         }
         composable(Route.LEARN_HUB) {
-            // The Learn fork ([6a], #70): a no-camera chooser between free-form
-            // practice and a guided passage drill. Both push the same camera screen
-            // below, so nothing camera-related runs here. The iOS twin is
-            // `LearnChooserView`.
+            // The Learn source picker ([6a], #71): a no-camera chooser between
+            // free-form practice and two passage-drill sources (custom / sight-read).
+            // All push the same camera screen below, so nothing camera-related runs
+            // here. The iOS twin is `LearnChooserView`.
             LearnHubScreen(
                 onFreePractice = { navController.navigate(Route.LEARN) },
-                onDrill = { navController.navigate(Route.DRILL) },
+                onCustom = { navController.navigate(Route.CUSTOM_PASSAGE) },
+                onStock = { navController.navigate(Route.STOCK_PASSAGE) },
                 onBack = { navController.popBackStack() },
             )
         }
@@ -122,20 +133,51 @@ private fun MainNavHost() {
                 )
             }
         }
+        composable(Route.CUSTOM_PASSAGE) {
+            // Type-a-passage source (6a-3, #71): sanitises the typed text and hands
+            // the target string up before navigating into the drill. The iOS twin is
+            // `CustomPassageView`.
+            CustomPassageScreen(
+                onStart = { targets ->
+                    drillTargets = targets
+                    navController.navigate(Route.DRILL)
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Route.STOCK_PASSAGE) {
+            // Sight-read source (6a-3, #71): pick a bundled passage by its hint; its
+            // sanitised text becomes the drill targets. The iOS twin is `StockPassageView`.
+            StockPassageScreen(
+                onStart = { targets ->
+                    drillTargets = targets
+                    navController.navigate(Route.DRILL)
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
         composable(Route.DRILL) {
             // The same front-camera screen as free-form Learn, driven as a passage
-            // drill by an injected target string (6a-2, #70). The drill HUD +
-            // celebrate live in [SemaphoreScreen]; the custom source lands in 6a-3.
-            Box(Modifier.fillMaxSize()) {
-                SemaphoreScreen(
-                    developerMode = developerMode,
-                    emptyHint = "Sign the letter shown above",
-                    drillTargets = STARTER_PASSAGE,
-                )
-                BackButton(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier.align(Alignment.TopStart),
-                )
+            // drill by the active target string set by the custom/stock source
+            // (6a-3, #71). The drill HUD + celebrate live in [SemaphoreScreen].
+            // `drillTargets` is rememberSaveable, so it survives config change /
+            // process death; the null-guard pops back if the route is somehow reached
+            // without a passage, so we never build an empty-complete session.
+            val targets = drillTargets
+            if (targets == null) {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            } else {
+                Box(Modifier.fillMaxSize()) {
+                    SemaphoreScreen(
+                        developerMode = developerMode,
+                        emptyHint = "Sign the letter shown above",
+                        drillTargets = targets,
+                    )
+                    BackButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
             }
         }
         composable(Route.INTERPRET) {
@@ -173,6 +215,8 @@ private object Route {
     const val HOME = "home"
     const val LEARN_HUB = "learn_hub"
     const val LEARN = "learn"
+    const val CUSTOM_PASSAGE = "custom_passage"
+    const val STOCK_PASSAGE = "stock_passage"
     const val DRILL = "drill"
     const val INTERPRET = "interpret"
     const val SETTINGS = "settings"

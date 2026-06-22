@@ -1,0 +1,29 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Frozen shared contract for the Learn passage SOURCE (Epic 6a, issue #71 / 6a-3). The source sits UPSTREAM of the drill engine (shared/drill_contract.json, ADR 0007): it turns arbitrary user/stock text into the already-validated target string the engine consumes (the engine never tokenises or sanitises -- that is this layer's job). The one behaviour that MUST be byte-for-byte identical across iOS / Android / the Python reference is sanitisation; the executable enforcement is shared/sanitize_vectors.json (both platforms' SanitizeParity tests run it and MUST agree with the reference). Human-readable design + rationale: docs/adr/0008-learn-source-sanitization.md.",
+  "sanitize_rule": {
+    "summary": "Map arbitrary text to the frozen ASCII target alphabet (A-Z / 0-9 / SPACE), in signing order, with collapsed and trimmed whitespace.",
+    "iteration_unit": "Iterate the input by Unicode scalar value, NOT by grapheme cluster. Swift MUST use String.unicodeScalars (iterating Character would fold a base letter + a combining mark into one grapheme and drop BOTH, diverging from Python code points / Kotlin UTF-16 Chars). Kotlin iterates Char (UTF-16 code units); Python iterates code points. Because every KEPT character and every separator is ASCII (a single unit in all three encodings) and every non-ASCII scalar is dropped, the three iteration models agree.",
+    "uppercase": "ASCII-ONLY, per scalar: a scalar in 0x61..0x7A (a-z) maps to scalar-0x20 (A-Z); every other scalar is left unchanged. MUST NOT use the platform's locale-aware whole-string upper (Swift String.uppercased(), Kotlin String.uppercase(), Python str.upper()) -- those expand U+00DF (ß) to 'SS' and apply locale folding (Turkish dotless-i), which would keep characters the rule means to drop and diverge across platforms.",
+    "keep": "After the ASCII-upper step, keep a scalar iff it is in 0x41..0x5A (A-Z) or 0x30..0x39 (0-9).",
+    "separators": "The scalar set {0x20 SPACE, 0x09 TAB, 0x0A LF, 0x0D CR} is treated as a word separator. Any run of separators collapses to a single SPACE; leading and trailing separators are trimmed (a pending separator is emitted as one SPACE only immediately before the next KEPT character, and only after at least one kept character has already been emitted). No other whitespace (NBSP U+00A0, other Unicode spaces) is a separator -- those are dropped like any other non-kept scalar.",
+    "drop": "Every other scalar -- punctuation, accents/diacritics, other-script letters, NBSP and other Unicode spaces, emoji, surrogate halves, control characters -- is dropped silently. There is NO transliteration: 'café' -> 'CAF', 'READY-SET-GO' -> 'READYSETGO'. The live sanitised preview in the custom-passage UI is the user's mitigation; stock passages are authored already-clean.",
+    "idempotent": "sanitize(sanitize(x)) == sanitize(x): the output alphabet is A-Z / 0-9 plus single internal SPACEs with no leading/trailing SPACE, all of which a second pass preserves unchanged."
+  },
+  "supported_chars": [
+    " ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+  ],
+  "_supported_chars_note": "The 37 characters sanitize() may emit, sorted by code point (SPACE, 0-9, A-Z). The frozen ASCII target alphabet of shared/drill_contract.json (A-Z / 0-9 / SPACE), made machine-checkable: the SanitizeParity tests assert sanitize() never produces a character outside this set, so a silently added/removed class is caught.",
+  "max_targets": 200,
+  "_max_targets_note": "Soft UI cap on a drill passage's sanitised length (a beta safety bound, not a decode constant). The custom-passage source disables Start when the sanitised length is 0 or > max_targets; stock passages are asserted to be within it. Generous on purpose -- semaphore signing is slow, so even this is a long session; the cap exists to bound a pathological paste and the saved navigation state, not to shape normal use.",
+  "non_goals": [
+    "tokenising into anything other than single-character targets (the engine splits the string; spec'd in drill_contract.json)",
+    "transliterating non-ASCII input to ASCII (deliberately dropped, see sanitize_rule.drop)",
+    "any decode / adapter / committer / drill-engine behaviour (the source is strictly upstream of the engine and never touches the decode core)"
+  ],
+  "version": "1.0",
+  "_human_doc": "docs/adr/0008-learn-source-sanitization.md",
+  "spec_refs": ["4.4", "4.5", "6"]
+}

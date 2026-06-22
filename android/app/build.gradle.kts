@@ -18,7 +18,12 @@ val sharedContractAssets = layout.buildDirectory.dir("generated/sharedContract/a
 val copySharedContract by
     tasks.registering(Copy::class) {
         from(rootProject.file("../shared")) {
-            include("semaphore_alphabet.json", "semaphore_config.json", "disclaimer.json")
+            include(
+                "semaphore_alphabet.json",
+                "semaphore_config.json",
+                "disclaimer.json",
+                "stock_passages.json",
+            )
         }
         into(sharedContractAssets)
     }

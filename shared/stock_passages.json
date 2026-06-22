@@ -1,0 +1,18 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Bundled stock passages for the Learn 'sight-read' source (Epic 6a, issue #71 / 6a-3). Loaded VERBATIM by both apps (iOS from the app bundle, Android from copied assets) so the list is identical across platforms. This is shared CONTENT, not a frozen behavioural contract -- but it lives in shared/ for the same reason the contracts do: both platforms must show the same passages. Each 'text' is authored already-clean: sanitize(text) == text (see shared/source_contract.json). The SanitizeParity tests AND shared/tools/gen_sanitize_vectors.py both assert that, so a passage edited to include punctuation/lowercase/double-spaces fails before it can ship silently mangled. 'hint' is a content-neutral teaser shown in the picker; the passage text is NEVER shown there (the drill HUD reveals one target at a time -- that is what 'sight-read' means). The tests assert the sanitised hint does not contain the passage text.",
+  "_format": {
+    "id": "Stable kebab-case ASCII identifier, unique across the list.",
+    "hint": "Short content-neutral label shown in the sight-read picker. Must not reveal the passage text.",
+    "text": "The drill passage, authored already-clean (sanitize(text) == text), non-empty, within source_contract.max_targets."
+  },
+  "passages": [
+    { "id": "warmup",   "hint": "Warm-up: one short word",   "text": "HELLO" },
+    { "id": "greeting", "hint": "A classic first phrase",    "text": "HELLO WORLD" },
+    { "id": "distress", "hint": "The famous distress call",  "text": "SOS" },
+    { "id": "marks",    "hint": "On your marks",             "text": "READY SET GO" },
+    { "id": "nautical", "hint": "A sailor's greeting",       "text": "AHOY THERE" },
+    { "id": "room",     "hint": "Letters meet a number",     "text": "ROOM 101" },
+    { "id": "fox",      "hint": "A test of many letters",    "text": "THE QUICK BROWN FOX" }
+  ]
+}
