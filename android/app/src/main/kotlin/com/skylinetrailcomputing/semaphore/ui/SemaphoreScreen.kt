@@ -8,6 +8,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.Preview
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +19,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -41,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LifecycleOwner
 import com.skylinetrailcomputing.semaphore.core.Committer
 import com.skylinetrailcomputing.semaphore.core.ContractLoader
+import com.skylinetrailcomputing.semaphore.core.DrillSession
 import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.Mode
@@ -71,6 +76,7 @@ fun SemaphoreScreen(
     developerMode: Boolean = false,
     cameraLens: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
     emptyHint: String = "Sign a letter to begin",
+    drillTargets: String? = null,
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -95,7 +101,7 @@ fun SemaphoreScreen(
                     "on-device. Frames are processed live and never stored or transmitted. " +
                     "Grant camera access to use the live preview.",
             )
-        else -> CameraScreen(developerMode, cameraLens, emptyHint)
+        else -> CameraScreen(developerMode, cameraLens, emptyHint, drillTargets)
     }
 }
 
@@ -111,7 +117,12 @@ private data class PreviewState(
 
 @ExperimentalGetImage
 @Composable
-private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector, emptyHint: String) {
+private fun CameraScreen(
+    developerMode: Boolean,
+    cameraLens: CameraSelector,
+    emptyHint: String,
+    drillTargets: String?,
+) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
@@ -141,6 +152,31 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector, emp
     // Hoisted out of PreviewState so the clear button can reset it independently of
     // the per-frame state; persists across a watchdog reset() like iOS's.
     var committedText by remember { mutableStateOf("") }
+
+    // Drill engine (6a-1, ADR 0007) for a passage-drill screen, or null for
+    // free-form Learn/Interpret. Strictly downstream of the committer: it observes
+    // only committed characters, never the decode/adapter/commit core. The HUD
+    // snapshot + flash are hoisted alongside committedText so the frame loop can
+    // republish them and the celebrate-card replay can reset them. The iOS twin is
+    // `PreviewViewModel.drillHUD` / `drillFlash`.
+    val drill = remember(drillTargets) { drillTargets?.let { DrillSession(it) } }
+    var drillUi by
+        remember(drill) {
+            mutableStateOf(
+                drill?.let { DrillUi(it.currentTarget, it.index, it.count, it.isComplete) })
+        }
+    // null = neutral, true = matched (green), false = miss (red). Cleared a beat
+    // after each commit, keyed off [flashTick] so repeated same-value flashes retrigger.
+    var drillFlash by remember(drill) { mutableStateOf<Boolean?>(null) }
+    var flashTick by remember(drill) { mutableStateOf(0) }
+    // Each commit bumps flashTick, cancelling the prior timer and restarting it, so
+    // the highlight always clears ~450ms after the latest commit.
+    androidx.compose.runtime.LaunchedEffect(flashTick) {
+        if (flashTick > 0) {
+            delay(450)
+            drillFlash = null
+        }
+    }
 
     // Build the Preview use case once and point it at the PreviewView's surface,
     // then collect the keypoint stream bound to the same camera. The temporal
@@ -188,7 +224,19 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector, emp
             // letter/digit/space.
             val symbol = decoder.classify(kp)
             val emitted = committer.process(symbol, frame.tMs)
-            if (emitted.isNotEmpty()) committedText += emitted
+            if (emitted.isNotEmpty()) {
+                committedText += emitted
+                // Drill (6a-2, #70): feed the committed character to the engine.
+                // Stay-until-success is the engine's own policy (a hit advances, a
+                // miss is a no-op), so we just republish the HUD + flash the result.
+                // No-op once complete, so post-celebrate commits don't flash.
+                if (drill != null && !drill.isComplete) {
+                    val step = drill.observe(emitted)
+                    drillUi = DrillUi(drill.currentTarget, step.index, drill.count, step.complete)
+                    drillFlash = step.matched
+                    flashTick++
+                }
+            }
 
             // Raw white-box readout: ids are mode-independent; only the per-frame
             // character is interpreted, in the committer's (possibly just-flipped) mode.
@@ -248,7 +296,7 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector, emp
             val mirrored = cameraLens.lensFacing == CameraSelector.LENS_FACING_FRONT
             SkeletonOverlay(state.keypoints, mirrored, Modifier.fillMaxSize())
         }
-        if (!state.signerPresent) {
+        if (!state.signerPresent && drillUi?.complete != true) {
             Text(
                 "No signer detected",
                 color = Color.White,
@@ -259,15 +307,57 @@ private fun CameraScreen(developerMode: Boolean, cameraLens: CameraSelector, emp
                         .padding(horizontal = 16.dp, vertical = 10.dp),
             )
         }
+        // Drill HUD hero (6a-2, #70) — the letter to sign next + progress, at top.
+        // Hidden once complete; the celebration overlay takes over.
+        drillUi?.let { ui ->
+            if (!ui.complete) {
+                DrillTargetCard(
+                    ui,
+                    drillFlash,
+                    Modifier.align(Alignment.TopCenter)
+                        .systemBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CommittedHero(committedText, emptyHint, onClear = { committedText = "" })
+            // Clear is the free-form reset; in a drill, "Practice again" on the
+            // celebrate card is the reset path, so Clear is hidden to keep the
+            // visible text from desyncing the drill's target index.
+            CommittedHero(
+                committedText,
+                emptyHint,
+                onClear = { committedText = "" },
+                showClear = drill == null,
+            )
             if (developerMode) Readout(state)
+        }
+        if (drillUi?.complete == true) {
+            CelebrationOverlay(
+                onReplay = {
+                    drill?.reset()
+                    committer.reset()
+                    committedText = ""
+                    drillFlash = null
+                    drillUi =
+                        drill?.let { DrillUi(it.currentTarget, it.index, it.count, it.isComplete) }
+                },
+                Modifier.align(Alignment.Center),
+            )
         }
     }
 }
+
+/** Snapshot of the drill HUD (6a-2, #70); mirrors the [DrillSession] getters. */
+private data class DrillUi(
+    val target: Char?,
+    val index: Int,
+    val count: Int,
+    val complete: Boolean,
+)
 
 private const val SIGNER_TIMEOUT_MS = 500L
 private val leftColor = Color.Cyan
@@ -345,6 +435,7 @@ private fun CommittedHero(
     emptyHint: String,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    showClear: Boolean = true,
 ) {
     Column(
         modifier
@@ -372,16 +463,96 @@ private fun CommittedHero(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Text(
-                "Clear",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clickable(onClick = onClear).padding(8.dp),
-            )
+            if (showClear) {
+                Text(
+                    "Clear",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable(onClick = onClear).padding(8.dp),
+                )
+            }
         }
     }
 }
+
+/**
+ * The drill HUD hero (6a-2, #70): the letter to sign next, a progress bar through
+ * the passage, and an `index / count` tally. The card flashes green on a matched
+ * commit and red on a miss (stay-until-success — a miss never advances), then
+ * settles back to neutral. The iOS twin is `ContentView.drillTargetCard`.
+ */
+@Composable
+private fun DrillTargetCard(ui: DrillUi, flash: Boolean?, modifier: Modifier = Modifier) {
+    val targetBg =
+        when (flash) {
+            true -> Color(0xFF2E7D32).copy(alpha = 0.85f) // green — matched
+            false -> Color(0xFFC62828).copy(alpha = 0.80f) // red — miss
+            null -> Color.Black.copy(alpha = 0.55f)
+        }
+    val bg by animateColorAsState(targetBg, label = "drillFlash")
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(bg, RoundedCornerShape(20.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("Sign this letter", color = Color.White.copy(alpha = 0.75f), fontSize = 13.sp)
+        Text(targetGlyph(ui.target), color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+        LinearProgressIndicator(
+            progress = { if (ui.count == 0) 0f else ui.index.toFloat() / ui.count },
+            color = Color.White,
+            trackColor = Color.White.copy(alpha = 0.25f),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            "${ui.index} / ${ui.count}",
+            color = Color.White.copy(alpha = 0.7f),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 12.sp,
+        )
+    }
+}
+
+/**
+ * The small celebration shown on COMPLETE (6a-2): a centered card with a replay
+ * affordance that resets the drill to run the passage again. The iOS twin is
+ * `ContentView.celebrationOverlay`.
+ */
+@Composable
+private fun CelebrationOverlay(onReplay: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(24.dp))
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text("🎉", fontSize = 56.sp)
+        Text("Passage complete!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text(
+            "Practice again",
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            modifier =
+                Modifier.clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.2f))
+                    .clickable(onClick = onReplay)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+        )
+    }
+}
+
+/** Current target as a glyph: `␣` for SPACE, `✓` once complete (no current target). */
+private fun targetGlyph(target: Char?): String =
+    when {
+        target == null -> "✓"
+        target == ' ' -> "␣"
+        else -> target.toString()
+    }
 
 /** Per-frame readout: position ids per arm, emitted character, decoder mode. */
 @Composable

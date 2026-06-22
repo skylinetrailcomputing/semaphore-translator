@@ -13,19 +13,17 @@ struct HomeView: View {
                 Spacer()
                 VStack(spacing: 16) {
                     NavigationLink {
-                        // Today's live screen ([3.5]) is the Learn surface (#5b
-                        // fleshes it out). It starts the front camera on appear and
-                        // stops it on disappear, so entering/leaving here is what
-                        // mounts and tears down capture. A transparent, title-less
-                        // nav bar lets the camera fill the screen with just the back
-                        // chevron over it (a title would sit low-contrast on the feed).
-                        ContentView()
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbarBackground(.hidden, for: .navigationBar)
+                        // The Learn fork ([6a], #70): a no-camera chooser between
+                        // free-form practice and a guided passage drill. Both push
+                        // the same front-camera screen; the camera only mounts once
+                        // one of those is entered, so nothing fires here. Keeps its
+                        // default nav bar (back chevron + "Learn" title) — the camera
+                        // screens it pushes bring their own transparent bar.
+                        LearnChooserView()
                     } label: {
                         ModePill(
                             title: "Sign / Learn semaphore",
-                            subtitle: "Practice signing — front camera",
+                            subtitle: "Practice or drill — front camera",
                             systemImage: "figure.wave")
                     }
                     NavigationLink {
@@ -89,8 +87,9 @@ struct HomeView: View {
 }
 
 /// One tappable mode option on Home — leading glyph, title + subtitle, trailing
-/// chevron, in a rounded card. The Android twin is `HomeScreen`'s `ModePill`.
-private struct ModePill: View {
+/// chevron, in a rounded card. Reused by the Learn chooser ([6a], #70). The
+/// Android twin is `HomeScreen`'s `ModePill`.
+struct ModePill: View {
     let title: String
     let subtitle: String
     let systemImage: String
