@@ -1,0 +1,36 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Frozen shared contract for the Learn DRILL ENGINE (Epic 6a, issue #69). The drill engine sits strictly DOWNSTREAM of the temporal committer (ADR 0004 / 0005): it observes ONLY the characters the committer emits and never reads keypoints, arm angles, position ids, timing, or any pre-commit decode state. It therefore cannot perturb the decode / adapter / commit core -- cross-platform parity risk on that core is ~0. The executable cross-platform enforcement is shared/drill_vectors.json (both platforms' DrillParity tests run it and MUST agree byte-for-byte). Human-readable design + rationale: docs/adr/0007-drill-engine-contract.md.",
+  "model": {
+    "target": "a single expected character the signer must produce -- one of A-Z, 0-9, or SPACE (the frozen ASCII alphabet).",
+    "session": "an ordered sequence of targets, in signing order, derived from a source passage. The passage->targets tokenisation + sanitisation is the SOURCE's job (6a-3); the engine consumes an already-validated target sequence and tracks the current target index.",
+    "match_detector": "a pure function of (the committer's emitted character, the current target). It decides hit / no-hit and advances the session. No camera, pose, timing, or decode state."
+  },
+  "match_rule": {
+    "observed_input": "exactly one NON-EMPTY character returned by the committer (Committer.process). The committer returns '' on most frames and on control-pose commits (NUMERALS / the J letters-shift); those empty returns are never observed by the drill, so a mode switch is invisible here and a digit target is matched by the digit the committer ultimately emits (e.g. '7').",
+    "normalization": "ASCII-uppercase both the emitted character and the current target before comparing. Targets and emits are single characters in the frozen ASCII alphabet, so the uppercase mapping is locale-independent and identical across Python / Swift / Kotlin.",
+    "hit": "normalized(emit) == normalized(current target).",
+    "on_hit": "advance the current target index by one. If the index reaches the target count the session is COMPLETE (the celebrate signal).",
+    "on_miss": "NO-OP under stay-until-success (the only 6a-1 lifecycle, iv-a): the index does not advance and a wrong character is neither penalised nor skipped -- the signer simply tries again.",
+    "after_complete": "emits observed after COMPLETE are no-ops (no match, no advance)."
+  },
+  "lifecycle_seam": {
+    "stay_until_success": "the only lifecycle defined at 6a-1 (iv-a): advance solely on a matching emit; never time out, never auto-advance. This is what the parity vectors exercise.",
+    "reserved": "later lifecycles -- timed (iv-b) and delayed-assist (iv-d), both 6a-6 -- introduce NON-emit transitions (wall-clock timeouts) layered over this same target/index core. The contract names the session states for them but deliberately does not define their transitions here; they are policies over the target, not changes to the match rule."
+  },
+  "edge_cases": {
+    "reset": "the session is restartable: reset() returns the index to the first target (the 6a-2 replay path). Caller-driven, never self-driven -- the same discipline as Committer.reset().",
+    "empty_targets": "a session with zero targets is immediately COMPLETE (index 0). The source (6a-3) must not produce an empty target sequence; this is pinned only so all platforms agree on the degenerate input.",
+    "empty_emit": "the drill never observes an empty committer emit (it observes only non-empty commits); an empty string would simply never match a non-empty target."
+  },
+  "states": ["ACTIVE", "COMPLETE"],
+  "non_goals": [
+    "reading keypoints, arm angles, position ids, or any pre-commit decode state",
+    "modifying the committer or the decode / adapter / commit core in any way",
+    "tokenising or sanitising the source passage into targets (that is the source, 6a-3)",
+    "scoring, timing, rendering, or celebrating (the session HUD + celebrate are 6a-2; scoring / timing are later)"
+  ],
+  "version": "1.0",
+  "_human_doc": "docs/adr/0007-drill-engine-contract.md",
+  "spec_refs": ["4.4", "4.5", "6"]
+}
