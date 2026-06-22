@@ -150,3 +150,32 @@ data class DrillSequence(
 data class DrillVectors(
     @SerializedName("sequence_vectors") val sequenceVectors: List<DrillSequence>,
 )
+
+// --- source_contract.json (Epic 6a #71; the passage-source contract) ---
+
+// The light, machine-checkable slice: version, the frozen supported_chars output
+// alphabet (37 strings: SPACE, 0-9, A-Z), and the max_targets cap. The behavioural
+// enforcement is sanitize_vectors.json.
+data class SourceContract(
+    val version: String,
+    @SerializedName("supported_chars") val supportedChars: List<String>,
+    @SerializedName("max_targets") val maxTargets: Int,
+)
+
+// --- sanitize_vectors.json (Epic 6a #71; the passage-source parity fixtures) ---
+
+// One sanitisation vector: a raw `input` and the `expected` sanitised target string.
+// Driven through the shipping PassageSource.sanitize.
+data class SanitizeCase(val name: String, val input: String, val expected: String)
+
+data class SanitizeVectors(val cases: List<SanitizeCase>)
+
+// --- stock_passages.json (Epic 6a #71; the bundled sight-read content) ---
+
+// Test-side mirror of the shipping `ui.StockPassage(s)`. The shipping loader parses
+// with `org.json`, which is only a non-functional stub in local JVM unit tests; these
+// Gson DTOs let the content invariants be asserted off-device (the org.json loader
+// itself is exercised in the on-device smoke, same split as DisclaimerDocument).
+data class StockPassageDto(val id: String, val hint: String, val text: String)
+
+data class StockPassagesDto(val passages: List<StockPassageDto>)

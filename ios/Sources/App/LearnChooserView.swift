@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// The Learn fork ([6a], #70). The "Sign / Learn" pill lands here and offers two
-/// front-camera surfaces: **free practice** (sign anything, watch the decode) and
-/// a **passage drill** (stay-until-success over a fixed passage, with a HUD +
-/// celebrate). Both push the same `ContentView`; the drill differs only by an
-/// injected passage. No camera or permission prompt fires here — that's deferred
-/// to the pushed screen, exactly as on Home. The Android twin is `SemaphoreApp`'s
-/// `LEARN_HUB` chooser.
+/// The Learn source picker ([6a], #71). The "Sign / Learn" pill lands here and
+/// offers three front-camera surfaces: **free practice** (sign anything, watch the
+/// decode) and two passage-drill sources — **type a passage** (custom text,
+/// sanitised) and **sight-read a stock passage** (a bundled passage you haven't
+/// seen). All push the same `ContentView`; the drills differ only by an injected,
+/// sanitised passage. No camera or permission prompt fires here — that's deferred
+/// to the pushed screen, exactly as on Home. The Android twin is
+/// `SemaphoreApp`'s `LEARN_HUB` chooser + the custom/stock screens.
 struct LearnChooserView: View {
     var body: some View {
         ZStack {
@@ -14,9 +15,7 @@ struct LearnChooserView: View {
             VStack(spacing: 16) {
                 Spacer()
                 NavigationLink {
-                    // Free-form Learn — the original surface, unchanged. Transparent,
-                    // title-less nav bar so the camera fills the screen under just
-                    // the back chevron.
+                    // Free-form Learn — the original surface, unchanged.
                     ContentView()
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbarBackground(.hidden, for: .navigationBar)
@@ -27,18 +26,20 @@ struct LearnChooserView: View {
                         systemImage: "hand.wave")
                 }
                 NavigationLink {
-                    // The same front-camera screen, driven as a drill by an injected
-                    // passage (6a-2). The custom / sight-read sources land in 6a-3.
-                    ContentView(
-                        emptyHint: "Sign the letter shown above",
-                        drillTargets: Self.starterPassage)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbarBackground(.hidden, for: .navigationBar)
+                    CustomPassageView()
                 } label: {
                     ModePill(
-                        title: "Drill a passage",
-                        subtitle: "Sign “\(Self.starterPassage)”, letter by letter",
-                        systemImage: "list.bullet.rectangle")
+                        title: "Type a passage",
+                        subtitle: "Drill your own words, letter by letter",
+                        systemImage: "keyboard")
+                }
+                NavigationLink {
+                    StockPassageView()
+                } label: {
+                    ModePill(
+                        title: "Sight-read a passage",
+                        subtitle: "Drill a surprise passage you haven’t seen",
+                        systemImage: "book")
                 }
                 Spacer()
             }
@@ -47,10 +48,167 @@ struct LearnChooserView: View {
         .navigationTitle("Learn")
         .navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    /// The hardcoded starter passage for the 6a-2 spine; custom / sight-read
-    /// sources are 6a-3 (#71). Kept in lockstep with the Android `STARTER_PASSAGE`.
-    static let starterPassage = "HELLO"
+/// The **custom passage** source ([6a-3], #71): a text field whose live, sanitised
+/// preview is exactly what the drill will use (`PassageSource.sanitize`). Start is
+/// disabled until the sanitised result is a non-empty passage within
+/// `PassageSource.maxTargets` — so the drill never gets an empty target sequence
+/// (drill_contract `empty_targets`). Prefilled with a friendly starter. The Android
+/// twin is `CustomPassageScreen`.
+struct CustomPassageView: View {
+    @State private var text = "HELLO"
+
+    var body: some View {
+        // Sanitise once per render (the Kotlin twin computes it once per
+        // recomposition too); the sanitiser is the single source of truth, so the
+        // preview can't disagree with what's drilled. No raw-length cap: the
+        // sanitiser is O(n)-cheap and the *visible* sanitised counter (below) is the
+        // only bound, so input is never silently truncated.
+        let sanitized = PassageSource.sanitize(text)
+        let withinCap = sanitized.count <= PassageSource.maxTargets
+        let canStart = !sanitized.isEmpty && withinCap
+        return ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Type anything — letters, digits, and spaces. Other characters "
+                    + "are ignored.")
+                    .font(.callout)
+                    .foregroundStyle(.white.opacity(0.7))
+
+                TextField("Your passage", text: $text, axis: .vertical)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .lineLimit(2...4)
+                    .padding()
+                    .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    .foregroundStyle(.white)
+
+                previewCard(sanitized: sanitized, withinCap: withinCap)
+
+                Spacer()
+
+                NavigationLink {
+                    ContentView(
+                        emptyHint: "Sign the letter shown above",
+                        drillTargets: sanitized)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(.hidden, for: .navigationBar)
+                } label: {
+                    Text("Start drill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            canStart ? Color.white.opacity(0.2) : Color.white.opacity(0.06),
+                            in: RoundedRectangle(cornerRadius: 14))
+                        .foregroundStyle(canStart ? .white : .white.opacity(0.4))
+                }
+                .disabled(!canStart)
+            }
+            .padding(24)
+        }
+        .navigationTitle("Type a passage")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// The live preview = the sanitised target string, shown verbatim (spaces as `␣`
+    /// so trims/collapses are legible), with a target counter. Empty-state copy names
+    /// the supported set so a field of only-dropped characters doesn't read as a
+    /// broken Start button.
+    private func previewCard(sanitized: String, withinCap: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Preview")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.6))
+            if sanitized.isEmpty {
+                Text("No supported characters yet (A–Z, 0–9, space).")
+                    .font(.callout)
+                    .foregroundStyle(.white.opacity(0.5))
+            } else {
+                Text(sanitized.replacingOccurrences(of: " ", with: "␣"))
+                    .font(.system(.title3, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .lineLimit(3)
+                    .truncationMode(.tail)
+                // `count` == target count: the sanitiser's output is pure ASCII, so
+                // one Character is exactly one drill target.
+                Text("\(sanitized.count) / \(PassageSource.maxTargets)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(withinCap ? .white.opacity(0.6) : .red)
+                if !withinCap {
+                    Text("Too long — shorten to \(PassageSource.maxTargets) characters.")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+/// The **sight-read** source ([6a-3], #71): a list of bundled stock passages shown
+/// by their content-neutral hint only — the text is never displayed here, so the
+/// signer sight-reads it one HUD target at a time. Loads `shared/stock_passages.json`
+/// from the bundle; fails **soft** (an "unavailable" message, not a crash) if the
+/// resource is missing/corrupt, leaving the custom source usable. The Android twin
+/// is `StockPassageScreen`.
+struct StockPassageView: View {
+    private let passages: [StockPassage]
+
+    init() {
+        passages = (try? StockPassages.loadBundled())?.passages ?? []
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if passages.isEmpty {
+                unavailable
+            } else {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        Text("Pick one and sign it as it’s revealed, letter by letter.")
+                            .font(.callout)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ForEach(passages) { passage in
+                            NavigationLink {
+                                ContentView(
+                                    emptyHint: "Sign the letter shown above",
+                                    drillTargets: PassageSource.sanitize(passage.text))
+                                    .navigationBarTitleDisplayMode(.inline)
+                                    .toolbarBackground(.hidden, for: .navigationBar)
+                            } label: {
+                                ModePill(
+                                    title: passage.hint,
+                                    subtitle: "\(PassageSource.sanitize(passage.text).count) steps",
+                                    systemImage: "list.bullet.rectangle")
+                            }
+                        }
+                    }
+                    .padding(24)
+                }
+            }
+        }
+        .navigationTitle("Sight-read")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var unavailable: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "book.closed").font(.largeTitle)
+            Text("Sight-read passages are unavailable.")
+                .font(.headline)
+            Text("Try “Type a passage” instead.")
+                .font(.callout)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .foregroundStyle(.white)
+        .padding(32)
+    }
 }
 
 #Preview {
