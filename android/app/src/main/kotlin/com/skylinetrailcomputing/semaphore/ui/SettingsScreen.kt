@@ -1,6 +1,6 @@
 package com.skylinetrailcomputing.semaphore.ui
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,13 +29,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * The lean **Settings** surface ([5d], #50). Its only content for now is the
- * Developer-mode toggle, which gates the Learn screen's skeleton overlay + raw
- * per-frame readout (the maintainer smoke surface). State is hoisted to
- * `SemaphoreApp`, which persists each change via [AppSettings] and passes the
- * current value down — so the toggle survives launches and the Learn screen sees
- * the same flag. Contract knobs (angle-tolerance, commit-hold) are deliberately
- * out of scope (FR7).
+ * The lean **Settings** surface ([5d], #50). Hosts the Developer-mode toggle
+ * (which gates the Learn screen's skeleton overlay + raw per-frame readout — the
+ * maintainer smoke surface) and the **About** entry ([6b-4], #82). The toggle's
+ * state is hoisted to `SemaphoreApp`, which persists each change via [AppSettings]
+ * and passes the current value down — so it survives launches and the Learn screen
+ * sees the same flag. Contract knobs (angle-tolerance, commit-hold) are
+ * deliberately out of scope (FR7). The 6a-4 regular-user surface (#72) will
+ * re-home the About row out of this dev-ish screen.
  *
  * Uses a Scaffold + [TopAppBar] (Up arrow + title) — the conventional Android
  * affordance for a non-immersive pushed screen, paralleling the titled inline nav
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.sp
 fun SettingsScreen(
     developerMode: Boolean,
     onDeveloperModeChange: (Boolean) -> Unit,
+    onAbout: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -70,7 +72,7 @@ fun SettingsScreen(
             )
         },
     ) { innerPadding ->
-        Box(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
+        Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -98,6 +100,20 @@ fun SettingsScreen(
                             uncheckedBorderColor = Color.White.copy(alpha = 0.30f),
                         ),
                 )
+            }
+            // The always-reachable About/privacy surface ([6b-4], #82): app
+            // version, AS-IS beta line, and the hosted EULA + Privacy links.
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onAbout).padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "About",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 22.sp)
             }
         }
     }
