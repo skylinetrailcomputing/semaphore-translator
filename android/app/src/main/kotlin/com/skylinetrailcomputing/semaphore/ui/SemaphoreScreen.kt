@@ -229,8 +229,13 @@ private fun CameraScreen(
                 // Drill (6a-2, #70): feed the committed character to the engine.
                 // Stay-until-success is the engine's own policy (a hit advances, a
                 // miss is a no-op), so we just republish the HUD + flash the result.
-                // No-op once complete, so post-celebrate commits don't flash.
-                if (drill != null && !drill.isComplete) {
+                // No-op once complete, so post-celebrate commits don't flash. A rest
+                // between letters commits a SPACE; don't penalise that as a miss
+                // unless a space is actually the current target (6a-2 smoke nit) — a
+                // rest is signing rhythm, not a wrong attempt. A space still advances
+                // when the target IS a space (multi-word 6a-3 sources).
+                if (drill != null && !drill.isComplete &&
+                    !(emitted == " " && drill.currentTarget != ' ')) {
                     val step = drill.observe(emitted)
                     drillUi = DrillUi(drill.currentTarget, step.index, drill.count, step.complete)
                     drillFlash = step.matched

@@ -158,6 +158,11 @@ final class PreviewViewModel: ObservableObject {
     /// passage is complete (so post-celebrate commits don't flash).
     private func observeDrill(_ emitted: String) {
         guard let drill, !drill.isComplete else { return }
+        // A rest between letters commits a SPACE; don't penalise that as a miss
+        // unless a space is actually the current target (6a-2 smoke nit). A rest is
+        // natural signing rhythm, not a wrong attempt — only a wrong *letter* misses.
+        // A space still advances when the target IS a space (multi-word 6a-3 sources).
+        if emitted == " ", drill.currentTarget != " " { return }
         let step = drill.observe(emitted)
         drillHUD = DrillHUD(
             target: drill.currentTarget,
