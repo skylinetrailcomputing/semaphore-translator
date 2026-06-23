@@ -31,10 +31,37 @@ CONFIG = json.loads((SHARED / "semaphore_config.json").read_text())
 TOL = CONFIG["ANGLE_TOLERANCE_DEG"]
 MIN_CONF = CONFIG["MIN_KEYPOINT_CONFIDENCE"]
 
-# Temporal-commit constants (spec §4.4; used by gen_temporal_vectors.py).
+# Temporal-commit constants (spec §4.4; used by gen_temporal_vectors.py). These
+# flat constants ARE the Learn (front-camera) profile -- keep their names/values
+# frozen; gen_test_vectors.py imports from this module too (though not these).
 COMMIT_HOLD_MS = CONFIG["COMMIT_HOLD_MS"]
 SMOOTHING_WINDOW = CONFIG["SMOOTHING_WINDOW"]
 INTER_CHAR_GAP_MS = CONFIG["INTER_CHAR_GAP_MS"]
+
+# Per-fork timing profiles (ADR 0009; used by gen_temporal_vectors.py). The flat
+# constants above are the implicit "learn" profile; each named entry under
+# timing_profiles fully specifies all three timing keys (never a delta). Selecting
+# a profile that is absent, or whose entry omits a key, is a fatal KeyError --
+# never a silent fallback to learn (both platform loaders enforce the same).
+_LEARN_TIMING = {
+    "COMMIT_HOLD_MS": COMMIT_HOLD_MS,
+    "INTER_CHAR_GAP_MS": INTER_CHAR_GAP_MS,
+    "SMOOTHING_WINDOW": SMOOTHING_WINDOW,
+}
+TIMING_PROFILES = CONFIG.get("timing_profiles", {})
+
+
+def timing_for(profile=None):
+    """Committer timing for a fork profile, as the reference Committer's kwargs
+    (smoothing_window, commit_hold_ms, inter_char_gap_ms). None / "learn" -> the
+    flat constants; any other name -> its fully-specified timing_profiles entry
+    (fatal KeyError if the entry or a key is missing -- no silent fallback)."""
+    t = _LEARN_TIMING if profile in (None, "learn") else TIMING_PROFILES[profile]
+    return {
+        "smoothing_window": t["SMOOTHING_WINDOW"],
+        "commit_hold_ms": t["COMMIT_HOLD_MS"],
+        "inter_char_gap_ms": t["INTER_CHAR_GAP_MS"],
+    }
 
 # id -> angle, read from the alphabet's position model (single source of truth)
 OCTANT = {

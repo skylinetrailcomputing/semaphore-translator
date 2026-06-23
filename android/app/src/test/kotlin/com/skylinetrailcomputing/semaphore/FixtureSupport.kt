@@ -7,6 +7,7 @@ import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.SemaphoreConfig
 import com.skylinetrailcomputing.semaphore.core.SemaphoreDecoder
 import com.skylinetrailcomputing.semaphore.core.SharedFiles
+import com.skylinetrailcomputing.semaphore.core.TimingProfile
 
 // Shared test-only helpers for the fixture suites (parity + native fixtures):
 // the single decoder construction, the map -> typed `Keypoints` bridge, and the
@@ -41,16 +42,30 @@ fun referenceDecoder(): SemaphoreDecoder {
 }
 
 /**
- * Builds [CommitTiming] from the frozen shared contract -- the timing twin of
- * [referenceDecoder], so the temporal parity harness (#4.3) injects the exact
- * constants the live layer (#4.5) will, read from the same contract.
+ * Builds [CommitTiming] for one fork profile from the frozen shared contract --
+ * the timing twin of [referenceDecoder], so the temporal parity harness injects
+ * the exact constants the live layer does, read from the same contract.
+ * [TimingProfile.LEARN] (the default, used by the existing Learn harness) reads
+ * the flat keys; [TimingProfile.INTERPRET] reads `timing_profiles.interpret` and
+ * fails the test loudly if absent (the loader's fatal-not-fallback rule, ADR 0009).
  */
-fun referenceTiming(): CommitTiming {
+fun referenceTiming(profile: TimingProfile = TimingProfile.LEARN): CommitTiming {
     val config = SharedFiles.load<SemaphoreConfig>("semaphore_config.json")
+    if (profile == TimingProfile.LEARN) {
+        return CommitTiming(
+            smoothingWindow = config.smoothingWindow,
+            commitHoldMs = config.commitHoldMs,
+            interCharGapMs = config.interCharGapMs,
+        )
+    }
+    val t =
+        requireNotNull(config.timingProfiles?.get(profile.jsonKey)) {
+            "timing_profiles.${profile.jsonKey} missing from semaphore_config.json"
+        }
     return CommitTiming(
-        smoothingWindow = config.smoothingWindow,
-        commitHoldMs = config.commitHoldMs,
-        interCharGapMs = config.interCharGapMs,
+        smoothingWindow = t.smoothingWindow,
+        commitHoldMs = t.commitHoldMs,
+        interCharGapMs = t.interCharGapMs,
     )
 }
 

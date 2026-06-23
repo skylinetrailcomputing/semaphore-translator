@@ -145,7 +145,13 @@ final class PreviewViewModel: ObservableObject {
         if committer == nil {
             do {
                 let decoder = try ContractLoader.makeDecoder()
-                let timing = try ContractLoader.makeCommitTiming()
+                // The committer timing forks by lens (ADR 0009): rear → Interpret
+                // (faster commit), front → Learn. Selected here, the single
+                // construction site (the view model is re-created per lens, so the
+                // committer's profile is fixed for its lifetime). Passed explicitly
+                // so a missed default can't silently run the rear lens at Learn speed.
+                let profile = TimingProfile(cameraPosition: cameraPosition)
+                let timing = try ContractLoader.makeCommitTiming(profile: profile)
                 self.decoder = decoder
                 self.committer = Committer(decoder: decoder, timing: timing)
                 // Only drill screens render the assist figure (#73); skip the parse

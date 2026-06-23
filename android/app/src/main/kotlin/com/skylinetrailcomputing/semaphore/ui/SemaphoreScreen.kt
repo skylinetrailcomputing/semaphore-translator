@@ -58,6 +58,7 @@ import com.skylinetrailcomputing.semaphore.core.DrillSession
 import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.Mode
+import com.skylinetrailcomputing.semaphore.core.TimingProfile
 import com.skylinetrailcomputing.semaphore.capture.PoseCaptureSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -162,10 +163,17 @@ private fun CameraScreen(
                 runCatching { ContractLoader.makeAssistGeometry(context) }.getOrNull()
             else null
         }
+    // The committer timing forks by lens (ADR 0009): rear → Interpret (faster
+    // commit), front → Learn. `timingProfile` is in the remember key so the cached
+    // committer is rebuilt (fresh timing + state) if the active profile ever changes
+    // -- defensive against a future in-screen lens toggle (today each route is a
+    // distinct composition with a fixed lens, so it can't change mid-screen).
+    val timingProfile = TimingProfile.forLensFacing(cameraLens.lensFacing)
     val committer =
-        remember(decoder) {
+        remember(decoder, timingProfile) {
             decoder?.let { d ->
-                runCatching { Committer(d, ContractLoader.makeCommitTiming(context)) }.getOrNull()
+                runCatching { Committer(d, ContractLoader.makeCommitTiming(context, timingProfile)) }
+                    .getOrNull()
             }
         }
     if (decoder == null || committer == null) {

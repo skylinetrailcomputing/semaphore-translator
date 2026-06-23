@@ -139,16 +139,38 @@ object ContractLoader {
     }
 
     /**
-     * Parse the frozen temporal-commit constants (spec §4.4) from the bundled
-     * `semaphore_config.json`. No committer is built here -- that is #4.5; this
-     * only surfaces the constants the live layer will inject.
+     * Parse the temporal-commit timing (spec §4.4) for one fork profile from the
+     * bundled `semaphore_config.json`. No committer is built here -- this only
+     * surfaces the constants the live layer injects (selected by lens, ADR 0009).
+     *
+     * [TimingProfile.LEARN] reads the frozen flat constants; any other profile
+     * reads its fully-specified `timing_profiles.<jsonKey>` block and **throws**
+     * if it is absent (`getInt`/`getDouble` throw on a missing key too) -- never a
+     * silent fallback to Learn. The default keeps test/legacy callers on Learn;
+     * the live screen passes the lens-derived profile explicitly.
      */
-    fun makeCommitTiming(context: Context): CommitTiming {
+    fun makeCommitTiming(
+        context: Context,
+        profile: TimingProfile = TimingProfile.LEARN,
+    ): CommitTiming {
         val config = JSONObject(readAsset(context, "semaphore_config.json"))
+        if (profile == TimingProfile.LEARN) {
+            return CommitTiming(
+                smoothingWindow = config.getInt("SMOOTHING_WINDOW"),
+                commitHoldMs = config.getDouble("COMMIT_HOLD_MS"),
+                interCharGapMs = config.getDouble("INTER_CHAR_GAP_MS"),
+            )
+        }
+        val profiles =
+            config.optJSONObject("timing_profiles")
+                ?: error("semaphore_config.json has no timing_profiles (needed for ${profile.jsonKey})")
+        val t =
+            profiles.optJSONObject(profile.jsonKey)
+                ?: error("timing_profiles.${profile.jsonKey} missing from semaphore_config.json")
         return CommitTiming(
-            smoothingWindow = config.getInt("SMOOTHING_WINDOW"),
-            commitHoldMs = config.getDouble("COMMIT_HOLD_MS"),
-            interCharGapMs = config.getDouble("INTER_CHAR_GAP_MS"),
+            smoothingWindow = t.getInt("SMOOTHING_WINDOW"),
+            commitHoldMs = t.getDouble("COMMIT_HOLD_MS"),
+            interCharGapMs = t.getDouble("INTER_CHAR_GAP_MS"),
         )
     }
 

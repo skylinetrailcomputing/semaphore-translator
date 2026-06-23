@@ -1,16 +1,24 @@
 {
-  "$schema_version": "1.0",
-  "_README": "Frozen runtime constants per docs/semaphore-translator-spec.md §4.4. Both platforms load and parse this file; values are never hardcoded in Swift/Kotlin. Changing a value here changes behavior on both platforms identically.",
+  "$schema_version": "1.1",
+  "_README": "Frozen runtime constants per docs/semaphore-translator-spec.md §4.4. Both platforms load and parse this file; values are never hardcoded in Swift/Kotlin. Changing a value here changes behavior on both platforms identically. The flat ANGLE_TOLERANCE_DEG / MIN_KEYPOINT_CONFIDENCE are geometry constants for the lens-AGNOSTIC decoder (ADR 0006) and never fork. The flat COMMIT_HOLD_MS / INTER_CHAR_GAP_MS / SMOOTHING_WINDOW are the committer's timing -- they ARE the Learn (front-camera) profile; the Interpret (rear-camera) fork overrides them under timing_profiles (ADR 0009).",
   "ANGLE_TOLERANCE_DEG": 20,
   "MIN_KEYPOINT_CONFIDENCE": 0.5,
   "COMMIT_HOLD_MS": 600,
   "INTER_CHAR_GAP_MS": 200,
   "SMOOTHING_WINDOW": 5,
+  "timing_profiles": {
+    "interpret": {
+      "COMMIT_HOLD_MS": 400,
+      "INTER_CHAR_GAP_MS": 200,
+      "SMOOTHING_WINDOW": 5
+    }
+  },
   "_field_notes": {
     "ANGLE_TOLERANCE_DEG": "max deviation from a 45-degree canonical position to accept; beyond this the arm is indeterminate",
     "MIN_KEYPOINT_CONFIDENCE": "below this per-keypoint visibility, the arm is indeterminate",
     "COMMIT_HOLD_MS": "how long a stable pose must hold (wall-clock ms) before being committed to output (ADR 0004)",
     "INTER_CHAR_GAP_MS": "minimum brief-REST dwell (ms) that re-arms the SAME symbol for re-commit -- the double-letter separator; a REST held >= COMMIT_HOLD_MS commits a space instead, and an indeterminate gap no longer re-arms. A distinct symbol commits on its hold alone (ADR 0005, superseding ADR 0004 Decision 3)",
-    "SMOOTHING_WINDOW": "frames of plurality-vote smoothing (ties to the most-recent occurrence) on the predicted mode-independent pose symbol (the classify output, not the emitted character); see ADR 0004"
+    "SMOOTHING_WINDOW": "frames of plurality-vote smoothing (ties to the most-recent occurrence) on the predicted mode-independent pose symbol (the classify output, not the emitted character); see ADR 0004",
+    "timing_profiles": "Per-fork committer-timing overrides (ADR 0009). The flat COMMIT_HOLD_MS/INTER_CHAR_GAP_MS/SMOOTHING_WINDOW are the implicit Learn profile (front camera, self-signing). Each named profile here is FULLY SPECIFIED (all three timing keys; never a delta) and is selected by the camera lens at the committer-construction site -- the rear-camera Interpret fork selects 'interpret'. Faster commit (400 vs 600 ms) suits faster real-world signers; #76 (6a-8) tunes against footage. Only the three timing keys may fork -- the geometry constants never do (ADR 0006: the rear lens reuses the front decode path verbatim). A missing/malformed selected profile is a fatal load error, never a silent fallback to Learn."
   }
 }

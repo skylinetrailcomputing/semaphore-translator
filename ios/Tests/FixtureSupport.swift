@@ -39,15 +39,28 @@ enum ReferenceDecoder {
     }
 }
 
-/// Builds `CommitTiming` from the frozen shared contract — the timing twin of
-/// `ReferenceDecoder.make()`, so the temporal parity harness (#4.2) injects the
-/// exact constants the live layer (#4.5) will, read from the same contract.
-func referenceTiming() throws -> CommitTiming {
+/// Builds `CommitTiming` for one fork profile from the frozen shared contract —
+/// the timing twin of `ReferenceDecoder.make()`, so the temporal parity harness
+/// injects the exact constants the live layer does, read from the same contract.
+/// `.learn` (the default, used by the existing Learn harness) reads the flat keys;
+/// `.interpret` reads `timing_profiles.interpret` and fails the test loudly if it
+/// is absent (mirroring the app loader's fatal-not-fallback rule, ADR 0009).
+func referenceTiming(profile: TimingProfile = .learn) throws -> CommitTiming {
     let config = try SharedFiles.load(SemaphoreConfig.self, "semaphore_config.json")
+    if profile == .learn {
+        return CommitTiming(
+            smoothingWindow: config.smoothingWindow,
+            commitHoldMs: config.commitHoldMs,
+            interCharGapMs: config.interCharGapMs
+        )
+    }
+    let t = try XCTUnwrap(
+        config.timingProfiles?[profile.rawValue],
+        "timing_profiles.\(profile.rawValue) missing from semaphore_config.json")
     return CommitTiming(
-        smoothingWindow: config.smoothingWindow,
-        commitHoldMs: config.commitHoldMs,
-        interCharGapMs: config.interCharGapMs
+        smoothingWindow: t.smoothingWindow,
+        commitHoldMs: t.commitHoldMs,
+        interCharGapMs: t.interCharGapMs
     )
 }
 
