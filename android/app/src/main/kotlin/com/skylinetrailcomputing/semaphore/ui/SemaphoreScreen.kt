@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.Preview
@@ -12,6 +13,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +38,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -184,6 +187,10 @@ private fun CameraScreen(
     }
 
     val capture = remember { PoseCaptureSession(context) }
+    // The bound camera, surfaced by the capture session once `bindToLifecycle` runs,
+    // so the Interpret pinch-to-zoom gesture can reach its `CameraControl`. Null until
+    // the first frame binds; the gesture is keyed on it and arms only when non-null.
+    var camera by remember { mutableStateOf<Camera?>(null) }
     val previewView = remember {
         PreviewView(context).apply {
             scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -299,7 +306,8 @@ private fun CameraScreen(
             }
         }
 
-        capture.keypoints(lifecycleOwner, preview, cameraLens).collectLatest { frame ->
+        val frames = capture.keypoints(lifecycleOwner, preview, cameraLens, onCamera = { camera = it })
+        frames.collectLatest { frame ->
             // `lastFrameAt` is the watchdog's freshness clock (real-time liveness),
             // distinct from `frame.tMs` (the frame-aligned committer clock, #34) the
             // committer consumes below.
@@ -400,9 +408,31 @@ private fun CameraScreen(
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
+        // Interpret (rear lens) pinch-to-zoom: drive the bound camera's CameraControl
+        // from a transform gesture, clamped to MAX_ZOOM_RATIO and the device's own
+        // range. Gated to the back lens — Learn's front-lens self-signing is at arm's
+        // length, where a tight crop would only push the signer's own arms out of
+        // frame. The zoomed frames also feed ML Kit, but the adapter normalizes and the
+        // decode rests on joint angles, so nothing downstream changes. Keyed on
+        // `camera`, so the gesture arms when the camera binds and is a no-op (front
+        // lens) or absent (null) otherwise.
+        val zoomEnabled = cameraLens.lensFacing == CameraSelector.LENS_FACING_BACK
         androidx.compose.ui.viewinterop.AndroidView(
             factory = { previewView },
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                if (zoomEnabled)
+                    Modifier.fillMaxSize().pointerInput(camera) {
+                        val cam = camera ?: return@pointerInput
+                        detectTransformGestures { _, _, zoom, _ ->
+                            val zoomState =
+                                cam.cameraInfo.zoomState.value ?: return@detectTransformGestures
+                            val ceiling = minOf(zoomState.maxZoomRatio, MAX_ZOOM_RATIO)
+                            val target =
+                                (zoomState.zoomRatio * zoom).coerceIn(zoomState.minZoomRatio, ceiling)
+                            cam.cameraControl.setZoomRatio(target)
+                        }
+                    }
+                else Modifier.fillMaxSize(),
         )
         if (developerMode) {
             // `PreviewView` auto-mirrors the front lens and auto-un-mirrors the
@@ -512,6 +542,11 @@ private const val SIGNER_TIMEOUT_MS = 500L
 // iOS's `PreviewViewModel.autoResetCountdownSeconds` (no parity vector needed — a
 // view affordance, like the ~450 ms drill flash clear).
 private const val AUTO_RESET_COUNTDOWN_SECONDS = 3
+// Hard cap on Interpret pinch-zoom, in lockstep with iOS's
+// `PoseCaptureSession.maxZoomFactor`. Digital zoom on the rear lens, kept modest: a
+// tight crop pushes the signer's wide semaphore wingspan out of frame (the #101
+// friction the pose model already fights), so we cap well below the hardware max.
+private const val MAX_ZOOM_RATIO = 3.0f
 private val leftColor = Color.Cyan
 private val rightColor = Color(0xFFFF9800)
 private val assistBodyColor = Color.White.copy(alpha = 0.85f)

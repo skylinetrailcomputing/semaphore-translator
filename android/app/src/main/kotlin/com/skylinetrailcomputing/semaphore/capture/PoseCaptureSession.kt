@@ -1,6 +1,7 @@
 package com.skylinetrailcomputing.semaphore.capture
 
 import android.content.Context
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -66,13 +67,17 @@ class PoseCaptureSession(
      * skeleton. The flow unbinds *its* use cases and closes its detector when the
      * collector is cancelled. [preview] is null in headless contexts (no display
      * surface). [cameraLens] is lens *selection* only — the mirror stays
-     * quarantined in [MlKitPoseAdapter] (spec §3.2).
+     * quarantined in [MlKitPoseAdapter] (spec §3.2). [onCamera] hands the bound
+     * [Camera] back to the caller (on the main thread) so the UI can drive zoom via
+     * its `CameraControl` — Interpret pinch-to-zoom; empty by default for the
+     * headless/front-lens callers.
      */
     @ExperimentalGetImage
     fun keypoints(
         lifecycleOwner: LifecycleOwner,
         preview: Preview? = null,
         cameraLens: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
+        onCamera: (Camera) -> Unit = {},
     ): Flow<PoseFrame> = callbackFlow {
         val executor = ContextCompat.getMainExecutor(context)
         val detector =
@@ -130,7 +135,14 @@ class PoseCaptureSession(
         // the blocking Future.get()), so a Main-dispatched collector can't ANR.
         val useCases = listOfNotNull(preview, analysis).toTypedArray()
         val provider = ProcessCameraProvider.awaitInstance(context)
-        provider.bindToLifecycle(lifecycleOwner, cameraLens, *useCases)
+        val camera = provider.bindToLifecycle(lifecycleOwner, cameraLens, *useCases)
+        // Hand the bound camera back so the UI can drive zoom (Interpret pinch-to-
+        // zoom) via its `CameraControl`. Zoom is a sensor/crop-level control that
+        // applies to *all* bound use cases, so the ImageAnalysis frames ML Kit reads
+        // are zoomed too — and the adapter still normalizes the landmarks, leaving the
+        // decode geometry (joint angles) unchanged. Lens selection + mirror stay
+        // quarantined as before.
+        onCamera(camera)
 
         awaitClose {
             provider.unbind(*useCases)
