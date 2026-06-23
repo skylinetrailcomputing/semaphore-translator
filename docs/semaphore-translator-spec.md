@@ -163,6 +163,16 @@ A continuous arm angle is snapped to the nearest 45° position with a tolerance 
 
 These live in a shared `semaphore_config.json` checked into the repo; both platforms load/parse it rather than hardcoding.
 
+**Timing forks by camera lens (per-fork profiles).** The three *timing* constants
+above (`COMMIT_HOLD_MS`, `INTER_CHAR_GAP_MS`, `SMOOTHING_WINDOW`) are the **Learn**
+(front-camera) profile. The **Interpret** (rear-camera) fork — reading another,
+possibly faster, signer — overrides them via `semaphore_config.json`'s additive
+`timing_profiles.interpret` block, selected by the lens at the committer-construction
+site (faster `COMMIT_HOLD_MS`). The two *geometry* constants never fork — the rear
+lens reuses the front decode path verbatim ([ADR 0006](../docs/adr/0006-rear-camera-decode-geometry.md)).
+See [ADR 0009](../docs/adr/0009-interpret-timing-profile.md); the Interpret values
+are a starter that #76 tunes against footage.
+
 The state machine these constants drive — the **temporal committer** (smooth →
 hold-to-commit → debounced mode switch) — is specified in
 [ADR 0004](../docs/adr/0004-temporal-commit-contract.md) and frozen as the timed
