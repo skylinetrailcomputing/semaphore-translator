@@ -42,23 +42,24 @@ struct AssistGeometry {
     /// must survive. That is why the figure is built from a fresh alphabet parse
     /// rather than the decoder, whose `lookup` collapses the pair.
     let letterPairs: [String: (left: Int, right: Int)]
-    /// Letter symbol → digit string in numeric mode (A–I → 1–9, K → 0). Reversed
-    /// to map a digit *target* back to the arm pose the signer holds for it.
-    let digitMap: [String: String]
 
     /// The two arm angles for a drill target, or `nil` for a target with no pose.
-    /// Targets are the frozen drill alphabet A–Z / 0–9 / SPACE: a letter maps
-    /// directly; a digit reverses `digitMap` to its letter pose (the arms *are* in
-    /// that position — the NUMERALS mode-switch that precedes a digit is signaled
-    /// separately and not taught by the figure); SPACE is REST (both arms down).
+    /// A letter (A–Z) maps directly; SPACE is REST (both arms down). **Digits get
+    /// no figure**: a digit's arms are its letter pose, but producing the digit
+    /// also requires the NUMERALS mode-switch first, which a single static pose
+    /// can't convey — drawing the bare letter pose would misguide (you'd commit
+    /// the letter, not the digit). Suppressing keeps the aid honest: the figure
+    /// only ever shows when the pose it draws is the *complete* correct action
+    /// (roundtable-review, #73).
     func pose(for target: Character?) -> AssistPose? {
         guard let target else { return nil }
         let pair: (left: Int, right: Int)?
         if target == " " {
             pair = letterPairs["REST"]
-        } else if let symbol = letterSymbol(for: target) {
-            pair = letterPairs[symbol]
+        } else if target.isASCII, target.isLetter {
+            pair = letterPairs[String(target).uppercased()]
         } else {
+            // Digits and punctuation have no assist pose.
             pair = nil
         }
         guard let p = pair,
@@ -66,21 +67,6 @@ struct AssistGeometry {
             let right = octantAngles[p.right]
         else { return nil }
         return AssistPose(leftAngleDeg: left, rightAngleDeg: right)
-    }
-
-    /// The alphabet symbol whose pose a target holds: the letter itself
-    /// (ASCII-uppercased) for A–Z, or the digit's letter via the reversed digit
-    /// map. Non-ASCII / punctuation → `nil` (no figure). Targets arrive ASCII and
-    /// already uppercased from the source sanitiser, so the upper is defensive.
-    private func letterSymbol(for target: Character) -> String? {
-        if target.isASCII, target.isLetter {
-            return String(target).uppercased()
-        }
-        if target.isASCII, target.isNumber {
-            let digit = String(target)
-            return digitMap.first { $0.value == digit }?.key
-        }
-        return nil
     }
 
     // MARK: - Figure layout

@@ -576,7 +576,8 @@ private fun AssistFigure(pose: AssistPose, modifier: Modifier = Modifier) {
         val oy = (size.height - side) / 2f
         fun at(p: AssistPoint) = Offset(ox + p.x.toFloat() * side, oy + p.y.toFloat() * side)
 
-        // Body: torso (neck→hip) + shoulder line + a stroked head circle.
+        // Body: neck→head + torso (neck→hip) + shoulder line + a stroked head.
+        drawLine(assistBodyColor, at(pts.neck), at(pts.head), strokeWidth = 4f)
         drawLine(assistBodyColor, at(pts.neck), at(pts.hip), strokeWidth = 4f)
         drawLine(assistBodyColor, at(pts.leftShoulder), at(pts.rightShoulder), strokeWidth = 4f)
         drawCircle(assistBodyColor, radius = side * 0.06f, center = at(pts.head), style = Stroke(width = 4f))

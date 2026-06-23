@@ -73,10 +73,7 @@ enum ContractLoader {
             alphabet.controlSignals.rest.left, alphabet.controlSignals.rest.right
         )
 
-        return AssistGeometry(
-            octantAngles: octantAngles,
-            letterPairs: letterPairs,
-            digitMap: alphabet.numericMode.digitMap)
+        return AssistGeometry(octantAngles: octantAngles, letterPairs: letterPairs)
     }
 
     /// Parse the frozen temporal-commit constants (spec §4.4) from the bundled

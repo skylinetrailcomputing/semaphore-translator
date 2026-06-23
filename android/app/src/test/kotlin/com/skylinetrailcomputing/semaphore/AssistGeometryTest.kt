@@ -32,7 +32,7 @@ class AssistGeometryTest {
                 alphabet.letters.forEach { (symbol, ids) -> put(symbol, ids.left to ids.right) }
                 put("REST", alphabet.controlSignals.rest.left to alphabet.controlSignals.rest.right)
             }
-        return AssistGeometry(octantAngles, letterPairs, alphabet.numericMode.digitMap)
+        return AssistGeometry(octantAngles, letterPairs)
     }
 
     // --- pose() against the contract angles ---
@@ -57,12 +57,14 @@ class AssistGeometryTest {
     }
 
     @Test
-    fun digitTargetsReverseTheDigitMap() {
+    fun digitTargetsHaveNoPose() {
+        // Digits are deliberately suppressed (#73 review): a digit's arms are its
+        // letter pose, but the figure can't convey the NUMERALS mode-switch the
+        // digit also needs, so drawing the bare letter pose would misguide.
         val g = geometry()
-        assertEquals(g.pose('A'), g.pose('1'))
-        assertEquals(g.pose('G'), g.pose('7'))
-        // K = 0 is the only non-sequential digit mapping — exercise it explicitly.
-        assertEquals(g.pose('K'), g.pose('0'))
+        assertNull(g.pose('1'))
+        assertNull(g.pose('7'))
+        assertNull(g.pose('0'))
     }
 
     @Test
@@ -94,6 +96,36 @@ class AssistGeometryTest {
         // Down (-90°): larger screen-y.
         val down = AssistGeometry.endpoints(AssistPose(-90.0, -90.0))
         assertTrue(down.rightWrist.y > down.rightShoulder.y)
+    }
+
+    /**
+     * An *asymmetric* pose (R: left out-left 180°, right out-right 0°) verifies each
+     * arm independently — a left/right shoulder swap is invisible when both arms
+     * share an angle, so the symmetric cases above can't catch it.
+     */
+    @Test
+    fun endpointsPlaceEachArmOnItsOwnShoulder() {
+        val r = AssistGeometry.endpoints(AssistPose(180.0, 0.0))
+        assertTrue(r.leftWrist.x < r.leftShoulder.x) // left arm out to screen-left
+        assertTrue(r.rightWrist.x > r.rightShoulder.x) // right arm out to screen-right
+        assertEquals(r.leftShoulder.y, r.leftWrist.y, 1e-9)
+        assertEquals(r.rightShoulder.y, r.rightWrist.y, 1e-9)
+    }
+
+    /**
+     * Pin one concrete coordinate so a drift in the `armLen` / `halfSpan` layout
+     * constants fails loudly. For `(0°, 0°)`, mirrored-front: right shoulder at
+     * x = 0.5 + 0.13, right wrist a full arm-length (0.28) further right, both at
+     * the shoulder row y = 1 - 0.56.
+     */
+    @Test
+    fun endpointsPinConcreteCoordinates() {
+        val pts = AssistGeometry.endpoints(AssistPose(0.0, 0.0))
+        assertEquals(0.37, pts.leftShoulder.x, 1e-9)
+        assertEquals(0.63, pts.rightShoulder.x, 1e-9)
+        assertEquals(0.44, pts.rightShoulder.y, 1e-9)
+        assertEquals(0.91, pts.rightWrist.x, 1e-9)
+        assertEquals(0.44, pts.rightWrist.y, 1e-9)
     }
 
     @Test

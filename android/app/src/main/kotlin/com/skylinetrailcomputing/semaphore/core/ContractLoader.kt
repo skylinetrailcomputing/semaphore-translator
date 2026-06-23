@@ -120,10 +120,7 @@ object ContractLoader {
                 put("REST", rest.getInt("left") to rest.getInt("right"))
             }
 
-        val digitMapJson = alphabet.getJSONObject("numeric_mode").getJSONObject("digit_map")
-        val digitMap = buildMap { for (k in digitMapJson.keys()) put(k, digitMapJson.getString(k)) }
-
-        return AssistGeometry(octantAngles, letterPairs, digitMap)
+        return AssistGeometry(octantAngles, letterPairs)
     }
 
     /**

@@ -34,12 +34,14 @@ final class AssistGeometryTests: XCTestCase {
         XCTAssertEqual(g.pose(for: "a"), g.pose(for: "A"))
     }
 
-    func testDigitTargetsReverseTheDigitMap() throws {
+    func testDigitTargetsHaveNoPose() throws {
+        // Digits are deliberately suppressed (#73 review): a digit's arms are its
+        // letter pose, but the figure can't convey the NUMERALS mode-switch the
+        // digit also needs, so drawing the bare letter pose would misguide.
         let g = try geometry()
-        XCTAssertEqual(g.pose(for: "1"), g.pose(for: "A"))
-        XCTAssertEqual(g.pose(for: "7"), g.pose(for: "G"))
-        // K = 0 is the only non-sequential digit mapping — exercise it explicitly.
-        XCTAssertEqual(g.pose(for: "0"), g.pose(for: "K"))
+        XCTAssertNil(g.pose(for: "1"))
+        XCTAssertNil(g.pose(for: "7"))
+        XCTAssertNil(g.pose(for: "0"))
     }
 
     func testSpaceIsRest() throws {
@@ -69,6 +71,30 @@ final class AssistGeometryTests: XCTestCase {
         // Down (−90°): larger screen-y.
         let down = AssistGeometry.endpoints(for: AssistPose(leftAngleDeg: -90, rightAngleDeg: -90))
         XCTAssertGreaterThan(down.rightWrist.y, down.rightShoulder.y)
+    }
+
+    /// An *asymmetric* pose (R: left out-left 180°, right out-right 0°) verifies
+    /// each arm independently — a left/right shoulder swap is invisible when both
+    /// arms share an angle, so the symmetric cases above can't catch it.
+    func testEndpointsPlaceEachArmOnItsOwnShoulder() {
+        let r = AssistGeometry.endpoints(for: AssistPose(leftAngleDeg: 180, rightAngleDeg: 0))
+        XCTAssertLessThan(r.leftWrist.x, r.leftShoulder.x)  // left arm out to screen-left
+        XCTAssertGreaterThan(r.rightWrist.x, r.rightShoulder.x)  // right arm out to screen-right
+        XCTAssertEqual(r.leftWrist.y, r.leftShoulder.y, accuracy: 1e-9)
+        XCTAssertEqual(r.rightWrist.y, r.rightShoulder.y, accuracy: 1e-9)
+    }
+
+    /// Pin one concrete coordinate so a drift in the `armLen` / `halfSpan` layout
+    /// constants fails loudly (the direction checks alone wouldn't notice). For
+    /// `(0°, 0°)`, mirrored-front: right shoulder at x = 0.5 + 0.13, right wrist a
+    /// full arm-length (0.28) further right, both at the shoulder row y = 1 − 0.56.
+    func testEndpointsPinConcreteCoordinates() {
+        let pts = AssistGeometry.endpoints(for: AssistPose(leftAngleDeg: 0, rightAngleDeg: 0))
+        XCTAssertEqual(pts.leftShoulder.x, 0.37, accuracy: 1e-9)
+        XCTAssertEqual(pts.rightShoulder.x, 0.63, accuracy: 1e-9)
+        XCTAssertEqual(pts.rightShoulder.y, 0.44, accuracy: 1e-9)
+        XCTAssertEqual(pts.rightWrist.x, 0.91, accuracy: 1e-9)
+        XCTAssertEqual(pts.rightWrist.y, 0.44, accuracy: 1e-9)
     }
 
     func testRightShoulderIsScreenRightUnderMirroredFront() {
