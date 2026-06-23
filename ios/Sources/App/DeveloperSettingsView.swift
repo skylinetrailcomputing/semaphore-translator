@@ -19,6 +19,12 @@ enum AppSettingsKeys {
     /// and, when on, renders `passage.prefix(drillHUD.index)` plus drops the red
     /// miss-flash. Drill-only — free-form Learn/Interpret is always verbatim.
     static let drillMatchedOnlyReadout = "drillMatchedOnlyReadout"
+    /// Whether a completed Learn drill auto-resets after a short countdown so the
+    /// signer can practise hands-free (#97, 6a-12). Default ON (see `SettingsView`);
+    /// `ContentView` reads the same key and, on the drill's COMPLETE signal, arms the
+    /// cancelable countdown in `PreviewViewModel`. OFF leaves the celebrate card up
+    /// until "Practice again" is tapped (the pre-6a-12 behaviour).
+    static let autoResetOnComplete = "autoResetOnComplete"
 }
 
 /// The **Developer** surface ([5d], #50) — the dev-ish settings split out of the

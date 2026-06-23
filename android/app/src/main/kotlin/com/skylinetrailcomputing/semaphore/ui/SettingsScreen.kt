@@ -50,6 +50,8 @@ fun SettingsScreen(
     onShowNumeralsIndicatorChange: (Boolean) -> Unit,
     matchedOnlyReadout: Boolean,
     onMatchedOnlyReadoutChange: (Boolean) -> Unit,
+    autoResetOnComplete: Boolean,
+    onAutoResetOnCompleteChange: (Boolean) -> Unit,
     onAbout: () -> Unit,
     onDeveloper: () -> Unit,
     onBack: () -> Unit,
@@ -106,6 +108,18 @@ fun SettingsScreen(
                         "off to show everything you sign.",
                 checked = matchedOnlyReadout,
                 onCheckedChange = onMatchedOnlyReadoutChange,
+            )
+            // Drill auto-reset (6a-12, #97) — a Learn drill-flow affordance, so it
+            // sits with the other regular-user toggles. The iOS twin is the matching
+            // toggle in `SettingsView`.
+            SettingsToggleRow(
+                title = "Auto-reset after a passage",
+                subtitle =
+                    "When you finish a drill, a short countdown clears it and starts " +
+                        "the same passage again — so you can keep practising " +
+                        "hands-free. Tap “Stay” on the celebration to keep it up instead.",
+                checked = autoResetOnComplete,
+                onCheckedChange = onAutoResetOnCompleteChange,
             )
 
             // The always-reachable About/privacy surface ([6b-4], #82): app version,

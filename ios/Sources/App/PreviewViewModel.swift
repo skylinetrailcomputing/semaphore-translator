@@ -57,6 +57,13 @@ final class PreviewViewModel: ObservableObject {
     @Published private(set) var drillHUD: DrillHUD?
     /// The transient highlight for the last drill commit; auto-clears after a beat.
     @Published private(set) var drillFlash: DrillFlash?
+    /// Seconds left on the post-completion auto-reset countdown (#97, 6a-12), or
+    /// `nil` when no countdown is running (the setting is off, the user tapped
+    /// "Stay", or the drill already reset). The celebrate card renders this as
+    /// "Resetting in N…". Armed by the view (`startAutoReset()`) when the drill
+    /// completes and the setting is on; the view owns the setting read so the ON
+    /// default lives in `@AppStorage`, not in a raw `UserDefaults` lookup.
+    @Published private(set) var autoResetRemaining: Int?
 
     let capture = PoseCaptureSession()
     /// Which lens to drive. Front for the Learn screen (the default keeps that
@@ -89,7 +96,16 @@ final class PreviewViewModel: ObservableObject {
     private var watchdogTask: Task<Void, Never>?
     /// Clears `drillFlash` a beat after the last commit; cancelled if another lands.
     private var flashTask: Task<Void, Never>?
+    /// Drives the post-completion auto-reset countdown (#97, 6a-12); cancelled by
+    /// "Stay", by "Practice again", and on teardown. The Android twin is the
+    /// `LaunchedEffect(complete)` countdown in `SemaphoreScreen`.
+    private var autoResetTask: Task<Void, Never>?
     private var lastFrameAt = Date.distantPast
+
+    /// The post-completion auto-reset countdown length (#97, 6a-12). Kept in lockstep
+    /// with Android's `AUTO_RESET_COUNTDOWN_SECONDS` (no parity vector needed — it's a
+    /// view affordance, like `drillFlash`'s ~450 ms clear).
+    private static let autoResetCountdownSeconds = 3
 
     /// Dev-only coordinate probe (#58 / ADR 0006). The geometry-seam smoke for the
     /// rear lens: a flipped analysis buffer would mirror-twin every asymmetric
@@ -213,8 +229,11 @@ final class PreviewViewModel: ObservableObject {
     /// Replay the passage from the first target (the celebrate-screen "Practice
     /// again", 6a-2). Caller-driven `reset()` — same discipline as the committer's.
     /// Clears the committed readout and the committer window so the rerun is clean.
+    /// Also cancels any running auto-reset countdown (#97), so an in-flight countdown
+    /// doesn't fire a second reset after a manual "Practice again".
     func resetDrill() {
         guard let drill else { return }
+        cancelAutoReset()
         drill.reset()
         committer?.reset()
         committedText = ""
@@ -227,11 +246,46 @@ final class PreviewViewModel: ObservableObject {
             complete: drill.isComplete)
     }
 
+    /// Arm the post-completion auto-reset countdown (#97, 6a-12). Called by the view
+    /// on the drill's COMPLETE signal when the `autoResetOnComplete` setting is on.
+    /// Counts `autoResetCountdownSeconds` → 0 (publishing each second to the celebrate
+    /// card as "Resetting in N…"), then runs the existing `resetDrill()` for a
+    /// hands-free replay of the same passage. Cancelable: "Stay" calls
+    /// `cancelAutoReset()`; "Practice again" resets immediately (which cancels too).
+    func startAutoReset() {
+        autoResetTask?.cancel()
+        autoResetRemaining = Self.autoResetCountdownSeconds
+        autoResetTask = Task { [weak self] in
+            while let current = self?.autoResetRemaining, current > 0 {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, !Task.isCancelled else { return }
+                let next = current - 1
+                if next <= 0 {
+                    self.resetDrill()  // clears `autoResetRemaining`, ending the loop
+                } else {
+                    self.autoResetRemaining = next
+                }
+            }
+        }
+    }
+
+    /// Cancel a running auto-reset countdown (#97) without resetting the drill — the
+    /// "Stay" affordance. Leaves the celebrate card up (the leave-as-is behaviour for
+    /// this run); a no-op when no countdown is active.
+    func cancelAutoReset() {
+        autoResetTask?.cancel()
+        autoResetTask = nil
+        autoResetRemaining = nil
+    }
+
     func stop() async {
         streamTask?.cancel()
         streamTask = nil
         watchdogTask?.cancel()
         watchdogTask = nil
+        // Drop any in-flight auto-reset countdown (#97) so it can't fire `resetDrill()`
+        // against a torn-down screen after the view disappears.
+        cancelAutoReset()
         // Tearing down cancels the watchdog, so on a `.task` re-fire after
         // `.onDisappear` `start()` skips the `committer == nil` rebuild and would
         // resume against a stale window + `candidateSince`. The next frame's `tMs`
