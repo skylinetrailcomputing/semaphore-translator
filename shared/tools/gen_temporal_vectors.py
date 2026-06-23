@@ -2,19 +2,35 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Generate shared/temporal_vectors.json — timed fixtures for the committer.
+"""Generate the timed committer fixtures, one file per timing profile.
 
 The temporal committer (ADR 0004) is time-dependent, so its parity fixtures
 cannot be the per-frame test_vectors.json (whose harness is explicitly untimed,
-one frame per committed symbol). This generates a separate file of timed frame
-sequences and the string each sequence commits, so both platform ports (#4.2 /
-#4.3) drive the SAME state machine against the SAME timed vectors.
+one frame per committed symbol). This generates timed frame sequences and the
+string each sequence commits, so both platform ports (#4.2 / #4.3) drive the SAME
+state machine against the SAME timed vectors.
+
+Per-fork timing profiles (ADR 0009): the committer's timing forks by camera lens
+-- the front-camera Learn profile (the frozen flat constants in
+semaphore_config.json) and the rear-camera Interpret profile (the
+timing_profiles.interpret override, a faster commit for faster real-world
+signers). Each profile gets its own self-validating fixture file:
+
+  * temporal_vectors.json            -> the Learn profile (the default / flat keys)
+  * temporal_vectors_interpret.json  -> the Interpret profile
+
+The Learn file is byte-for-byte unchanged by the introduction of the fork (Learn
+timing and authoring are untouched); only a second file is added. COMMIT_HOLD_MS
+is not merely a commit-latency knob -- it is also the UPPER bound of the
+double-letter re-arm window [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS) -- so the
+Interpret profile's narrower window needs its own REST_REARM frame count
+(REST_REARM_INTERPRET below); every other authored count is profile-independent.
 
 Each sequence is authored as (pose, frame-count) steps; this script renders the
 keypoints, classifies each frame to its votable pose symbol (_semaphore_ref),
 feeds (symbol, t_ms) through the reference Committer below, and asserts the
 committed output matches the intended string before writing. Running this script
-IS the fixture's correctness check (same discipline as gen_test_vectors.py) —
+IS the fixtures' correctness check (same discipline as gen_test_vectors.py) --
 re-run after any change to semaphore_alphabet.json or semaphore_config.json.
 
 The Committer here is THE reference the Swift / Kotlin committer ports mirror; the
@@ -37,6 +53,7 @@ from _semaphore_ref import (
     classify,
     interpret,
     make_kp,
+    timing_for,
     validate_ranges,
 )
 
@@ -151,7 +168,13 @@ SPURIOUS = 2  # a 1-2 frame flicker must never out-vote a held pose (window of 5
 WOBBLE = 5  # indeterminate off-octant frames *within* a held letter; post-#40 these
 # must NOT double it (they WOULD have when an indeterminate gap re-armed; ADR 0005)
 REST_REARM = 5  # a brief REST that re-arms the same-symbol gate but does NOT commit
-# a space -- its voted-candidate dwell lands in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)
+# a space -- its voted-candidate dwell lands in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS).
+# This is the LEARN value (hold=600). REST_REARM is the ONE authored count that
+# forks: COMMIT_HOLD_MS is the UPPER bound of that re-arm window, so the Interpret
+# profile's lower hold (400) narrows the window and 5 frames would instead cross
+# 400ms and commit a SPACE (-> "L L", not "LL"). 4 frames keep the voted-candidate
+# dwell strictly < 400ms, so they still re-arm without spacing (ADR 0009).
+REST_REARM_INTERPRET = 4
 REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a space
 
 # Re-arm boundary, empirically pinned against the reference committer for the
@@ -169,7 +192,9 @@ REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a 
 # guards the dwell ">=" comparison landing exactly on INTER_CHAR_GAP_MS (a port
 # using ">" instead of ">=", or a wrong exit-flush assumption, fails it). Like
 # ADR 0004 Decision 2, the dwell keys off the VOTED candidate, not raw frames --
-# mirror that from this reference.
+# mirror that from this reference. Both bounds are unaffected by the Interpret
+# hold (400): INTER_CHAR_GAP_MS is shared, so the 2/3-frame boundary holds for
+# both profiles (ADR 0009).
 REST_GAP_TOO_SHORT = 2  # -> single commit ("L")
 REST_GAP_MIN_REARM = 3  # -> re-commit ("LL")
 
@@ -196,169 +221,197 @@ def render(pose):
     return make_kp(ids["left"], ids["right"])
 
 
-# --- sequence builder + self-validation --------------------------------------
-
-sequence_vectors = []
+# --- sequence builder + self-validation (per profile) ------------------------
 
 
-def run_committer(name, steps, expected, note=None):
-    """steps: list of (pose_token, count). Renders + runs the reference committer,
-    asserts the committed concatenation == expected, and records the fixture."""
-    committer = Committer(
-        smoothing_window=SMOOTHING_WINDOW,
-        commit_hold_ms=COMMIT_HOLD_MS,
-        inter_char_gap_ms=INTER_CHAR_GAP_MS,
+def build_profile(profile, dest_name, rest_rearm):
+    """Render + run + self-validate every sequence for one timing profile, then
+    write its fixture file. `rest_rearm` is the profile's brief-REST double count
+    (the one authored count that forks; see REST_REARM). Returns the sequence
+    list for the run summary."""
+    timing = timing_for(profile)
+    window = timing["smoothing_window"]
+    hold = timing["commit_hold_ms"]
+    gap = timing["inter_char_gap_ms"]
+    sequence_vectors = []
+
+    def run(name, steps, expected, note=None):
+        """steps: list of (pose_token, count). Renders + runs the reference
+        committer for THIS profile, asserts the committed concatenation ==
+        expected, and records the fixture."""
+        committer = Committer(**timing)
+        frames = []
+        committed = []
+        t = 0
+        for pose, count in steps:
+            for _ in range(count):
+                if pose == RESET:
+                    committer.reset()
+                    frames.append({"reset": True, "t_ms": t, "expected_emit": ""})
+                else:
+                    kp = render(pose)
+                    validate_ranges(kp, f"{name}@{t}ms")
+                    symbol = classify(kp)[2]  # the votable unit (None when indeterminate)
+                    emit = committer.process(symbol, t)
+                    committed.append(emit)
+                    frames.append(
+                        {
+                            "keypoints": kp,
+                            "t_ms": t,
+                            "expected_symbol": symbol,
+                            "expected_emit": emit,
+                        }
+                    )
+                t += DT_MS
+        got = "".join(committed)
+        assert got == expected, (profile, name, "got", repr(got), "want", repr(expected))
+        entry = {
+            "name": name,
+            "mode_start": "LETTERS",
+            "frames": frames,
+            "expected_committed": expected,
+        }
+        if note:
+            entry["_note"] = note
+        sequence_vectors.append(entry)
+
+    # 1. debounce: a 1-2 frame spurious pose never wins the vote, so it never commits;
+    #    and holding a committed pose does not re-commit it.
+    run(
+        "debounce_spurious_pose",
+        [("A", HELD), ("B", SPURIOUS), ("A", HELD)],
+        "A",
+        "A commits once; a 2-frame B flicker never out-votes the held A (window of "
+        f"{window}); holding A afterwards does not re-commit it.",
     )
-    frames = []
-    committed = []
-    t = 0
-    for pose, count in steps:
-        for _ in range(count):
-            if pose == RESET:
-                committer.reset()
-                frames.append({"reset": True, "t_ms": t, "expected_emit": ""})
-            else:
-                kp = render(pose)
-                validate_ranges(kp, f"{name}@{t}ms")
-                symbol = classify(kp)[2]  # the votable unit (None when indeterminate)
-                emit = committer.process(symbol, t)
-                committed.append(emit)
-                frames.append(
-                    {
-                        "keypoints": kp,
-                        "t_ms": t,
-                        "expected_symbol": symbol,
-                        "expected_emit": emit,
-                    }
-                )
-            t += DT_MS
-    got = "".join(committed)
-    assert got == expected, (name, "got", repr(got), "want", repr(expected))
-    entry = {
-        "name": name,
-        "mode_start": "LETTERS",
-        "frames": frames,
-        "expected_committed": expected,
-    }
-    if note:
-        entry["_note"] = note
-    sequence_vectors.append(entry)
 
+    # 2. distinct letters stream on their holds alone — no gap needed between them.
+    run(
+        "distinct_letters_stream",
+        [("A", HELD), ("B", HELD), ("C", HELD)],
+        "ABC",
+        "Each distinct held pose commits on its own hold; distinct symbols need no "
+        "intervening gap.",
+    )
 
-# 1. debounce: a 1-2 frame spurious pose never wins the vote, so it never commits;
-#    and holding a committed pose does not re-commit it.
-run_committer(
-    "debounce_spurious_pose",
-    [("A", HELD), ("B", SPURIOUS), ("A", HELD)],
-    "A",
-    "A commits once; a 2-frame B flicker never out-votes the held A (window of "
-    f"{SMOOTHING_WINDOW}); holding A afterwards does not re-commit it.",
-)
+    # 3. the SAME symbol repeats only across a BRIEF REST (ADR 0005, superseding ADR
+    #    0004 Decision 3): a rest whose voted dwell lands in [GAP, HOLD) re-arms the
+    #    lock without committing a space -- the conventional double-letter separator.
+    #    `rest_rearm` is the per-profile count (REST_REARM=5 for Learn, =4 for
+    #    Interpret): COMMIT_HOLD_MS is the window's upper bound, so the faster
+    #    Interpret hold needs the shorter rest to stay below it (ADR 0009). The
+    #    5-frame rest that DOES double under Learn instead spaces under Interpret --
+    #    pinned by the interpret-only `interpret_rest5_spaces_not_doubles` below.
+    run(
+        "same_letter_doubles_via_brief_rest",
+        [("L", HELD), ("REST", rest_rearm), ("L", HELD)],
+        "LL",
+        "First L commits; a brief REST (dwell in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)) "
+        "re-arms the lock WITHOUT committing a space; the second L then commits -> "
+        "'LL'. Without the rest a held L commits exactly once (case 1).",
+    )
 
-# 2. distinct letters stream on their holds alone — no gap needed between them.
-run_committer(
-    "distinct_letters_stream",
-    [("A", HELD), ("B", HELD), ("C", HELD)],
-    "ABC",
-    "Each distinct held pose commits on its own hold; distinct symbols need no "
-    "intervening gap.",
-)
+    # 3a/3b. the brief-REST re-arm BOUNDARY, pinned on both sides so an off-by-one in a
+    # port's dwell math fails one of the two. (For REST this does NOT also catch a
+    # raw-frame vs voted-candidate re-arm -- they give identical output here; see the
+    # REST_GAP_TOO_SHORT / REST_GAP_MIN_REARM notes above and ADR 0004 Decision 2.)
+    run(
+        "same_letter_rest_too_short",
+        [("L", HELD), ("REST", REST_GAP_TOO_SHORT), ("L", HELD)],
+        "L",
+        f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: it never reaches plurality "
+        f"in the {window}-frame window ({REST_GAP_TOO_SHORT}/{window}), "
+        "so REST never becomes the voted candidate and the same-symbol gate never re-arms "
+        "-> single 'L'. Paired with same_letter_rest_min_rearms this pins the boundary to "
+        "one frame (this side guards the entry vote-flush).",
+    )
+    run(
+        "same_letter_rest_min_rearms",
+        [("L", HELD), ("REST", REST_GAP_MIN_REARM), ("L", HELD)],
+        "LL",
+        f"One frame longer ({REST_GAP_MIN_REARM}) is the minimal REST that DOES re-arm: "
+        "REST wins the vote and its voted dwell (extended by exit window-flush) reaches "
+        "exactly INTER_CHAR_GAP_MS -> 'LL'. Paired with same_letter_rest_too_short this "
+        "pins the boundary to one frame (this side guards the dwell '>=' comparison).",
+    )
 
-# 3. the SAME symbol repeats only across a BRIEF REST (ADR 0005, superseding ADR
-#    0004 Decision 3): a rest whose voted dwell lands in [GAP, HOLD) re-arms the
-#    lock without committing a space -- the conventional double-letter separator.
-run_committer(
-    "same_letter_doubles_via_brief_rest",
-    [("L", HELD), ("REST", REST_REARM), ("L", HELD)],
-    "LL",
-    "First L commits; a brief REST (dwell in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)) "
-    "re-arms the lock WITHOUT committing a space; the second L then commits -> "
-    "'LL'. Without the rest a held L commits exactly once (case 1).",
-)
+    # 3c. coalesce: an indeterminate off-octant wobble *within* a held letter no longer
+    #     re-arms (the FR4-robustness half of #40), so a steady letter that jitters off
+    #     an octant and back reads as ONE character -- it would have DOUBLED pre-#40.
+    run(
+        "coalesce_off_octant_wobble",
+        [("A", HELD), (INDETERMINATE, WOBBLE), ("A", HELD)],
+        "A",
+        f"A held A wobbles off-octant for {WOBBLE} indeterminate frames and returns. "
+        "Indeterminate no longer re-arms the same-symbol gate (ADR 0005), so this "
+        "coalesces to a single 'A'. Pre-#40 the indeterminate gap re-armed and this "
+        "doubled to 'AA' -- the unintended-double bug from the #35 smoke.",
+    )
 
-# 3a/3b. the brief-REST re-arm BOUNDARY, pinned on both sides so an off-by-one in a
-# port's dwell math fails one of the two. (For REST this does NOT also catch a
-# raw-frame vs voted-candidate re-arm -- they give identical output here; see the
-# REST_GAP_TOO_SHORT / REST_GAP_MIN_REARM notes above and ADR 0004 Decision 2.)
-run_committer(
-    "same_letter_rest_too_short",
-    [("L", HELD), ("REST", REST_GAP_TOO_SHORT), ("L", HELD)],
-    "L",
-    f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: it never reaches plurality "
-    f"in the {SMOOTHING_WINDOW}-frame window ({REST_GAP_TOO_SHORT}/{SMOOTHING_WINDOW}), "
-    "so REST never becomes the voted candidate and the same-symbol gate never re-arms "
-    "-> single 'L'. Paired with same_letter_rest_min_rearms this pins the boundary to "
-    "one frame (this side guards the entry vote-flush).",
-)
-run_committer(
-    "same_letter_rest_min_rearms",
-    [("L", HELD), ("REST", REST_GAP_MIN_REARM), ("L", HELD)],
-    "LL",
-    f"One frame longer ({REST_GAP_MIN_REARM}) is the minimal REST that DOES re-arm: "
-    "REST wins the vote and its voted dwell (extended by exit window-flush) reaches "
-    "exactly INTER_CHAR_GAP_MS -> 'LL'. Paired with same_letter_rest_too_short this "
-    "pins the boundary to one frame (this side guards the dwell '>=' comparison).",
-)
+    # 3d. contrast to 3: a SUSTAINED REST (dwell >= COMMIT_HOLD_MS) commits a space,
+    #     so the same letter on either side reads as 'L L', not 'LL'.
+    run(
+        "sustained_rest_spaces_between_letters",
+        [("L", HELD), ("REST", REST_SPACE), ("L", HELD)],
+        "L L",
+        "A sustained REST commits one space (it crosses COMMIT_HOLD_MS); the second L "
+        "then commits as a distinct symbol after that space -> 'L L'. Distinguishes a "
+        "brief rest (double, case 3) from a sustained rest (space + letter).",
+    )
 
-# 3c. coalesce: an indeterminate off-octant wobble *within* a held letter no longer
-#     re-arms (the FR4-robustness half of #40), so a steady letter that jitters off
-#     an octant and back reads as ONE character -- it would have DOUBLED pre-#40.
-run_committer(
-    "coalesce_off_octant_wobble",
-    [("A", HELD), (INDETERMINATE, WOBBLE), ("A", HELD)],
-    "A",
-    f"A held A wobbles off-octant for {WOBBLE} indeterminate frames and returns. "
-    "Indeterminate no longer re-arms the same-symbol gate (ADR 0005), so this "
-    "coalesces to a single 'A'. Pre-#40 the indeterminate gap re-armed and this "
-    "doubled to 'AA' -- the unintended-double bug from the #35 smoke.",
-)
+    # 4. both numeric-mode transitions go THROUGH the committer (debounced mode switch).
+    run(
+        "mode_transitions_through_committer",
+        [("NUMERALS", HELD), ("A", HELD), ("B", HELD), ("J", HELD), ("A", HELD)],
+        "12A",
+        "Held NUMERALS commits -> NUMERIC (emit ''); A/B -> '1'/'2'; held J pose is "
+        "the letters-shift -> LETTERS (emit ''); A -> 'A'. Mode flips only on a "
+        "committed control pose, so a fleeting NUMERALS/J frame can't flip it (#23).",
+    )
 
-# 3d. contrast to 3: a SUSTAINED REST (dwell >= COMMIT_HOLD_MS) commits a space,
-#     so the same letter on either side reads as 'L L', not 'LL'.
-run_committer(
-    "sustained_rest_spaces_between_letters",
-    [("L", HELD), ("REST", REST_SPACE), ("L", HELD)],
-    "L L",
-    "A sustained REST commits one space (it crosses COMMIT_HOLD_MS); the second L "
-    "then commits as a distinct symbol after that space -> 'L L'. Distinguishes a "
-    "brief rest (double, case 3) from a sustained rest (space + letter).",
-)
+    # 5. true signer-loss hard-resets mode to LETTERS and clears window + lock.
+    run(
+        "signer_loss_resets_mode",
+        [("NUMERALS", HELD), ("A", HELD), (RESET, 1), ("A", HELD)],
+        "1A",
+        "In NUMERIC the A pose commits '1'; a signer-loss reset() clears state and "
+        "sets mode -> LETTERS, so the next A commits the letter 'A' (and re-commits "
+        "despite the prior A, proving the same-symbol lock was cleared).",
+    )
 
-# 4. both numeric-mode transitions go THROUGH the committer (debounced mode switch).
-run_committer(
-    "mode_transitions_through_committer",
-    [("NUMERALS", HELD), ("A", HELD), ("B", HELD), ("J", HELD), ("A", HELD)],
-    "12A",
-    "Held NUMERALS commits -> NUMERIC (emit ''); A/B -> '1'/'2'; held J pose is "
-    "the letters-shift -> LETTERS (emit ''); A -> 'A'. Mode flips only on a "
-    "committed control pose, so a fleeting NUMERALS/J frame can't flip it (#23).",
-)
+    # 6. REST is an ordinary committable symbol: a held REST commits one space, debounced.
+    run(
+        "rest_commits_one_space",
+        [("REST", HELD)],
+        " ",
+        "Both arms down = REST -> a single committed space; holding it does not "
+        "stream spaces (debounce applies to REST like any symbol).",
+    )
 
-# 5. true signer-loss hard-resets mode to LETTERS and clears window + lock.
-run_committer(
-    "signer_loss_resets_mode",
-    [("NUMERALS", HELD), ("A", HELD), (RESET, 1), ("A", HELD)],
-    "1A",
-    "In NUMERIC the A pose commits '1'; a signer-loss reset() clears state and "
-    "sets mode -> LETTERS, so the next A commits the letter 'A' (and re-commits "
-    "despite the prior A, proving the same-symbol lock was cleared).",
-)
+    # 7. (interpret only) the discriminating boundary: a REST_REARM-LEARN (5)-frame
+    #    brief rest -- the dwell that re-arms (doubles) under the Learn 600ms hold --
+    #    instead CROSSES this profile's 400ms hold and commits a SPACE, so the same
+    #    input that gives 'LL' under Learn gives 'L L' here. This proves the fork is a
+    #    real contract difference (not just self-consistent): a port that ignored the
+    #    Interpret COMMIT_HOLD_MS (kept 600) would emit 'LL' and fail this assertion.
+    if profile == "interpret":
+        run(
+            "interpret_rest5_spaces_not_doubles",
+            [("L", HELD), ("REST", REST_REARM), ("L", HELD)],
+            "L L",
+            f"A {REST_REARM}-frame brief REST -- the count that DOUBLES under the Learn "
+            f"profile (hold 600) -- has a voted-candidate dwell that reaches this "
+            f"profile's hold ({hold}ms), so REST commits a SPACE instead of re-arming: "
+            "'L L', not 'LL'. The discriminating boundary that pins the per-fork "
+            "COMMIT_HOLD_MS (ADR 0009); a port using the Learn hold would emit 'LL'.",
+        )
 
-# 6. REST is an ordinary committable symbol: a held REST commits one space, debounced.
-run_committer(
-    "rest_commits_one_space",
-    [("REST", HELD)],
-    " ",
-    "Both arms down = REST -> a single committed space; holding it does not "
-    "stream spaces (debounce applies to REST like any symbol).",
-)
+    # --- assemble + write -----------------------------------------------------
 
-
-# --- assemble + write ---------------------------------------------------------
-
-out = {
-    "$schema_version": "1.0",
-    "_README": (
+    out = {"$schema_version": "1.0"}
+    if profile != "learn":
+        out["_profile"] = profile
+    out["_README"] = (
         "Temporal parity vectors: timed frame sequences -> the string the "
         "committer commits. The committer (ADR 0004) is time-dependent, so these "
         "are kept separate from test_vectors.json (whose per-frame harness is "
@@ -369,31 +422,31 @@ out = {
         "matches); expected_committed is the convenience rollup. Frames are "
         "post-adapter keypoints (the adapter's mirror/y-flip is NOT exercised "
         "here; that is the Epic-3 native fixtures)."
-    ),
-    "_generated_by": (
+    )
+    out["_generated_by"] = (
         "shared/tools/gen_temporal_vectors.py (uv run). Generated, not hand-"
         "edited: regenerate after any change to semaphore_alphabet.json or "
         "semaphore_config.json. The generator runs the reference committer over "
         "every sequence and asserts expected_committed before writing, so running "
         "it is the fixture's correctness check."
-    ),
-    "_commit_contract": (
+    )
+    out["_commit_contract"] = (
         "Per ADR 0004: vote the votable pose symbol (classify output; null = "
         "indeterminate is a vote value) over a ring buffer of the last "
-        f"SMOOTHING_WINDOW ({SMOOTHING_WINDOW}) frames -> plurality candidate, "
+        f"SMOOTHING_WINDOW ({window}) frames -> plurality candidate, "
         "ties to the most-recent occurrence. A determinate candidate held "
-        f"continuously >= COMMIT_HOLD_MS ({COMMIT_HOLD_MS}) commits: run "
+        f"continuously >= COMMIT_HOLD_MS ({hold}) commits: run "
         "interpret(symbol, mode) (spec §4.5) for (emit, new mode), so mode flips "
         "only on a committed control pose. A distinct symbol commits on its hold "
         "alone; the SAME symbol re-commits only after an intervening brief REST "
-        f"whose voted dwell lands in [INTER_CHAR_GAP_MS ({INTER_CHAR_GAP_MS}), "
-        f"COMMIT_HOLD_MS ({COMMIT_HOLD_MS})) -- the conventional double-letter "
+        f"whose voted dwell lands in [INTER_CHAR_GAP_MS ({gap}), "
+        f"COMMIT_HOLD_MS ({hold})) -- the conventional double-letter "
         "separator (ADR 0005, superseding ADR 0004 Decision 3); an indeterminate "
         "gap no longer re-arms. A REST held >= COMMIT_HOLD_MS commits a space "
         "instead. reset() (true signer-loss) clears the window and sets mode -> "
         "LETTERS."
-    ),
-    "_format": {
+    )
+    out["_format"] = {
         "sequence_vectors": (
             "Each is {name, mode_start, frames:[...], expected_committed}. "
             "mode_start is always 'LETTERS' (the committer resets to it). Frames "
@@ -423,16 +476,28 @@ out = {
         "expected_committed": "The full decoded string: concatenation of every expected_emit.",
         "name": "Human-readable label for debugging. Ignored by the parity harness.",
         "_note": "Optional human explanation. Ignored by the parity harness.",
-    },
-    "sequence_vectors": sequence_vectors,
-}
+    }
+    out["sequence_vectors"] = sequence_vectors
 
-dest = SHARED / "temporal_vectors.json"
-dest.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
+    dest = SHARED / dest_name
+    dest.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
+    return sequence_vectors
 
-n_frames = sum(len(s["frames"]) for s in sequence_vectors)
-print(f"wrote {dest.relative_to(SHARED.parent)}")
-print(f"  sequence_vectors: {len(sequence_vectors)} ({n_frames} frames total)")
-for s in sequence_vectors:
-    print(f"    {s['name']}: {len(s['frames'])} frames -> {s['expected_committed']!r}")
-print("  all sequences re-run through the reference committer and asserted OK")
+
+# Profile -> (fixture file, brief-REST double count). The Learn profile reproduces
+# the frozen fixtures byte-for-byte (its timing + authoring are untouched); the
+# Interpret profile (ADR 0009) is a second file with a faster hold and its own
+# REST_REARM (the one authored count that forks -- see REST_REARM above).
+PROFILES = [
+    ("learn", "temporal_vectors.json", REST_REARM),
+    ("interpret", "temporal_vectors_interpret.json", REST_REARM_INTERPRET),
+]
+
+for profile, dest_name, rest_rearm in PROFILES:
+    seqs = build_profile(profile, dest_name, rest_rearm)
+    n_frames = sum(len(s["frames"]) for s in seqs)
+    print(f"wrote shared/{dest_name}  (profile: {profile})")
+    print(f"  sequence_vectors: {len(seqs)} ({n_frames} frames total)")
+    for s in seqs:
+        print(f"    {s['name']}: {len(s['frames'])} frames -> {s['expected_committed']!r}")
+    print("  all sequences re-run through the reference committer and asserted OK")
