@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,7 +97,13 @@ fun CustomPassageScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var text by remember { mutableStateOf("HELLO") }
+    // rememberSaveable, not remember: keyed to this destination's back-stack entry,
+    // the typed text survives the forward-nav into the drill camera and the
+    // chevron pop back (the entry stays on the stack — only its composition is
+    // disposed). Popping further back to the Learn hub destroys the entry, so a
+    // later re-entry resets to the starter. Matches the iOS twin, where the pushed
+    // camera leaves CustomPassageView's @State intact on pop-back.
+    var text by rememberSaveable { mutableStateOf("HELLO") }
     // The sanitiser is the single source of truth, so the preview can't disagree
     // with what is actually drilled.
     val sanitized = PassageSource.sanitize(text)
