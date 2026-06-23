@@ -1,0 +1,207 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Committed-text (readout buffer) space-coalescing parity vectors: a sequence of committer tokens (`emits`) folded left-to-right from an empty buffer through CommittedText.append -> the final buffer (`expected`). Both platform ports run their CommittedText.append and MUST reproduce `expected` exactly. The rule: never a leading space, never two spaces in a row (a single trailing space is kept). The human rationale is docs/adr/0010-committed-text-space-coalescing.md; the upstream emitter is shared/temporal_vectors.json (the committer).",
+  "_generated_by": "shared/tools/gen_committed_text_vectors.py (uv run). Generated, not hand-edited: the reference append_committed() is re-folded over every authored (emits -> expected) and asserted before writing. Re-run after any change to the buffer space rule.",
+  "_rule": "Per ADR 0010, the live/incremental analogue of the passage-source sanitiser (ADR 0008): append a SPACE token only when the buffer is non-empty and does not already end in a space; append any non-space token (and \"\") unchanged. A trailing space is NOT trimmed (it is the in-progress word separator).",
+  "_format": {
+    "cases": "Each is {name, emits, expected}. Fold `emits` through CommittedText.append from \"\" and assert == `expected`.",
+    "emits": "Ordered committer tokens to append (each a letter, digit, single SPACE, or \"\").",
+    "expected": "The resulting buffer string after folding all of `emits`.",
+    "name": "Human-readable label for debugging. Ignored by the parity harness.",
+    "_note": "Optional human explanation. Ignored by the parity harness."
+  },
+  "cases": [
+    {
+      "name": "empty_sequence",
+      "emits": [],
+      "expected": "",
+      "_note": "No tokens -> empty buffer."
+    },
+    {
+      "name": "single_letter",
+      "emits": [
+        "A"
+      ],
+      "expected": "A"
+    },
+    {
+      "name": "word_no_spaces",
+      "emits": [
+        "H",
+        "E",
+        "L",
+        "L",
+        "O"
+      ],
+      "expected": "HELLO",
+      "_note": "Letters append verbatim; coalescing only ever touches spaces."
+    },
+    {
+      "name": "digits_are_content",
+      "emits": [
+        "1",
+        "2",
+        "3"
+      ],
+      "expected": "123",
+      "_note": "A digit is content like a letter -- it can anchor the buffer and reset the space gate."
+    },
+    {
+      "name": "single_leading_space_dropped",
+      "emits": [
+        " "
+      ],
+      "expected": "",
+      "_note": "A held REST before any letter commits a space; the buffer must not start with it."
+    },
+    {
+      "name": "many_leading_spaces_dropped",
+      "emits": [
+        " ",
+        " ",
+        " "
+      ],
+      "expected": "",
+      "_note": "Every leading space is dropped while the buffer is still empty."
+    },
+    {
+      "name": "leading_space_then_letter",
+      "emits": [
+        " ",
+        "A"
+      ],
+      "expected": "A",
+      "_note": "Leading space dropped; the letter anchors the buffer."
+    },
+    {
+      "name": "leading_spaces_then_word",
+      "emits": [
+        " ",
+        " ",
+        "H",
+        "I"
+      ],
+      "expected": "HI"
+    },
+    {
+      "name": "leading_space_then_digit",
+      "emits": [
+        " ",
+        "1"
+      ],
+      "expected": "1"
+    },
+    {
+      "name": "letter_then_single_space_kept",
+      "emits": [
+        "A",
+        " "
+      ],
+      "expected": "A ",
+      "_note": "A trailing word-separator space IS kept (in-progress); only LEADING/DOUBLE spaces go."
+    },
+    {
+      "name": "double_space_coalesces",
+      "emits": [
+        "A",
+        " ",
+        " "
+      ],
+      "expected": "A ",
+      "_note": "The second space (REST -> space -> indeterminate gap -> REST -> space) coalesces away."
+    },
+    {
+      "name": "triple_space_coalesces",
+      "emits": [
+        "A",
+        " ",
+        " ",
+        " "
+      ],
+      "expected": "A "
+    },
+    {
+      "name": "word_gap_single_space",
+      "emits": [
+        "H",
+        "I",
+        " ",
+        "Y",
+        "O"
+      ],
+      "expected": "HI YO"
+    },
+    {
+      "name": "word_gap_double_space_coalesces",
+      "emits": [
+        "H",
+        "I",
+        " ",
+        " ",
+        "Y",
+        "O"
+      ],
+      "expected": "HI YO",
+      "_note": "The headline bug: a glitchy rest between words must still yield ONE separator."
+    },
+    {
+      "name": "leading_and_double_space",
+      "emits": [
+        " ",
+        "H",
+        "I",
+        " ",
+        " ",
+        "Y",
+        "O"
+      ],
+      "expected": "HI YO",
+      "_note": "Leading space dropped AND the inter-word double space coalesced, in one fold."
+    },
+    {
+      "name": "space_resets_after_letter",
+      "emits": [
+        "A",
+        " ",
+        "B",
+        " ",
+        "C"
+      ],
+      "expected": "A B C",
+      "_note": "A non-space token clears the 'ends in space' state, so the next space is a fresh separator."
+    },
+    {
+      "name": "space_after_coalesce_then_letter",
+      "emits": [
+        "A",
+        " ",
+        " ",
+        "B"
+      ],
+      "expected": "A B",
+      "_note": "Coalesce the double space, then the letter joins after the single surviving space."
+    },
+    {
+      "name": "only_spaces",
+      "emits": [
+        " ",
+        " ",
+        " "
+      ],
+      "expected": "",
+      "_note": "All REST, no content -> empty (never a lone space)."
+    },
+    {
+      "name": "empty_token_is_noop",
+      "emits": [
+        "A",
+        "",
+        " ",
+        "",
+        "B"
+      ],
+      "expected": "A B",
+      "_note": "\"\" appends nothing and does not disturb the space gate."
+    }
+  ]
+}

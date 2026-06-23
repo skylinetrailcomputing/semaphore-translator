@@ -347,6 +347,20 @@ struct SanitizeVectors: Decodable {
     let cases: [SanitizeCase]
 }
 
+// --- committed_text_vectors.json (ADR 0010; the readout-buffer coalescing fixtures) ---
+
+/// One coalescing vector: a sequence of committer tokens (`emits`) folded through
+/// `CommittedText.append`, and the resulting `expected` buffer.
+struct CommittedTextCase: Decodable {
+    let name: String
+    let emits: [String]
+    let expected: String
+}
+
+struct CommittedTextVectors: Decodable {
+    let cases: [CommittedTextCase]
+}
+
 // MARK: - locating the shared contract
 
 /// Resolves the repo's `shared/` directory and loads the JSON contract files.

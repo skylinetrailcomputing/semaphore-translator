@@ -198,6 +198,14 @@ data class SanitizeCase(val name: String, val input: String, val expected: Strin
 
 data class SanitizeVectors(val cases: List<SanitizeCase>)
 
+// --- committed_text_vectors.json (ADR 0010; the readout-buffer coalescing fixtures) ---
+
+// One coalescing vector: a sequence of committer tokens (`emits`) folded through
+// CommittedText.append -> the resulting `expected` buffer.
+data class CommittedTextCase(val name: String, val emits: List<String>, val expected: String)
+
+data class CommittedTextVectors(val cases: List<CommittedTextCase>)
+
 // --- stock_passages.json (Epic 6a #71; the bundled sight-read content) ---
 
 // Test-side mirror of the shipping `ui.StockPassage(s)`. The shipping loader parses
