@@ -1,14 +1,98 @@
 import SwiftUI
 
+/// The contract-derived assist filmstrip (#73 / 6a-5 + transition cues #100): the
+/// ordered steps to make for the current drill target — an optional transition
+/// pre-cue (a NUMERALS / J-LETTERS pose, or a drop-to-REST), then the target's own
+/// pose, drawn left→right with a chevron between. A single-step filmstrip (the
+/// common case: just the target) renders as the original full-size figure, so the
+/// 6a-5 look is unchanged when no transition is needed. The caller gates the whole
+/// thing to Learn-drill + front lens + the "Show assist figure" setting (see
+/// `ContentView`). The Android twin is `SemaphoreScreen.AssistFilmstrip`.
+struct AssistFilmstripView: View {
+    let cues: [AssistCue]
+
+    var body: some View {
+        if cues.count <= 1 {
+            // No transition: the original single full-size figure (6a-5 look).
+            if let cue = cues.first {
+                AssistFigureView(pose: cue.pose)
+                    .frame(height: 132)
+                    .padding(.vertical, 2)
+            }
+        } else {
+            HStack(spacing: 8) {
+                ForEach(Array(cues.enumerated()), id: \.offset) { i, cue in
+                    if i > 0 {
+                        Image(systemName: "chevron.right")
+                            .font(.title3.bold())
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    AssistCueCell(cue: cue)
+                }
+            }
+            .frame(height: 122)
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+/// One filmstrip cell: the figure (or the drop-to-rest indicator for a double
+/// letter) over a short caption naming the step. Sized for the two-step layout.
+private struct AssistCueCell: View {
+    let cue: AssistCue
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Group {
+                if cue.kind == .restBetweenDoubles {
+                    RestDropIndicator()
+                } else {
+                    AssistFigureView(pose: cue.pose)
+                }
+            }
+            .frame(width: 92, height: 92)
+            if let caption {
+                Text(caption)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+        }
+    }
+
+    /// A short label under the pre-cue steps; the target step needs none (the card's
+    /// big glyph already names it).
+    private var caption: String? {
+        switch cue.kind {
+        case .numeralsShift: return "Numbers"
+        case .lettersShift: return "Letters"
+        case .restBetweenDoubles: return "Rest"
+        case .target: return "Sign"
+        }
+    }
+}
+
+/// The drop-to-REST cue, drawn distinctly from the arm-pose figures (#100): two
+/// downward chevrons that read as "drop your arms briefly", NOT a pose to hold.
+private struct RestDropIndicator: View {
+    var body: some View {
+        VStack(spacing: -6) {
+            Image(systemName: "chevron.down")
+            Image(systemName: "chevron.down")
+        }
+        .font(.system(size: 30, weight: .bold))
+        .foregroundStyle(.white.opacity(0.75))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityHidden(true)
+    }
+}
+
 /// The contract-derived assist figure (#73 / 6a-5): a compact stick figure whose
-/// two arms are drawn at the *exact* `semaphore_alphabet.json` angles for the
-/// current drill target (`AssistGeometry.endpoints`), so the teaching aid is
-/// perspective-correct by construction and can't drift from the contract. Embedded
-/// in the drill target card; the caller gates it to Learn-drill + front lens +
-/// the "Show assist figure" setting (see `ContentView`). Left arm cyan / right arm
-/// orange — the same legend as `SkeletonOverlay`, drawn in the same mirrored-front
-/// convention so the user mirrors the pose directly. The Android twin is
-/// `SemaphoreScreen.AssistFigure`.
+/// two arms are drawn at the *exact* `semaphore_alphabet.json` angles for one pose
+/// (`AssistGeometry.endpoints`), so the teaching aid is perspective-correct by
+/// construction and can't drift from the contract. Used for each pose step of the
+/// `AssistFilmstripView`. Left arm cyan / right arm orange — the same legend as
+/// `SkeletonOverlay`, drawn in the same mirrored-front convention so the user
+/// mirrors the pose directly. The Android twin is `SemaphoreScreen.AssistFigure`.
 struct AssistFigureView: View {
     let pose: AssistPose
 

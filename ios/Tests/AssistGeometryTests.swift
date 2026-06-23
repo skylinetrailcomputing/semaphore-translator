@@ -34,14 +34,15 @@ final class AssistGeometryTests: XCTestCase {
         XCTAssertEqual(g.pose(for: "a"), g.pose(for: "A"))
     }
 
-    func testDigitTargetsHaveNoPose() throws {
-        // Digits are deliberately suppressed (#73 review): a digit's arms are its
-        // letter pose, but the figure can't convey the NUMERALS mode-switch the
-        // digit also needs, so drawing the bare letter pose would misguide.
+    func testDigitTargetsMapToTheirLetterPose() throws {
+        // #100 un-suppressed digits: a digit's own pose is the letter pose that
+        // produces it in numeric mode (the reverse of A=1..I=9, K=0). The NUMERALS
+        // pre-cue from `cues(_:index:)` is what now conveys the mode-switch, so the
+        // bare pose is no longer misleading on its own.
         let g = try geometry()
-        XCTAssertNil(g.pose(for: "1"))
-        XCTAssertNil(g.pose(for: "7"))
-        XCTAssertNil(g.pose(for: "0"))
+        XCTAssertEqual(g.pose(for: "1"), g.pose(for: "A"))  // 1 -> A pose
+        XCTAssertEqual(g.pose(for: "7"), g.pose(for: "G"))  // 7 -> G pose
+        XCTAssertEqual(g.pose(for: "0"), g.pose(for: "K"))  // 0 -> K pose
     }
 
     func testSpaceIsRest() throws {
