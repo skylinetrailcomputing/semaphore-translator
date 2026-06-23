@@ -16,6 +16,10 @@ struct SettingsView: View {
     /// the same `@AppStorage` key, so flipping it here shows/hides the live pill on
     /// the camera screen the next time it appears.
     @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
+    /// The forgiving "easy mode" drill readout on/off (6a-10, #95). Default ON;
+    /// `ContentView` reads the same `@AppStorage` key, so flipping it here switches
+    /// the drill readout between matched-only and verbatim on the next drill entry.
+    @AppStorage(AppSettingsKeys.drillMatchedOnlyReadout) private var drillMatchedOnlyReadout = true
     /// The drill auto-reset on/off (6a-12, #97). Default ON; `ContentView` reads the
     /// same `@AppStorage` key and arms the countdown on a drill's COMPLETE signal.
     @AppStorage(AppSettingsKeys.autoResetOnComplete) private var autoResetOnComplete = true
@@ -42,6 +46,18 @@ struct SettingsView: View {
                 Text(
                     "Shows a badge over the camera while the decoder is reading "
                     + "digits, and hides it when it returns to letters.")
+            }
+
+            // The forgiving "easy mode" drill readout (6a-10, #95) — a Learn-drill
+            // behaviour toggle, so it sits with the other regular-user toggles.
+            Section {
+                Toggle("Forgiving drill readout", isOn: $drillMatchedOnlyReadout)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "While drilling a passage, the readout fills in only the letters "
+                    + "you've matched — wrong letters and pauses are ignored. Turn off "
+                    + "to show everything you sign.")
             }
 
             // Drill auto-reset (6a-12, #97) — a Learn drill-flow affordance, so it

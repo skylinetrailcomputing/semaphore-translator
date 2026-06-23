@@ -105,6 +105,11 @@ private fun MainNavHost() {
     var showNumeralsIndicator by remember {
         mutableStateOf(AppSettings.showNumeralsIndicator(context))
     }
+    // Forgiving "easy mode" drill readout on/off (6a-10, #95) hoisted alongside the
+    // others: one source of truth feeds the Settings toggle and the drill screen,
+    // reactive in-session (a flip shows on the next drill entry) and persisted. The
+    // iOS twin is `@AppStorage("drillMatchedOnlyReadout")`, shared across views by key.
+    var matchedOnlyReadout by remember { mutableStateOf(AppSettings.matchedOnlyReadout(context)) }
     // Drill auto-reset on/off (6a-12, #97) hoisted alongside the others: one source
     // of truth feeds the Settings toggle and the drill screen, reactive in-session
     // and persisted. The iOS twin is `@AppStorage("autoResetOnComplete")`, shared
@@ -199,6 +204,9 @@ private fun MainNavHost() {
                         drillTargets = targets,
                         showAssist = showAssist,
                         showNumeralsIndicator = showNumeralsIndicator,
+                        // Drill-only (#95): the forgiving readout has no effect off a
+                        // drill, so it's threaded only here, not to LEARN/INTERPRET.
+                        matchedOnlyReadout = matchedOnlyReadout,
                         autoResetOnComplete = autoResetOnComplete,
                     )
                     BackButton(
@@ -242,6 +250,11 @@ private fun MainNavHost() {
                 onShowNumeralsIndicatorChange = {
                     showNumeralsIndicator = it
                     AppSettings.setShowNumeralsIndicator(context, it)
+                },
+                matchedOnlyReadout = matchedOnlyReadout,
+                onMatchedOnlyReadoutChange = {
+                    matchedOnlyReadout = it
+                    AppSettings.setMatchedOnlyReadout(context, it)
                 },
                 autoResetOnComplete = autoResetOnComplete,
                 onAutoResetOnCompleteChange = {
