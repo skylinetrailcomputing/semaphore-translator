@@ -105,6 +105,11 @@ private fun MainNavHost() {
     var showNumeralsIndicator by remember {
         mutableStateOf(AppSettings.showNumeralsIndicator(context))
     }
+    // Drill auto-reset on/off (6a-12, #97) hoisted alongside the others: one source
+    // of truth feeds the Settings toggle and the drill screen, reactive in-session
+    // and persisted. The iOS twin is `@AppStorage("autoResetOnComplete")`, shared
+    // across views by key.
+    var autoResetOnComplete by remember { mutableStateOf(AppSettings.autoResetOnComplete(context)) }
     // The active drill passage (6a-3, #71), set by the custom/stock source just
     // before it navigates to the DRILL route. rememberSaveable so it survives a
     // configuration change / process death (a plain remember would drop it and the
@@ -145,6 +150,7 @@ private fun MainNavHost() {
                     developerMode = developerMode,
                     showAssist = showAssist,
                     showNumeralsIndicator = showNumeralsIndicator,
+                    autoResetOnComplete = autoResetOnComplete,
                 )
                 BackButton(
                     onClick = { navController.popBackStack() },
@@ -193,6 +199,7 @@ private fun MainNavHost() {
                         drillTargets = targets,
                         showAssist = showAssist,
                         showNumeralsIndicator = showNumeralsIndicator,
+                        autoResetOnComplete = autoResetOnComplete,
                     )
                     BackButton(
                         onClick = { navController.popBackStack() },
@@ -213,6 +220,7 @@ private fun MainNavHost() {
                     emptyHint = "Point at someone signing",
                     showAssist = showAssist,
                     showNumeralsIndicator = showNumeralsIndicator,
+                    autoResetOnComplete = autoResetOnComplete,
                 )
                 BackButton(
                     onClick = { navController.popBackStack() },
@@ -234,6 +242,11 @@ private fun MainNavHost() {
                 onShowNumeralsIndicatorChange = {
                     showNumeralsIndicator = it
                     AppSettings.setShowNumeralsIndicator(context, it)
+                },
+                autoResetOnComplete = autoResetOnComplete,
+                onAutoResetOnCompleteChange = {
+                    autoResetOnComplete = it
+                    AppSettings.setAutoResetOnComplete(context, it)
                 },
                 onAbout = { navController.navigate(Route.ABOUT) },
                 onDeveloper = { navController.navigate(Route.DEVELOPER) },

@@ -13,6 +13,12 @@ enum AppSettingsKeys {
     /// (#103, 6a-14). Default ON (see `SettingsView`); `ContentView` reads the same
     /// key and shows the pill while the committer is in numeric mode.
     static let showNumeralsIndicator = "showNumeralsIndicator"
+    /// Whether a completed Learn drill auto-resets after a short countdown so the
+    /// signer can practise hands-free (#97, 6a-12). Default ON (see `SettingsView`);
+    /// `ContentView` reads the same key and, on the drill's COMPLETE signal, arms the
+    /// cancelable countdown in `PreviewViewModel`. OFF leaves the celebrate card up
+    /// until "Practice again" is tapped (the pre-6a-12 behaviour).
+    static let autoResetOnComplete = "autoResetOnComplete"
 }
 
 /// The **Developer** surface ([5d], #50) — the dev-ish settings split out of the
