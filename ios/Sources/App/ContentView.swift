@@ -24,6 +24,12 @@ struct ContentView: View {
     /// and `model.assistCues` adds the front-lens gate, so this is purely the
     /// user's on/off.
     @AppStorage(AppSettingsKeys.showAssistFigure) private var showAssistFigure = true
+    /// Whether to show the user-facing NUMERALS mode pill over the live camera
+    /// (#103, 6a-14). Defaults ON; the Settings toggle writes the same `@AppStorage`
+    /// key. Read-only — reflects the already-published `model.mode`. Suppressed while
+    /// `developerMode` is on, since the readout's NUMERIC/LETTERS badge already shows
+    /// the mode, so a regular user never sees both. See `numeralsIndicator`.
+    @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
@@ -94,6 +100,9 @@ struct ContentView: View {
                     drillTargetCard(hud)
                 }
                 Spacer()
+                if showNumeralsIndicator, !developerMode, model.mode == .numeric {
+                    numeralsIndicator
+                }
                 committedHero
                 if developerMode { readout }
             }
@@ -213,6 +222,25 @@ struct ContentView: View {
         .padding(20)
         .frame(maxWidth: .infinity)
         .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// The user-facing NUMERALS mode pill (#103, 6a-14): a small amber capsule shown
+    /// just above the committed hero while the committer is in numeric mode (digits),
+    /// hidden in letters mode. Read-only — it reflects the already-published
+    /// `model.mode` and changes nothing in the decode path. The slot above the hero
+    /// is the one position clear of the top drill HUD card and the centered
+    /// "no signer" capsule in every mode (the `Spacer` absorbs the height, so the
+    /// hero stays pinned). Gated to non-developer mode by the call site (the readout
+    /// already shows NUMERIC/LETTERS), and the mode resets to letters on signer-loss,
+    /// so the pill disappears when the signer leaves the frame.
+    private var numeralsIndicator: some View {
+        Text("123 · NUMERALS")
+            .font(.caption.bold())
+            .foregroundStyle(.black)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.orange, in: Capsule())
+            .accessibilityLabel("Numerals mode — the decoder is reading digits")
     }
 
     /// Per-frame readout: the position ids per arm, the emitted character, and
