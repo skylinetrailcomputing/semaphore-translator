@@ -1,5 +1,6 @@
 import AVFoundation
 import Vision
+import os
 
 /// One capture frame surfaced by `PoseCaptureSession`: the adapted `Keypoints`
 /// plus the frame's **monotonic** capture time in milliseconds (Issue #34, spec
@@ -156,9 +157,45 @@ private final class PoseSampleHandler: NSObject, AVCaptureVideoDataOutputSampleB
         } catch {
             return
         }
-        guard let observation = request.results?.first,
-            let keypoints = try? adapter.adapt(observation)
-        else { return }
+        guard let observation = request.results?.first else { return }
+        guard let keypoints = try? adapter.adapt(observation) else {
+            // #101 (6a-14) diagnostic: a body was detected but the adapter dropped
+            // the frame because Vision omitted ≥1 of the six joints. Log which, so
+            // the on-device write-up can confirm the iOS-vs-Android friction gap.
+            logDroppedFrame(observation)
+            return
+        }
         continuation.yield(PoseFrame(keypoints: keypoints, tMs: tMs))
     }
+
+    /// #101 (6a-14) diagnostic, dev-mode only. The whole-frame-drop branch above is
+    /// the suspected iOS-specific failure on the hard / out-of-frame poses: Apple
+    /// Vision drops a body joint that has left the frame, and `adapt(observation)`
+    /// returns `nil` for the entire frame (no skeleton, no feedback) — where Android
+    /// ML Kit instead keeps the joint at a low `inFrameLikelihood` and only gates
+    /// that one arm. This logs each of the six joints' presence + confidence on a
+    /// dropped frame so the write-up can tell those two regimes apart (the open
+    /// question behind the elbow-fallback and graceful-degradation levers). No
+    /// behaviour change; nothing logs when developer mode is off. Reads the
+    /// (quarantined) capture path deliberately — the signal is *which joints Vision
+    /// omitted*, which is invisible post-adapter.
+    private func logDroppedFrame(_ observation: VNHumanBodyPoseObservation) {
+        guard UserDefaults.standard.bool(forKey: AppSettingsKeys.developerMode) else { return }
+        let joints: [(String, VNHumanBodyPoseObservation.JointName)] = [
+            ("LSh", .leftShoulder), ("LEl", .leftElbow), ("LWr", .leftWrist),
+            ("RSh", .rightShoulder), ("REl", .rightElbow), ("RWr", .rightWrist),
+        ]
+        let points = (try? observation.recognizedPoints(.all)) ?? [:]
+        let parts = joints.map { label, name -> String in
+            guard let p = points[name] else { return "\(label)=absent" }
+            return "\(label)=\(String(format: "%.2f", Double(p.confidence)))"
+        }
+        Self.dropLog.debug("DROP \(parts.joined(separator: " "), privacy: .public)")
+    }
+
+    /// Same `geometry-probe` category as `PreviewViewModel`'s consumer-side probe,
+    /// so a single `log` filter captures both the dropped-frame lines and the
+    /// post-adapter geometry lines (#101 / 6a-14).
+    private static let dropLog = Logger(
+        subsystem: "com.skylinetrailcomputing.semaphore", category: "geometry-probe")
 }
