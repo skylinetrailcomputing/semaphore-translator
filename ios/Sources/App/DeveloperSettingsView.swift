@@ -9,6 +9,10 @@ enum AppSettingsKeys {
     /// Whether the Learn drill draws the contract-derived assist figure (#73,
     /// 6a-5). Default ON (see `SettingsView`); the drill card reads the same key.
     static let showAssistFigure = "showAssistFigure"
+    /// Whether the live camera screen shows the user-facing NUMERALS mode pill
+    /// (#103, 6a-14). Default ON (see `SettingsView`); `ContentView` reads the same
+    /// key and shows the pill while the committer is in numeric mode.
+    static let showNumeralsIndicator = "showNumeralsIndicator"
 }
 
 /// The **Developer** surface ([5d], #50) — the dev-ish settings split out of the

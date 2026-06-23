@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +87,7 @@ fun SemaphoreScreen(
     emptyHint: String = "Sign a letter to begin",
     drillTargets: String? = null,
     showAssist: Boolean = false,
+    showNumeralsIndicator: Boolean = false,
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -109,7 +112,15 @@ fun SemaphoreScreen(
                     "on-device. Frames are processed live and never stored or transmitted. " +
                     "Grant camera access to use the live preview.",
             )
-        else -> CameraScreen(developerMode, cameraLens, emptyHint, drillTargets, showAssist)
+        else ->
+            CameraScreen(
+                developerMode,
+                cameraLens,
+                emptyHint,
+                drillTargets,
+                showAssist,
+                showNumeralsIndicator,
+            )
     }
 }
 
@@ -131,6 +142,7 @@ private fun CameraScreen(
     emptyHint: String,
     drillTargets: String?,
     showAssist: Boolean,
+    showNumeralsIndicator: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
@@ -357,6 +369,16 @@ private fun CameraScreen(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // The user-facing NUMERALS mode pill (#103, 6a-14): shown just above the
+            // hero while the committer is in numeric mode, hidden in letters. The slot
+            // above the hero is clear of the top drill card + the centered "no signer"
+            // capsule in every mode. Suppressed under developerMode (the Readout below
+            // already shows the mode), so a regular user never sees both. Reads the
+            // already-published state.mode — no decode change; resets to letters on
+            // signer-loss, so it disappears when the signer leaves the frame.
+            if (showNumeralsIndicator && !developerMode && state.mode == Mode.NUMERIC) {
+                NumeralsIndicator(Modifier.align(Alignment.CenterHorizontally))
+            }
             // Clear is the free-form reset; in a drill, "Practice again" on the
             // celebrate card is the reset path, so Clear is hidden to keep the
             // visible text from desyncing the drill's target index.
@@ -396,6 +418,9 @@ private const val SIGNER_TIMEOUT_MS = 500L
 private val leftColor = Color.Cyan
 private val rightColor = Color(0xFFFF9800)
 private val assistBodyColor = Color.White.copy(alpha = 0.85f)
+// Amber accent for the user-facing NUMERALS pill (#103); kept distinct from
+// [rightColor] (the right-arm legend) though they share the hue.
+private val numeralsAccent = Color(0xFFFF9800)
 
 /**
  * Draws the 6 post-adapter [Keypoints] over the preview — the human-visible
@@ -725,6 +750,31 @@ private fun targetGlyph(target: Char?): String =
         target == ' ' -> "␣"
         else -> target.toString()
     }
+
+/**
+ * The user-facing NUMERALS mode pill (#103, 6a-14): a small amber capsule shown just
+ * above the committed hero while the committer is in numeric mode (digits), hidden in
+ * letters mode. Read-only — it reflects the already-published [PreviewState.mode] and
+ * changes nothing in the decode path. `clearAndSetSemantics` gives screen readers a
+ * spoken label in place of the literal glyph, matching iOS's `accessibilityLabel`.
+ * The iOS twin is `ContentView.numeralsIndicator`.
+ */
+@Composable
+private fun NumeralsIndicator(modifier: Modifier = Modifier) {
+    Text(
+        "123 · NUMERALS",
+        modifier =
+            modifier
+                .background(numeralsAccent, RoundedCornerShape(percent = 50))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .clearAndSetSemantics {
+                    contentDescription = "Numerals mode — the decoder is reading digits"
+                },
+        color = Color.Black,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+    )
+}
 
 /** Per-frame readout: position ids per arm, emitted character, decoder mode. */
 @Composable

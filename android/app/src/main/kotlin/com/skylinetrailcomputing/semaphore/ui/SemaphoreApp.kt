@@ -98,6 +98,13 @@ private fun MainNavHost() {
     // in-session (the drill reflects a flip on the next entry) and persisted. The
     // iOS twin is `@AppStorage("showAssistFigure")`, shared across views by key.
     var showAssist by remember { mutableStateOf(AppSettings.showAssist(context)) }
+    // NUMERALS-indicator on/off (6a-14, #103) hoisted alongside the others: one
+    // source of truth feeds the Settings toggle and every live camera screen,
+    // reactive in-session and persisted. The iOS twin is
+    // `@AppStorage("showNumeralsIndicator")`, shared across views by key.
+    var showNumeralsIndicator by remember {
+        mutableStateOf(AppSettings.showNumeralsIndicator(context))
+    }
     // The active drill passage (6a-3, #71), set by the custom/stock source just
     // before it navigates to the DRILL route. rememberSaveable so it survives a
     // configuration change / process death (a plain remember would drop it and the
@@ -134,7 +141,11 @@ private fun MainNavHost() {
                 // Free-practice has no drill target, so the assist never draws here;
                 // the flag is threaded uniformly so gating stays by drill-state +
                 // lens, not by which route built the screen (iOS parity).
-                SemaphoreScreen(developerMode = developerMode, showAssist = showAssist)
+                SemaphoreScreen(
+                    developerMode = developerMode,
+                    showAssist = showAssist,
+                    showNumeralsIndicator = showNumeralsIndicator,
+                )
                 BackButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.align(Alignment.TopStart),
@@ -181,6 +192,7 @@ private fun MainNavHost() {
                         emptyHint = "Sign the letter shown above",
                         drillTargets = targets,
                         showAssist = showAssist,
+                        showNumeralsIndicator = showNumeralsIndicator,
                     )
                     BackButton(
                         onClick = { navController.popBackStack() },
@@ -200,6 +212,7 @@ private fun MainNavHost() {
                     cameraLens = CameraSelector.DEFAULT_BACK_CAMERA,
                     emptyHint = "Point at someone signing",
                     showAssist = showAssist,
+                    showNumeralsIndicator = showNumeralsIndicator,
                 )
                 BackButton(
                     onClick = { navController.popBackStack() },
@@ -216,6 +229,11 @@ private fun MainNavHost() {
                 onShowAssistChange = {
                     showAssist = it
                     AppSettings.setShowAssist(context, it)
+                },
+                showNumeralsIndicator = showNumeralsIndicator,
+                onShowNumeralsIndicatorChange = {
+                    showNumeralsIndicator = it
+                    AppSettings.setShowNumeralsIndicator(context, it)
                 },
                 onAbout = { navController.navigate(Route.ABOUT) },
                 onDeveloper = { navController.navigate(Route.DEVELOPER) },
