@@ -48,20 +48,20 @@ data class AssistFigurePoints(
  *   shoulder, so (unlike the decoder's order-insensitive match) which id is left vs
  *   right must survive. That is why the figure is built from a fresh alphabet parse
  *   rather than the decoder, whose lookup collapses the pair.
- * @param digitMap letter symbol -> digit string (A-I -> 1-9, K -> 0), reversed to
- *   map a digit *target* back to the arm pose the signer holds for it.
  */
 class AssistGeometry(
     private val octantAngles: Map<Int, Double>,
     private val letterPairs: Map<String, Pair<Int, Int>>,
-    private val digitMap: Map<String, String>,
 ) {
     /**
      * The two arm angles for a drill target, or `null` for a target with no pose.
-     * Targets are the frozen drill alphabet A-Z / 0-9 / SPACE: a letter maps
-     * directly; a digit reverses [digitMap] to its letter pose (the arms *are* in
-     * that position — the NUMERALS mode-switch that precedes a digit is signaled
-     * separately and not taught by the figure); SPACE is REST (both arms down).
+     * A letter (A-Z) maps directly; SPACE is REST (both arms down). **Digits get no
+     * figure**: a digit's arms are its letter pose, but producing the digit also
+     * requires the NUMERALS mode-switch first, which a single static pose can't
+     * convey — drawing the bare letter pose would misguide (you'd commit the
+     * letter, not the digit). Suppressing keeps the aid honest: the figure only
+     * ever shows when the pose it draws is the *complete* correct action
+     * (roundtable-review, #73).
      */
     fun pose(target: Char?): AssistPose? {
         if (target == null) return null
@@ -70,10 +70,7 @@ class AssistGeometry(
                 target == ' ' -> letterPairs["REST"]
                 target.code < 128 && target.isLetter() ->
                     letterPairs[target.uppercaseChar().toString()]
-                target.code < 128 && target.isDigit() -> {
-                    val digit = target.toString()
-                    digitMap.entries.firstOrNull { it.value == digit }?.let { letterPairs[it.key] }
-                }
+                // Digits and punctuation have no assist pose.
                 else -> null
             } ?: return null
         val left = octantAngles[pair.first] ?: return null

@@ -35,7 +35,8 @@ struct AssistFigureView: View {
                     path, with: .color(color), style: .init(lineWidth: width, lineCap: .round))
             }
 
-            // Body: torso (neck→hip) + shoulder line + a stroked head circle.
+            // Body: neck→head + torso (neck→hip) + shoulder line + a stroked head.
+            segment(pts.neck, pts.head, Self.bodyColor, 3)
             segment(pts.neck, pts.hip, Self.bodyColor, 3)
             segment(pts.leftShoulder, pts.rightShoulder, Self.bodyColor, 3)
             let headCenter = at(pts.head)
