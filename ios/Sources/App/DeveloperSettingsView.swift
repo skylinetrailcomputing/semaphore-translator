@@ -13,6 +13,12 @@ enum AppSettingsKeys {
     /// (#103, 6a-14). Default ON (see `SettingsView`); `ContentView` reads the same
     /// key and shows the pill while the committer is in numeric mode.
     static let showNumeralsIndicator = "showNumeralsIndicator"
+    /// Whether a passage drill's committed readout grows only by *matched* targets
+    /// (the forgiving "easy mode", #95 / 6a-10) rather than echoing every committed
+    /// character. Default ON (see `SettingsView`); `ContentView` reads the same key
+    /// and, when on, renders `passage.prefix(drillHUD.index)` plus drops the red
+    /// miss-flash. Drill-only — free-form Learn/Interpret is always verbatim.
+    static let drillMatchedOnlyReadout = "drillMatchedOnlyReadout"
 }
 
 /// The **Developer** surface ([5d], #50) — the dev-ish settings split out of the
