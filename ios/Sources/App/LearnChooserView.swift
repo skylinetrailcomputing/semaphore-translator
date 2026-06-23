@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The Learn source picker ([6a], #71). The "Sign / Learn" pill lands here and
 /// offers three front-camera surfaces: **free practice** (sign anything, watch the
@@ -58,6 +59,14 @@ struct LearnChooserView: View {
 /// twin is `CustomPassageScreen`.
 struct CustomPassageView: View {
     @State private var text = "HELLO"
+    /// Owned keyboard focus (#104, 6a-15). The drill screen pushes from the
+    /// "Start drill" CTA below; on the pop back, iOS otherwise auto-refocused this
+    /// field — raising the keyboard unbidden — and keyboard-avoidance failed to
+    /// lift the docked CTA above it, so the button was present but occluded. Taking
+    /// explicit ownership and clearing focus on leave/return keeps the keyboard
+    /// down on return (Android's `CustomPassageScreen` already behaves this way:
+    /// keyboard only on an active tap).
+    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         // Sanitise once per render (the Kotlin twin computes it once per
@@ -77,6 +86,7 @@ struct CustomPassageView: View {
                     .foregroundStyle(.white.opacity(0.7))
 
                 TextField("Your passage", text: $text, axis: .vertical)
+                    .focused($fieldFocused)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .lineLimit(2...4)
@@ -105,11 +115,31 @@ struct CustomPassageView: View {
                         .foregroundStyle(canStart ? .white : .white.opacity(0.4))
                 }
                 .disabled(!canStart)
+                .accessibilityIdentifier("startDrillButton")
             }
             .padding(24)
         }
         .navigationTitle("Type a passage")
         .navigationBarTitleDisplayMode(.inline)
+        // Drop focus when leaving (so the keyboard is down as the drill pushes), and
+        // force the keyboard down again on the return. On the push→pop return UIKit
+        // restores the field as first responder *after* `onAppear` fires, re-raising
+        // the keyboard over the docked "Start drill" CTA — and because SwiftUI's
+        // `@FocusState` is already `false`, re-clearing it is a no-op that never
+        // resigns the UIKit-restored responder. So resign at the UIKit level
+        // directly, deferred to the next runloop tick to land after restoration. The
+        // keyboard's safe-area inset is stale on this path (avoidance won't lift the
+        // button), so keeping the keyboard *down* is what makes the CTA reachable —
+        // matching Android's "keyboard only on an active tap" (#104).
+        .onDisappear { fieldFocused = false }
+        .onAppear {
+            DispatchQueue.main.async {
+                fieldFocused = false
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil)
+            }
+        }
     }
 
     /// The live preview = the sanitised target string, shown verbatim (spaces as `␣`
