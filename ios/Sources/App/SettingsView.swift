@@ -16,6 +16,9 @@ struct SettingsView: View {
     /// the same `@AppStorage` key, so flipping it here shows/hides the live pill on
     /// the camera screen the next time it appears.
     @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
+    /// The drill auto-reset on/off (6a-12, #97). Default ON; `ContentView` reads the
+    /// same `@AppStorage` key and arms the countdown on a drill's COMPLETE signal.
+    @AppStorage(AppSettingsKeys.autoResetOnComplete) private var autoResetOnComplete = true
 
     var body: some View {
         Form {
@@ -39,6 +42,18 @@ struct SettingsView: View {
                 Text(
                     "Shows a badge over the camera while the decoder is reading "
                     + "digits, and hides it when it returns to letters.")
+            }
+
+            // Drill auto-reset (6a-12, #97) — a Learn drill-flow affordance, so it
+            // sits with the other regular-user toggles.
+            Section {
+                Toggle("Auto-reset after a passage", isOn: $autoResetOnComplete)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "When you finish a drill, a short countdown clears it and starts "
+                    + "the same passage again — so you can keep practising hands-free. "
+                    + "Tap “Stay” on the celebration to keep it up instead.")
             }
 
             Section {
