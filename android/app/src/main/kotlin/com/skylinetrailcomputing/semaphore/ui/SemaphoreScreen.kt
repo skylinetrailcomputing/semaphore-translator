@@ -89,6 +89,7 @@ fun SemaphoreScreen(
     showAssist: Boolean = false,
     showNumeralsIndicator: Boolean = false,
     matchedOnlyReadout: Boolean = false,
+    autoResetOnComplete: Boolean = false,
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -122,6 +123,7 @@ fun SemaphoreScreen(
                 showAssist,
                 showNumeralsIndicator,
                 matchedOnlyReadout,
+                autoResetOnComplete,
             )
     }
 }
@@ -146,6 +148,7 @@ private fun CameraScreen(
     showAssist: Boolean,
     showNumeralsIndicator: Boolean,
     matchedOnlyReadout: Boolean,
+    autoResetOnComplete: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
@@ -207,6 +210,46 @@ private fun CameraScreen(
         if (flashTick > 0) {
             delay(450)
             drillFlash = null
+        }
+    }
+
+    // Post-completion auto-reset countdown (6a-12, #97). Non-null = the celebrate
+    // card is counting down to a hands-free replay of the same passage; the value is
+    // the seconds left, rendered as "Resetting in N…". null = no countdown (setting
+    // off, already reset, or the user tapped "Stay"). The iOS twin is
+    // `PreviewViewModel.autoResetRemaining`.
+    var autoResetRemaining by remember(drill) { mutableStateOf<Int?>(null) }
+    // The single reset path, shared by the celebrate-card "Practice again" and the
+    // auto-reset countdown expiry (#97) so the two can't drift. Clears the committed
+    // readout + committer window for a clean rerun and republishes the HUD at the
+    // first target. Mirrors iOS's `PreviewViewModel.resetDrill()`.
+    val resetDrill = {
+        drill?.reset()
+        committer.reset()
+        committedText = ""
+        drillFlash = null
+        autoResetRemaining = null
+        drillUi = drill?.let { DrillUi(it.currentTarget, it.index, it.count, it.isComplete) }
+    }
+    val complete = drillUi?.complete == true
+    // Arm on the false→true COMPLETE transition when the setting is on; the effect
+    // is keyed on `complete`, so a replay (which flips it back to false) re-arms the
+    // next finish. Cancelable: "Stay" sets `autoResetRemaining = null`, which this
+    // loop checks each tick and bails on. "Practice again" resets immediately. On
+    // expiry it runs the same `resetDrill` path as the celebrate-card replay.
+    androidx.compose.runtime.LaunchedEffect(complete, autoResetOnComplete) {
+        if (!complete || !autoResetOnComplete) {
+            autoResetRemaining = null
+            return@LaunchedEffect
+        }
+        var remaining = AUTO_RESET_COUNTDOWN_SECONDS
+        autoResetRemaining = remaining
+        while (remaining > 0) {
+            delay(1000)
+            // "Stay" cancelled the countdown out from under us.
+            if (autoResetRemaining == null) return@LaunchedEffect
+            remaining--
+            if (remaining <= 0) resetDrill() else autoResetRemaining = remaining
         }
     }
 
@@ -412,15 +455,10 @@ private fun CameraScreen(
         }
         if (drillUi?.complete == true) {
             CelebrationOverlay(
-                onReplay = {
-                    drill?.reset()
-                    committer.reset()
-                    committedText = ""
-                    drillFlash = null
-                    drillUi =
-                        drill?.let { DrillUi(it.currentTarget, it.index, it.count, it.isComplete) }
-                },
-                Modifier.align(Alignment.Center),
+                onReplay = resetDrill,
+                autoResetRemaining = autoResetRemaining,
+                onStay = { autoResetRemaining = null },
+                modifier = Modifier.align(Alignment.Center),
             )
         }
     }
@@ -435,6 +473,10 @@ private data class DrillUi(
 )
 
 private const val SIGNER_TIMEOUT_MS = 500L
+// Post-completion auto-reset countdown length (#97, 6a-12). Kept in lockstep with
+// iOS's `PreviewViewModel.autoResetCountdownSeconds` (no parity vector needed — a
+// view affordance, like the ~450 ms drill flash clear).
+private const val AUTO_RESET_COUNTDOWN_SECONDS = 3
 private val leftColor = Color.Cyan
 private val rightColor = Color(0xFFFF9800)
 private val assistBodyColor = Color.White.copy(alpha = 0.85f)
@@ -735,11 +777,19 @@ private fun AssistFigure(pose: AssistPose, modifier: Modifier = Modifier) {
 
 /**
  * The small celebration shown on COMPLETE (6a-2): a centered card with a replay
- * affordance that resets the drill to run the passage again. The iOS twin is
+ * affordance that resets the drill to run the passage again. When the auto-reset
+ * countdown is running (#97, 6a-12) it also shows "Resetting in N…" and a "Stay"
+ * button that cancels the countdown (leaving the card up); "Practice again" resets
+ * immediately whether or not a countdown is in flight. The iOS twin is
  * `ContentView.celebrationOverlay`.
  */
 @Composable
-private fun CelebrationOverlay(onReplay: () -> Unit, modifier: Modifier = Modifier) {
+private fun CelebrationOverlay(
+    onReplay: () -> Unit,
+    autoResetRemaining: Int?,
+    onStay: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier
             .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(24.dp))
@@ -749,17 +799,43 @@ private fun CelebrationOverlay(onReplay: () -> Unit, modifier: Modifier = Modifi
     ) {
         Text("🎉", fontSize = 56.sp)
         Text("Passage complete!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        Text(
-            "Practice again",
-            color = Color.White,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 16.sp,
-            modifier =
-                Modifier.clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.2f))
-                    .clickable(onClick = onReplay)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-        )
+        if (autoResetRemaining != null) {
+            Text(
+                "Resetting in $autoResetRemaining…",
+                color = Color.White.copy(alpha = 0.8f),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 15.sp,
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Practice again",
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                modifier =
+                    Modifier.clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable(onClick = onReplay)
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+            if (autoResetRemaining != null) {
+                Text(
+                    "Stay",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    modifier =
+                        Modifier.clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .clickable(onClick = onStay)
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                )
+            }
+        }
     }
 }
 

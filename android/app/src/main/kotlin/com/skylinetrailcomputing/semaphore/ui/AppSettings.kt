@@ -18,6 +18,7 @@ object AppSettings {
     private const val KEY_SHOW_ASSIST = "show_assist_figure"
     private const val KEY_SHOW_NUMERALS_INDICATOR = "show_numerals_indicator"
     private const val KEY_MATCHED_ONLY_READOUT = "drill_matched_only_readout"
+    private const val KEY_AUTO_RESET = "auto_reset_on_complete"
     private const val KEY_DISCLAIMER_HASH = "disclaimer_accepted_hash"
     private const val KEY_DISCLAIMER_AT = "disclaimer_accepted_at"
 
@@ -63,6 +64,19 @@ object AppSettings {
 
     fun setMatchedOnlyReadout(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_MATCHED_ONLY_READOUT, enabled).apply()
+    }
+
+    /**
+     * Whether a completed Learn drill auto-resets after a short countdown so the
+     * signer can practise hands-free (#97, 6a-12). Default ON — the hands-free
+     * practice loop; "Stay" on the celebrate card cancels a given countdown. The iOS
+     * twin is `@AppStorage("autoResetOnComplete")`.
+     */
+    fun autoResetOnComplete(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_AUTO_RESET, true)
+
+    fun setAutoResetOnComplete(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_AUTO_RESET, enabled).apply()
     }
 
     /**

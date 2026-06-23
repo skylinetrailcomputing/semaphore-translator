@@ -20,6 +20,9 @@ struct SettingsView: View {
     /// `ContentView` reads the same `@AppStorage` key, so flipping it here switches
     /// the drill readout between matched-only and verbatim on the next drill entry.
     @AppStorage(AppSettingsKeys.drillMatchedOnlyReadout) private var drillMatchedOnlyReadout = true
+    /// The drill auto-reset on/off (6a-12, #97). Default ON; `ContentView` reads the
+    /// same `@AppStorage` key and arms the countdown on a drill's COMPLETE signal.
+    @AppStorage(AppSettingsKeys.autoResetOnComplete) private var autoResetOnComplete = true
 
     var body: some View {
         Form {
@@ -55,6 +58,18 @@ struct SettingsView: View {
                     "While drilling a passage, the readout fills in only the letters "
                     + "you've matched — wrong letters and pauses are ignored. Turn off "
                     + "to show everything you sign.")
+            }
+
+            // Drill auto-reset (6a-12, #97) — a Learn drill-flow affordance, so it
+            // sits with the other regular-user toggles.
+            Section {
+                Toggle("Auto-reset after a passage", isOn: $autoResetOnComplete)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "When you finish a drill, a short countdown clears it and starts "
+                    + "the same passage again — so you can keep practising hands-free. "
+                    + "Tap “Stay” on the celebration to keep it up instead.")
             }
 
             Section {
