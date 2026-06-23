@@ -105,6 +105,11 @@ private fun MainNavHost() {
     var showNumeralsIndicator by remember {
         mutableStateOf(AppSettings.showNumeralsIndicator(context))
     }
+    // Forgiving "easy mode" drill readout on/off (6a-10, #95) hoisted alongside the
+    // others: one source of truth feeds the Settings toggle and the drill screen,
+    // reactive in-session (a flip shows on the next drill entry) and persisted. The
+    // iOS twin is `@AppStorage("drillMatchedOnlyReadout")`, shared across views by key.
+    var matchedOnlyReadout by remember { mutableStateOf(AppSettings.matchedOnlyReadout(context)) }
     // The active drill passage (6a-3, #71), set by the custom/stock source just
     // before it navigates to the DRILL route. rememberSaveable so it survives a
     // configuration change / process death (a plain remember would drop it and the
@@ -193,6 +198,9 @@ private fun MainNavHost() {
                         drillTargets = targets,
                         showAssist = showAssist,
                         showNumeralsIndicator = showNumeralsIndicator,
+                        // Drill-only (#95): the forgiving readout has no effect off a
+                        // drill, so it's threaded only here, not to LEARN/INTERPRET.
+                        matchedOnlyReadout = matchedOnlyReadout,
                     )
                     BackButton(
                         onClick = { navController.popBackStack() },
@@ -234,6 +242,11 @@ private fun MainNavHost() {
                 onShowNumeralsIndicatorChange = {
                     showNumeralsIndicator = it
                     AppSettings.setShowNumeralsIndicator(context, it)
+                },
+                matchedOnlyReadout = matchedOnlyReadout,
+                onMatchedOnlyReadoutChange = {
+                    matchedOnlyReadout = it
+                    AppSettings.setMatchedOnlyReadout(context, it)
                 },
                 onAbout = { navController.navigate(Route.ABOUT) },
                 onDeveloper = { navController.navigate(Route.DEVELOPER) },

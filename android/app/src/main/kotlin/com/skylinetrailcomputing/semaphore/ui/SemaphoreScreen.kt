@@ -88,6 +88,7 @@ fun SemaphoreScreen(
     drillTargets: String? = null,
     showAssist: Boolean = false,
     showNumeralsIndicator: Boolean = false,
+    matchedOnlyReadout: Boolean = false,
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -120,6 +121,7 @@ fun SemaphoreScreen(
                 drillTargets,
                 showAssist,
                 showNumeralsIndicator,
+                matchedOnlyReadout,
             )
     }
 }
@@ -143,6 +145,7 @@ private fun CameraScreen(
     drillTargets: String?,
     showAssist: Boolean,
     showNumeralsIndicator: Boolean,
+    matchedOnlyReadout: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
@@ -355,9 +358,15 @@ private fun CameraScreen(
                     if (showAssist && isFront && drillTargets != null)
                         assistGeometry?.cues(drillTargets, ui.index).orEmpty()
                     else emptyList()
+                // Forgiving readout (6a-10, #95) drops the red miss-flash entirely — a
+                // miss stays neutral so easy mode reads gently; the green hit-flash is
+                // kept. The engine still reports the miss (stay-until-success is
+                // unchanged); only the tint is suppressed here.
+                val effectiveFlash =
+                    if (matchedOnlyReadout && drillFlash == false) null else drillFlash
                 DrillTargetCard(
                     ui,
-                    drillFlash,
+                    effectiveFlash,
                     assistCues,
                     Modifier.align(Alignment.TopCenter)
                         .systemBarsPadding()
@@ -382,8 +391,19 @@ private fun CameraScreen(
             // Clear is the free-form reset; in a drill, "Practice again" on the
             // celebrate card is the reset path, so Clear is hidden to keep the
             // visible text from desyncing the drill's target index.
+            //
+            // Forgiving readout (6a-10, #95): in a passage drill with easy mode on
+            // (the default), show the passage prefix the signer has matched
+            // (`drillTargets.take(drillUi.index)`) instead of the verbatim committer
+            // output, so wrong letters / stray rests never pollute the readout.
+            // Free-form (drill == null) and the verbatim toggle show `committedText`.
+            // Pure render over the existing drill index — no decode/engine change.
+            val readoutText =
+                if (matchedOnlyReadout && drill != null && drillTargets != null)
+                    drillTargets.take(drillUi?.index ?: 0)
+                else committedText
             CommittedHero(
-                committedText,
+                readoutText,
                 emptyHint,
                 onClear = { committedText = "" },
                 showClear = drill == null,

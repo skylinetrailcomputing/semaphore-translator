@@ -17,6 +17,7 @@ object AppSettings {
     private const val KEY_DEVELOPER_MODE = "developer_mode"
     private const val KEY_SHOW_ASSIST = "show_assist_figure"
     private const val KEY_SHOW_NUMERALS_INDICATOR = "show_numerals_indicator"
+    private const val KEY_MATCHED_ONLY_READOUT = "drill_matched_only_readout"
     private const val KEY_DISCLAIMER_HASH = "disclaimer_accepted_hash"
     private const val KEY_DISCLAIMER_AT = "disclaimer_accepted_at"
 
@@ -49,6 +50,19 @@ object AppSettings {
 
     fun setShowNumeralsIndicator(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SHOW_NUMERALS_INDICATOR, enabled).apply()
+    }
+
+    /**
+     * Whether a passage drill's committed readout grows only by *matched* targets —
+     * the forgiving "easy mode" (#95, 6a-10) — rather than echoing every committed
+     * character verbatim. Default ON; drill-only (free-form Learn/Interpret is always
+     * verbatim). The iOS twin is `@AppStorage("drillMatchedOnlyReadout")`.
+     */
+    fun matchedOnlyReadout(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_MATCHED_ONLY_READOUT, true)
+
+    fun setMatchedOnlyReadout(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_MATCHED_ONLY_READOUT, enabled).apply()
     }
 
     /**
