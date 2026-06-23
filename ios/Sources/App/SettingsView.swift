@@ -12,6 +12,10 @@ struct SettingsView: View {
     /// reads the same `@AppStorage` key, so flipping it here shows/hides the figure
     /// on the next return to the drill screen.
     @AppStorage(AppSettingsKeys.showAssistFigure) private var showAssistFigure = true
+    /// The numerals-indicator on/off (6a-14, #103). Default ON; `ContentView` reads
+    /// the same `@AppStorage` key, so flipping it here shows/hides the live pill on
+    /// the camera screen the next time it appears.
+    @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
 
     var body: some View {
         Form {
@@ -24,6 +28,17 @@ struct SettingsView: View {
                 Text(
                     "Shows a stick figure of the arm positions to copy for each "
                     + "letter while practising a passage in Learn.")
+            }
+
+            // The live NUMERALS mode indicator (6a-14, #103) — a display toggle for
+            // the camera screen, so it sits with the other regular-user toggles.
+            Section {
+                Toggle("Show numerals indicator", isOn: $showNumeralsIndicator)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "Shows a badge over the camera while the decoder is reading "
+                    + "digits, and hides it when it returns to letters.")
             }
 
             Section {
