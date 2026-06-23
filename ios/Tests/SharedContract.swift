@@ -19,10 +19,31 @@ struct SemaphoreConfig: Decodable {
     let commitHoldMs: Double
     let smoothingWindow: Int
     let interCharGapMs: Double
+    // The flat timing constants above are the Learn profile; this carries the
+    // per-fork overrides (`timing_profiles`, ADR 0009). Independent from the
+    // app-side `ContractLoader.Config`'s identically-shaped DTO — both parse the
+    // same bytes but neither can `import` the other. The Interpret temporal
+    // parity test reads its timing from `timingProfiles["interpret"]`.
+    let timingProfiles: [String: ProfileTiming]?
 
     enum CodingKeys: String, CodingKey {
         case angleToleranceDeg = "ANGLE_TOLERANCE_DEG"
         case minKeypointConfidence = "MIN_KEYPOINT_CONFIDENCE"
+        case commitHoldMs = "COMMIT_HOLD_MS"
+        case smoothingWindow = "SMOOTHING_WINDOW"
+        case interCharGapMs = "INTER_CHAR_GAP_MS"
+        case timingProfiles = "timing_profiles"
+    }
+}
+
+/// One fully-specified per-fork timing override (ADR 0009); test-side twin of the
+/// app's `ContractLoader.ProfileTiming`. All three keys required (no delta/merge).
+struct ProfileTiming: Decodable {
+    let commitHoldMs: Double
+    let smoothingWindow: Int
+    let interCharGapMs: Double
+
+    enum CodingKeys: String, CodingKey {
         case commitHoldMs = "COMMIT_HOLD_MS"
         case smoothingWindow = "SMOOTHING_WINDOW"
         case interCharGapMs = "INTER_CHAR_GAP_MS"

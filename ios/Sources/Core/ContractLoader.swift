@@ -17,7 +17,14 @@ import Foundation
 /// these names out of the module namespace, so the test target's identically
 /// named top-level DTOs don't collide under `@testable import`.
 enum ContractLoader {
-    enum LoadError: Error { case missingResource(String) }
+    enum LoadError: Error {
+        case missingResource(String)
+        /// A non-Learn `TimingProfile` was requested but `timing_profiles.<name>`
+        /// is absent from the contract. Fatal by design (ADR 0009) — the loader
+        /// never silently falls back to Learn timing, so a packaging/contract bug
+        /// surfaces instead of running the rear lens at the wrong speed.
+        case missingTimingProfile(String)
+    }
 
     /// Build the decoder from the bundled contract, mirroring the test harness's
     /// `ReferenceDecoder.make()` exactly so the live app and the parity fixtures
@@ -88,15 +95,38 @@ enum ContractLoader {
             octantAngles: octantAngles, symbolPairs: symbolPairs, digitToLetter: digitToLetter)
     }
 
-    /// Parse the frozen temporal-commit constants (spec §4.4) from the bundled
-    /// `semaphore_config.json`. No committer is built here — that is #4.5; this
-    /// only surfaces the constants the live layer will inject.
-    static func makeCommitTiming(bundle: Bundle = .main) throws -> CommitTiming {
-        let config = try load(Config.self, "semaphore_config", bundle)
+    /// Parse the temporal-commit timing (spec §4.4) for one fork profile from the
+    /// bundled `semaphore_config.json`. No committer is built here — this only
+    /// surfaces the constants the live layer injects (selected by lens, ADR 0009).
+    ///
+    /// `.learn` reads the frozen flat constants; any other profile reads its
+    /// fully-specified `timing_profiles.<name>` block and **throws**
+    /// `missingTimingProfile` if absent — never a silent fallback to Learn. The
+    /// default keeps test/legacy callers on Learn; the production call site
+    /// (`PreviewViewModel`) passes the lens-derived profile explicitly.
+    static func makeCommitTiming(bundle: Bundle = .main, profile: TimingProfile = .learn) throws
+        -> CommitTiming
+    {
+        // Learn reads only the flat keys via `Config`, which does NOT model
+        // `timing_profiles` -- so (like Android's flat-key org.json path) a malformed
+        // `timing_profiles` block can't break the Learn timing or the decoder. The
+        // interpret block is decoded ONLY on the non-Learn path, via `ProfilesConfig`,
+        // so a fault there is fatal exactly when that profile is selected (ADR 0009).
+        if profile == .learn {
+            let config = try load(Config.self, "semaphore_config", bundle)
+            return CommitTiming(
+                smoothingWindow: config.smoothingWindow,
+                commitHoldMs: config.commitHoldMs,
+                interCharGapMs: config.interCharGapMs)
+        }
+        let config = try load(ProfilesConfig.self, "semaphore_config", bundle)
+        guard let t = config.timingProfiles?[profile.rawValue] else {
+            throw LoadError.missingTimingProfile(profile.rawValue)
+        }
         return CommitTiming(
-            smoothingWindow: config.smoothingWindow,
-            commitHoldMs: config.commitHoldMs,
-            interCharGapMs: config.interCharGapMs)
+            smoothingWindow: t.smoothingWindow,
+            commitHoldMs: t.commitHoldMs,
+            interCharGapMs: t.interCharGapMs)
     }
 
     private static func load<T: Decodable>(_ type: T.Type, _ name: String, _ bundle: Bundle) throws
@@ -157,6 +187,25 @@ enum ContractLoader {
         }
     }
 
+    /// One fully-specified per-fork timing override (ADR 0009). All three keys are
+    /// required — a missing key fails decoding (no merge/delta against the flat
+    /// Learn keys), matching the contract's "profiles are fully specified" rule.
+    private struct ProfileTiming: Decodable {
+        let commitHoldMs: Double
+        let smoothingWindow: Int
+        let interCharGapMs: Double
+        enum CodingKeys: String, CodingKey {
+            case commitHoldMs = "COMMIT_HOLD_MS"
+            case smoothingWindow = "SMOOTHING_WINDOW"
+            case interCharGapMs = "INTER_CHAR_GAP_MS"
+        }
+    }
+
+    /// The flat config: the geometry constants + the Learn timing keys. It does
+    /// **not** model `timing_profiles`, so decoding it (here and in `makeDecoder`)
+    /// can never throw on a malformed fork block — the Learn path and the decoder
+    /// stay robust to it, the same way Android's flat-key org.json reads do. The
+    /// fork overrides are decoded separately (`ProfilesConfig`), only when selected.
     private struct Config: Decodable {
         let angleToleranceDeg: Double
         let minKeypointConfidence: Double
@@ -169,6 +218,18 @@ enum ContractLoader {
             case commitHoldMs = "COMMIT_HOLD_MS"
             case smoothingWindow = "SMOOTHING_WINDOW"
             case interCharGapMs = "INTER_CHAR_GAP_MS"
+        }
+    }
+
+    /// Decodes only the `timing_profiles` fork overrides (ADR 0009), used solely on
+    /// the non-Learn `makeCommitTiming` path. A selected profile that is malformed
+    /// (a present block missing a required key) throws here — fatal, and exactly
+    /// when that profile is requested; the Learn/decoder paths (which decode `Config`)
+    /// never touch this, so a fork-block fault can't break them.
+    private struct ProfilesConfig: Decodable {
+        let timingProfiles: [String: ProfileTiming]?
+        enum CodingKeys: String, CodingKey {
+            case timingProfiles = "timing_profiles"
         }
     }
 }

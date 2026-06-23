@@ -20,6 +20,18 @@ data class SemaphoreConfig(
     @SerializedName("COMMIT_HOLD_MS") val commitHoldMs: Double,
     @SerializedName("SMOOTHING_WINDOW") val smoothingWindow: Int,
     @SerializedName("INTER_CHAR_GAP_MS") val interCharGapMs: Double,
+    // The flat timing constants above are the Learn profile; this carries the
+    // per-fork overrides (`timing_profiles`, ADR 0009). Independent from the
+    // app-side `ContractLoader`'s org.json parse -- both read the same bytes. The
+    // Interpret temporal parity test reads its timing from timingProfiles["interpret"].
+    @SerializedName("timing_profiles") val timingProfiles: Map<String, ProfileTiming>? = null,
+)
+
+/** One fully-specified per-fork timing override (ADR 0009). All three keys required. */
+data class ProfileTiming(
+    @SerializedName("COMMIT_HOLD_MS") val commitHoldMs: Double,
+    @SerializedName("SMOOTHING_WINDOW") val smoothingWindow: Int,
+    @SerializedName("INTER_CHAR_GAP_MS") val interCharGapMs: Double,
 )
 
 // --- semaphore_alphabet.json ---
