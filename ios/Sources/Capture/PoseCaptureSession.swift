@@ -65,6 +65,10 @@ actor PoseCaptureSession {
         self.handler = handler
 
         session.beginConfiguration()
+        // Fallback only: `.high` resolves to a 16:9 format on modern iPhones. We
+        // override it with an explicit 4:3 `activeFormat` below (which flips the
+        // session to `.inputPriority`); this preset applies only if no 4:3 format
+        // is available (#110, 6a-16, lever A).
         session.sessionPreset = .high
 
         guard
@@ -75,6 +79,24 @@ actor PoseCaptureSession {
         let input = try AVCaptureDeviceInput(device: camera)
         guard session.canAddInput(input) else { throw CaptureError.cannotAddInput }
         session.addInput(input)
+
+        // #110 (6a-16, lever A): widen the analysis FOV to 4:3. In portrait the
+        // horizontal FOV is the *narrow* dimension, so the 16:9 format that `.high`
+        // resolves to crops wingspan — a fully-extended arm clips the frame side and
+        // the wrist gates out (the "iOS worse on arms-out" field report; iOS's 16:9
+        // clipped the wrist sooner than Android's ~4:3 in the #101 diagnostic).
+        // Selecting a 4:3 `activeFormat` keeps the full horizontal FOV at a given
+        // distance. The adapter normalizes keypoints to [0,1] regardless of buffer
+        // aspect and the native fixtures are static images, so the frozen contract
+        // and `VisionCalibrationTests` are unaffected. Best-effort: on the rare
+        // device with no 4:3 format, or if the lock fails, we keep the `.high`
+        // fallback above.
+        if let format = Self.fourByThreeFormat(for: camera),
+            (try? camera.lockForConfiguration()) != nil
+        {
+            camera.activeFormat = format
+            camera.unlockForConfiguration()
+        }
 
         let output = AVCaptureVideoDataOutput()
         output.setSampleBufferDelegate(handler, queue: videoQueue)
@@ -113,6 +135,32 @@ actor PoseCaptureSession {
         videoQueue.async { if captureSession.isRunning { captureSession.stopRunning() } }
         handler?.finish()
         handler = nil
+    }
+
+    /// #110 (6a-16, lever A). Pick a 4:3 capture format so portrait analysis keeps
+    /// the full horizontal FOV (16:9 crops the sides → an arms-out wingspan clips
+    /// and the wrist gates). Formats report landscape dimensions, so 4:3 means
+    /// `width * 3 == height * 4`. Among the 4:3 formats that stream at ≥30 fps,
+    /// prefer the highest resolution at or below 1920px wide — enough to localize a
+    /// wrist at distance without paying full-sensor Vision cost — and, if every 4:3
+    /// format is larger than that, fall back to the smallest. `nil` when the device
+    /// exposes no 4:3 format at all (caller then keeps the default preset).
+    private static func fourByThreeFormat(for device: AVCaptureDevice)
+        -> AVCaptureDevice.Format?
+    {
+        func width(_ format: AVCaptureDevice.Format) -> Int32 {
+            CMVideoFormatDescriptionGetDimensions(format.formatDescription).width
+        }
+        let fourByThree = device.formats.filter { format in
+            let d = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+            let isFourByThree = d.width * 3 == d.height * 4
+            let streams30 = format.videoSupportedFrameRateRanges
+                .contains { $0.maxFrameRate >= 30 }
+            return isFourByThree && streams30
+        }
+        let capped = fourByThree.filter { width($0) <= 1920 }
+        return capped.max { width($0) < width($1) }
+            ?? fourByThree.min { width($0) < width($1) }
     }
 }
 
