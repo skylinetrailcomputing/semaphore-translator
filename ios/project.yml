@@ -53,12 +53,44 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore.tests
+  # UI tests (XCUITest) — drive the running app via accessibility. Kept in a
+  # separate bundle.ui-testing target (its own host process) so the fast unit
+  # suite stays decoupled from the slow, simulator-driving UI tests. Today it
+  # pins the Learn custom-passage push→back navigation regression (#104).
+  SemaphoreTranslatorUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: SemaphoreTranslator
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore.uitests
+        TEST_TARGET_NAME: SemaphoreTranslator
 schemes:
+  # Default scheme — its `test` action runs only the fast unit suite. The UI test
+  # bundle still builds here (so it's compile-checked on every build and can't rot)
+  # but is intentionally kept OUT of the default test action: it launches the app
+  # and drives the simulator (slow + stateful), so `xcodebuild test -scheme
+  # SemaphoreTranslator` should stay the quick unit run. Use the dedicated
+  # `SemaphoreTranslatorUITests` scheme below to run the XCUITests.
   SemaphoreTranslator:
     build:
       targets:
         SemaphoreTranslator: all
         SemaphoreTranslatorTests: [test]
+        SemaphoreTranslatorUITests: [test]
     test:
       targets:
         - SemaphoreTranslatorTests
+  # Opt-in scheme for the XCUITests (`xcodebuild test -scheme
+  # SemaphoreTranslatorUITests`). Separated so the UI tests run only when asked.
+  SemaphoreTranslatorUITests:
+    build:
+      targets:
+        SemaphoreTranslator: all
+        SemaphoreTranslatorUITests: [test]
+    test:
+      targets:
+        - SemaphoreTranslatorUITests
