@@ -113,8 +113,11 @@ final class PreviewViewModel: ObservableObject {
     /// on so a maintainer can read it numerically off-device.
     private static let probeLog = Logger(
         subsystem: "com.skylinetrailcomputing.semaphore", category: "geometry-probe")
-    /// Throttle the probe to one line per id change (not per frame).
-    private var lastProbeIds: (Int?, Int?)?
+    /// Throttle the probe: one line per distinct (ids + coarse arm-angle) signature,
+    /// so a hard letter that sits at `·` because its wrist is gated still logs once
+    /// per distinct attempt instead of being swallowed by an unchanged-ids throttle
+    /// (#101, 6a-14 diagnostic).
+    private var lastProbeSig: String?
 
     /// If no full skeleton arrives for this long, declare "no signer detected"
     /// (NFR4). The capture stream simply stops yielding when a signer leaves the
@@ -327,29 +330,59 @@ final class PreviewViewModel: ObservableObject {
         logProbe(kp: kp, leftId: raw.ids[0], rightId: raw.ids[1], char: raw.emit)
     }
 
-    /// Dev-only coordinate probe (#58 / ADR 0006): when developer mode is on, log
-    /// the post-adapter, signer's-perspective x of each shoulder/wrist plus the
-    /// quantized ids + emitted char, once per id change. The numeric backstop for
-    /// the rear-camera mirror smoke: for a correctly-oriented read the signer's
-    /// right shoulder must sit at greater x than the left (`R.sh.x > L.sh.x`) and
-    /// an arm extended to the signer's right has `wrist.x > shoulder.x`; a flipped
-    /// rear buffer inverts both. Reads *post-adapter* coords deliberately — the
-    /// adapter transform is byte-pinned by the native fixtures, so any rear
-    /// chirality fault surfaces here, in the consumer, with no need to instrument
-    /// the quarantined capture path (spec §3.2).
+    /// Dev-only coordinate probe (#58 / ADR 0006; extended for #101 / 6a-14): when
+    /// developer mode is on, log the post-adapter, signer's-perspective geometry the
+    /// decode rests on. It serves two diagnostics:
+    ///
+    /// 1. **Mirror seam (#58):** for a correctly-oriented read the signer's right
+    ///    shoulder sits at greater x than the left (`R.shC`/`wrX` columns), and an
+    ///    arm extended to the signer's right has `wrX > shoulder x`; a flipped rear
+    ///    buffer inverts both.
+    /// 2. **Pose-friction buckets (#101):** per arm it adds wrist/elbow/shoulder
+    ///    confidence, BOTH the `shoulder→wrist` (`aWr`) and `shoulder→elbow` (`aEl`)
+    ///    angles, and the raw wrist x/y. This lets the on-device write-up bucket each
+    ///    hard letter — gated wrist (`wrC` below `MIN_KEYPOINT_CONFIDENCE`),
+    ///    mislocalized/crossed wrist (`aWr` vs `aEl` disagree on a straight arm),
+    ///    edge-clip (`wrX`/`wrY` at the 0/1 frame edge — the portrait-wingspan case)
+    ///    — and shows whether the elbow stays reliable where the wrist fails (the
+    ///    elbow-fallback prior). The whole-frame-drop case (Vision omits a joint
+    ///    entirely) never reaches here; `PoseCaptureSession` logs that separately.
+    ///
+    /// Reads *post-adapter* coords deliberately — the adapter transform is
+    /// byte-pinned by the native fixtures, so any chirality/geometry fault surfaces
+    /// here, in the consumer, with no need to instrument the quarantined capture path
+    /// (spec §3.2). No behaviour change; nothing logs when developer mode is off.
     private func logProbe(kp: Keypoints, leftId: Int?, rightId: Int?, char: String) {
         guard UserDefaults.standard.bool(forKey: AppSettingsKeys.developerMode) else { return }
-        if let last = lastProbeIds, last.0 == leftId, last.1 == rightId { return }
-        lastProbeIds = (leftId, rightId)
+        func angle(_ sh: Keypoint, _ tip: Keypoint) -> Double {
+            atan2(tip.y - sh.y, tip.x - sh.x) * 180 / .pi
+        }
+        let lAWr = angle(kp.leftShoulder, kp.leftWrist)
+        let lAEl = angle(kp.leftShoulder, kp.leftElbow)
+        let rAWr = angle(kp.rightShoulder, kp.rightWrist)
+        let rAEl = angle(kp.rightShoulder, kp.rightElbow)
+        // Throttle on ids + coarse (~15°) wrist-angle buckets, so a distinct pose
+        // attempt logs once even while it sits at `·` (the gated-wrist hard letter).
+        func bucket(_ a: Double) -> Int { Int((a / 15).rounded()) }
+        let sig =
+            "\(leftId.map(String.init) ?? "-"),\(rightId.map(String.init) ?? "-"),"
+            + "\(bucket(lAWr)),\(bucket(rAWr))"
+        if sig == lastProbeSig { return }
+        lastProbeSig = sig
         let lens = cameraPosition == .back ? "rear" : "front"
-        func f(_ v: Double) -> String { String(format: "%.3f", v) }
+        func f(_ v: Double) -> String { String(format: "%.2f", v) }
+        func a(_ v: Double) -> String { String(format: "%.1f", v) }
         let l = leftId.map(String.init) ?? "—"
         let r = rightId.map(String.init) ?? "—"
         let c = char.isEmpty ? "·" : char
         let msg =
-            "lens=\(lens) ids=[\(l),\(r)] char=\(c)  "
-            + "L(sh.x=\(f(kp.leftShoulder.x)) wr.x=\(f(kp.leftWrist.x))) "
-            + "R(sh.x=\(f(kp.rightShoulder.x)) wr.x=\(f(kp.rightWrist.x)))"
+            "lens=\(lens) ids=[\(l),\(r)] char=\(c) | "
+            + "L shC=\(f(kp.leftShoulder.confidence)) wrC=\(f(kp.leftWrist.confidence)) "
+            + "elC=\(f(kp.leftElbow.confidence)) aWr=\(a(lAWr)) aEl=\(a(lAEl)) "
+            + "wrX=\(f(kp.leftWrist.x)) wrY=\(f(kp.leftWrist.y)) | "
+            + "R shC=\(f(kp.rightShoulder.confidence)) wrC=\(f(kp.rightWrist.confidence)) "
+            + "elC=\(f(kp.rightElbow.confidence)) aWr=\(a(rAWr)) aEl=\(a(rAEl)) "
+            + "wrX=\(f(kp.rightWrist.x)) wrY=\(f(kp.rightWrist.y))"
         Self.probeLog.debug("\(msg, privacy: .public)")
     }
 

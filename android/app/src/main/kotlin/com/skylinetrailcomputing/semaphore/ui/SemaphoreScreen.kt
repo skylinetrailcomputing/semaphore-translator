@@ -63,6 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
 
 /**
  * The shared camera+decode screen — driven by **Learn** (front lens, #48) and
@@ -261,8 +262,10 @@ private fun CameraScreen(
     androidx.compose.runtime.LaunchedEffect(Unit) {
         val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
         var lastFrameAt = 0L
-        // Dev-only coordinate probe (#58 / ADR 0006); throttled to one line per id change.
-        var lastProbeIds: Pair<Int?, Int?>? = null
+        // Dev-only coordinate probe (#58 / ADR 0006); throttled to one line per
+        // distinct (ids + coarse arm-angle) signature so a gated-`·` hard letter
+        // still logs once per attempt (#101 / 6a-14 diagnostic).
+        var lastProbeSig: String? = null
 
         // Freshness watchdog: the stream simply stops yielding when a signer
         // leaves the frame (no full upper-body skeleton → no emit), so absence is
@@ -322,32 +325,51 @@ private fun CameraScreen(
             // character is interpreted, in the committer's (possibly just-flipped) mode.
             val raw = decoder.decodeFrame(kp, committer.currentMode)
 
-            // Dev-only coordinate probe (#58 / ADR 0006): log the post-adapter,
-            // signer's-perspective x of each shoulder/wrist + ids + char, once per
-            // id change. The numeric backstop for the rear-camera mirror smoke: a
-            // correctly-oriented read has the signer's right shoulder at greater x
-            // than the left (R.sh.x > L.sh.x) and `wrist.x > shoulder.x` for an arm
-            // extended to the signer's right; a flipped rear buffer inverts both.
-            // Reads post-adapter coords on purpose — the adapter transform is
-            // byte-pinned by the native fixtures, so any rear chirality fault shows
-            // up here without instrumenting the quarantined capture path (spec §3.2).
+            // Dev-only coordinate probe (#58 / ADR 0006; extended for #101 / 6a-14).
+            // Two diagnostics off one line: (1) the rear-mirror seam — a correctly-
+            // oriented read has the signer's right shoulder at greater x than the left
+            // and `wrX > shoulder x` for a right-extended arm; a flipped buffer inverts
+            // both. (2) Pose-friction buckets — per arm it logs wrist/elbow/shoulder
+            // confidence, BOTH the shoulder→wrist (aWr) and shoulder→elbow (aEl)
+            // angles, and the raw wrist x/y, so the on-device write-up can bucket each
+            // hard letter: gated wrist (wrC below MIN_KEYPOINT_CONFIDENCE),
+            // mislocalized/crossed wrist (aWr vs aEl disagree on a straight arm), or
+            // edge-clip (wrX/wrY outside [0,1] — ML Kit extrapolates an out-of-frame
+            // landmark, the portrait-wingspan case) — and shows whether the elbow
+            // stays reliable where the wrist fails (the elbow-fallback prior). Reads
+            // post-adapter coords on purpose (spec §3.2); nothing logs in non-dev mode.
             if (developerMode) {
-                val ids = raw.ids[0] to raw.ids[1]
-                if (ids != lastProbeIds) {
-                    lastProbeIds = ids
+                fun ang(sh: Keypoint, tip: Keypoint) =
+                    Math.toDegrees(atan2(tip.y - sh.y, tip.x - sh.x))
+                val lAWr = ang(kp.leftShoulder, kp.leftWrist)
+                val lAEl = ang(kp.leftShoulder, kp.leftElbow)
+                val rAWr = ang(kp.rightShoulder, kp.rightWrist)
+                val rAEl = ang(kp.rightShoulder, kp.rightElbow)
+                // ids + coarse (~15°) wrist-angle buckets, so a distinct pose attempt
+                // logs once even while it sits at `·` (gated-wrist hard letter).
+                fun bucket(a: Double) = Math.round(a / 15).toInt()
+                val sig = "${raw.ids[0]},${raw.ids[1]},${bucket(lAWr)},${bucket(rAWr)}"
+                if (sig != lastProbeSig) {
+                    lastProbeSig = sig
                     val lens =
                         if (cameraLens.lensFacing == CameraSelector.LENS_FACING_FRONT) "front"
                         else "rear"
                     android.util.Log.d(
                         "SemaphoreProbe",
-                        "lens=%s ids=[%s,%s] char=%s  L(sh.x=%.3f wr.x=%.3f) R(sh.x=%.3f wr.x=%.3f)"
+                        ("lens=%s ids=[%s,%s] char=%s | " +
+                            "L shC=%.2f wrC=%.2f elC=%.2f aWr=%.1f aEl=%.1f wrX=%.2f wrY=%.2f | " +
+                            "R shC=%.2f wrC=%.2f elC=%.2f aWr=%.1f aEl=%.1f wrX=%.2f wrY=%.2f")
                             .format(
                                 lens,
                                 raw.ids[0]?.toString() ?: "—",
                                 raw.ids[1]?.toString() ?: "—",
                                 raw.emit.ifEmpty { "·" },
-                                kp.leftShoulder.x, kp.leftWrist.x,
-                                kp.rightShoulder.x, kp.rightWrist.x,
+                                kp.leftShoulder.confidence, kp.leftWrist.confidence,
+                                kp.leftElbow.confidence, lAWr, lAEl,
+                                kp.leftWrist.x, kp.leftWrist.y,
+                                kp.rightShoulder.confidence, kp.rightWrist.confidence,
+                                kp.rightElbow.confidence, rAWr, rAEl,
+                                kp.rightWrist.x, kp.rightWrist.y,
                             ),
                     )
                 }
