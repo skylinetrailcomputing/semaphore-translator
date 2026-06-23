@@ -107,7 +107,10 @@ struct ContentView: View {
 
     private var cameraStack: some View {
         ZStack {
-            CameraPreviewView(capture: model.capture, mirrored: model.isPreviewMirrored)
+            CameraPreviewView(
+                capture: model.capture,
+                mirrored: model.isPreviewMirrored,
+                zoomEnabled: model.isZoomEnabled)
                 .ignoresSafeArea()
             if developerMode {
                 SkeletonOverlay(keypoints: model.keypoints, mirrored: model.isPreviewMirrored)

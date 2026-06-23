@@ -38,8 +38,16 @@ struct CameraPreviewView: UIViewRepresentable {
     /// `SkeletonOverlay` must receive the same flag so its x-map stays in lockstep.
     let mirrored: Bool
 
+    /// Whether to attach pinch-to-zoom — Interpret (rear lens) only. Learn is
+    /// front-lens self-signing at arm's length, where a tight crop would only push
+    /// the signer's own arms out of frame, so the gesture isn't installed there.
+    /// Lens-derived by `PreviewViewModel.isZoomEnabled` (the twin of `mirrored`).
+    let zoomEnabled: Bool
+
     /// Portrait. Kept here as the single preview-orientation knob for the smoke.
     static let previewRotationAngle: CGFloat = 90
+
+    func makeCoordinator() -> Coordinator { Coordinator(capture: capture) }
 
     func makeUIView(context: Context) -> PreviewUIView {
         let view = PreviewUIView()
@@ -55,10 +63,50 @@ struct CameraPreviewView: UIViewRepresentable {
                 connection.videoRotationAngle = Self.previewRotationAngle
             }
         }
+        if zoomEnabled {
+            let pinch = UIPinchGestureRecognizer(
+                target: context.coordinator,
+                action: #selector(Coordinator.handlePinch(_:)))
+            view.addGestureRecognizer(pinch)
+        }
         return view
     }
 
     func updateUIView(_ uiView: PreviewUIView, context: Context) {}
+
+    /// Translates the preview's pinch gesture into `videoZoomFactor` updates on the
+    /// capture actor (Interpret only). Tracks the zoom locally on the main thread
+    /// because `UIPinchGestureRecognizer.scale` is cumulative from the gesture's
+    /// start: each gesture multiplies the factor it began at. Clamped to the same
+    /// `1.0…maxZoomFactor` band the actor enforces, so the local mirror matches what
+    /// the device applies.
+    ///
+    /// `@MainActor` because UIKit delivers gesture-recognizer callbacks on the main
+    /// thread and `UIPinchGestureRecognizer`'s `state`/`scale` are themselves
+    /// main-actor isolated under Swift 6 — matching that isolation here is what keeps
+    /// the `Task { await capture.setZoom(...) }` hand-off to the actor race-free.
+    @MainActor
+    final class Coordinator: NSObject {
+        private let capture: PoseCaptureSession
+        private var baseZoom: CGFloat = 1.0
+        private var currentZoom: CGFloat = 1.0
+
+        init(capture: PoseCaptureSession) { self.capture = capture }
+
+        @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+            switch gesture.state {
+            case .began:
+                baseZoom = currentZoom
+            case .changed:
+                let desired = baseZoom * gesture.scale
+                let clamped = min(max(desired, 1.0), PoseCaptureSession.maxZoomFactor)
+                currentZoom = clamped
+                Task { await capture.setZoom(factor: clamped) }
+            default:
+                break
+            }
+        }
+    }
 }
 
 /// A `UIView` whose backing layer *is* the preview layer, so it resizes with the
