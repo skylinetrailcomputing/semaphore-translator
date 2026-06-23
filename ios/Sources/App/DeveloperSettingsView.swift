@@ -6,6 +6,9 @@ import SwiftUI
 /// `AppSettings`.
 enum AppSettingsKeys {
     static let developerMode = "developerMode"
+    /// Whether the Learn drill draws the contract-derived assist figure (#73,
+    /// 6a-5). Default ON (see `SettingsView`); the drill card reads the same key.
+    static let showAssistFigure = "showAssistFigure"
 }
 
 /// The **Developer** surface ([5d], #50) — the dev-ish settings split out of the

@@ -93,6 +93,11 @@ private fun MainNavHost() {
     // reactive in-session (Learn reflects a flip on the next entry) and survives
     // launches. The iOS twin is `@AppStorage`, shared across views by key.
     var developerMode by remember { mutableStateOf(AppSettings.developerMode(context)) }
+    // Assist-figure on/off (6a-5, #73) hoisted alongside developerMode: one source
+    // of truth feeds the Settings toggle and every drill-capable screen, reactive
+    // in-session (the drill reflects a flip on the next entry) and persisted. The
+    // iOS twin is `@AppStorage("showAssistFigure")`, shared across views by key.
+    var showAssist by remember { mutableStateOf(AppSettings.showAssist(context)) }
     // The active drill passage (6a-3, #71), set by the custom/stock source just
     // before it navigates to the DRILL route. rememberSaveable so it survives a
     // configuration change / process death (a plain remember would drop it and the
@@ -126,7 +131,10 @@ private fun MainNavHost() {
             // Full-bleed camera screen with a floating back chevron over it — the
             // Android parallel of iOS's transparent nav bar on the Learn screen.
             Box(Modifier.fillMaxSize()) {
-                SemaphoreScreen(developerMode = developerMode)
+                // Free-practice has no drill target, so the assist never draws here;
+                // the flag is threaded uniformly so gating stays by drill-state +
+                // lens, not by which route built the screen (iOS parity).
+                SemaphoreScreen(developerMode = developerMode, showAssist = showAssist)
                 BackButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.align(Alignment.TopStart),
@@ -172,6 +180,7 @@ private fun MainNavHost() {
                         developerMode = developerMode,
                         emptyHint = "Sign the letter shown above",
                         drillTargets = targets,
+                        showAssist = showAssist,
                     )
                     BackButton(
                         onClick = { navController.popBackStack() },
@@ -190,6 +199,7 @@ private fun MainNavHost() {
                     developerMode = developerMode,
                     cameraLens = CameraSelector.DEFAULT_BACK_CAMERA,
                     emptyHint = "Point at someone signing",
+                    showAssist = showAssist,
                 )
                 BackButton(
                     onClick = { navController.popBackStack() },
@@ -202,6 +212,11 @@ private fun MainNavHost() {
             // row. The dev-mode toggle itself lives one level deeper on the
             // DEVELOPER route, off this user-facing screen.
             SettingsScreen(
+                showAssist = showAssist,
+                onShowAssistChange = {
+                    showAssist = it
+                    AppSettings.setShowAssist(context, it)
+                },
                 onAbout = { navController.navigate(Route.ABOUT) },
                 onDeveloper = { navController.navigate(Route.DEVELOPER) },
                 onBack = { navController.popBackStack() },

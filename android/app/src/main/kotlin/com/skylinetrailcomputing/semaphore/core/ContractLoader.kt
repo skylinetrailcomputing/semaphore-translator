@@ -86,6 +86,44 @@ object ContractLoader {
     }
 
     /**
+     * Build the assist-figure geometry (#73 / 6a-5) from the bundled alphabet.
+     * Deliberately a *second* parse of `semaphore_alphabet.json` rather than a
+     * reach into the [SemaphoreDecoder]: the decoder stores the pairs in an
+     * order-*insensitive* lookup that discards which id is the left vs right arm,
+     * but the figure draws each arm from its own shoulder and needs the ordered
+     * `(left, right)`. The extra parse is one ~8 KB file, only on a drill screen.
+     *
+     * The geometry *logic* lives in the pure [AssistGeometry] (unit-tested in
+     * `src/test` from a Gson-parsed alphabet); this thin `org.json` wrapper mirrors
+     * [makeDecoder] and shares its instrumented-only coverage gap (#37).
+     */
+    fun makeAssistGeometry(context: Context): AssistGeometry {
+        val alphabet = JSONObject(readAsset(context, "semaphore_alphabet.json"))
+
+        val positions = alphabet.getJSONObject("_position_model").getJSONObject("positions")
+        val octantAngles =
+            buildMap {
+                for (key in positions.keys()) {
+                    val pos = positions.getJSONObject(key)
+                    put(pos.getInt("id"), pos.getDouble("angle_deg"))
+                }
+            }
+
+        val letters = alphabet.getJSONObject("letters")
+        val rest = alphabet.getJSONObject("control_signals").getJSONObject("REST")
+        val letterPairs =
+            buildMap {
+                for (symbol in letters.keys()) {
+                    val p = letters.getJSONObject(symbol)
+                    put(symbol, p.getInt("left") to p.getInt("right"))
+                }
+                put("REST", rest.getInt("left") to rest.getInt("right"))
+            }
+
+        return AssistGeometry(octantAngles, letterPairs)
+    }
+
+    /**
      * Parse the frozen temporal-commit constants (spec §4.4) from the bundled
      * `semaphore_config.json`. No committer is built here -- that is #4.5; this
      * only surfaces the constants the live layer will inject.

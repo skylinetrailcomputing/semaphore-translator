@@ -8,11 +8,23 @@ import SwiftUI
 /// row that pushes the maintainer smoke surface one level deeper, off this
 /// user-facing screen. The Android twin is `SettingsScreen`.
 struct SettingsView: View {
+    /// The assist-figure on/off (6a-5, #73). Default ON; `ContentView`'s drill card
+    /// reads the same `@AppStorage` key, so flipping it here shows/hides the figure
+    /// on the next return to the drill screen.
+    @AppStorage(AppSettingsKeys.showAssistFigure) private var showAssistFigure = true
+
     var body: some View {
         Form {
             // Assist & practice-mode toggles (6a-5 #73, 6a-6 #74) land here as
-            // their own section — the primary regular-user content. Until then,
-            // About + Developer are the only rows in the closed-beta cut.
+            // their own section — the primary regular-user content.
+            Section {
+                Toggle("Show assist figure", isOn: $showAssistFigure)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "Shows a stick figure of the arm positions to copy for each "
+                    + "letter while practising a passage in Learn.")
+            }
 
             Section {
                 // The always-reachable About/privacy surface ([6b-4], #82): app
