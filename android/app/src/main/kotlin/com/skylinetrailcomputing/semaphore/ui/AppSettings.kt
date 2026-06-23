@@ -16,6 +16,7 @@ object AppSettings {
     private const val PREFS = "semaphore.settings"
     private const val KEY_DEVELOPER_MODE = "developer_mode"
     private const val KEY_SHOW_ASSIST = "show_assist_figure"
+    private const val KEY_SHOW_NUMERALS_INDICATOR = "show_numerals_indicator"
     private const val KEY_DISCLAIMER_HASH = "disclaimer_accepted_hash"
     private const val KEY_DISCLAIMER_AT = "disclaimer_accepted_at"
 
@@ -36,6 +37,18 @@ object AppSettings {
 
     fun setShowAssist(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SHOW_ASSIST, enabled).apply()
+    }
+
+    /**
+     * Whether the live camera screen shows the user-facing NUMERALS mode pill
+     * (#103, 6a-14). Default ON — informative and unobtrusive. The iOS twin is
+     * `@AppStorage("showNumeralsIndicator")`.
+     */
+    fun showNumeralsIndicator(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SHOW_NUMERALS_INDICATOR, true)
+
+    fun setShowNumeralsIndicator(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SHOW_NUMERALS_INDICATOR, enabled).apply()
     }
 
     /**

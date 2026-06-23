@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.sp
 fun SettingsScreen(
     showAssist: Boolean,
     onShowAssistChange: (Boolean) -> Unit,
+    showNumeralsIndicator: Boolean,
+    onShowNumeralsIndicatorChange: (Boolean) -> Unit,
     onAbout: () -> Unit,
     onDeveloper: () -> Unit,
     onBack: () -> Unit,
@@ -72,9 +74,26 @@ fun SettingsScreen(
         },
     ) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
-            // Assist & practice-mode toggles (6a-5 #73, 6a-6 #74) — the primary
-            // regular-user content, above the nav rows.
-            AssistToggleRow(checked = showAssist, onCheckedChange = onShowAssistChange)
+            // Assist & practice-mode + display toggles (6a-5 #73, 6a-14 #103) — the
+            // primary regular-user content, above the nav rows.
+            SettingsToggleRow(
+                title = "Show assist figure",
+                subtitle =
+                    "Shows a stick figure of the arm positions to copy for each " +
+                        "letter while practising a passage in Learn.",
+                checked = showAssist,
+                onCheckedChange = onShowAssistChange,
+            )
+            // The live NUMERALS mode indicator (6a-14, #103) — a display toggle for
+            // the camera screen; the iOS twin is the matching toggle in `SettingsView`.
+            SettingsToggleRow(
+                title = "Show numerals indicator",
+                subtitle =
+                    "Shows a badge over the camera while the decoder is reading " +
+                        "digits, and hides it when it returns to letters.",
+                checked = showNumeralsIndicator,
+                onCheckedChange = onShowNumeralsIndicatorChange,
+            )
 
             // The always-reachable About/privacy surface ([6b-4], #82): app version,
             // AS-IS beta line, and the hosted EULA + Privacy links.
@@ -87,25 +106,27 @@ fun SettingsScreen(
 }
 
 /**
- * The "Show assist figure" toggle (6a-5, #73) — the regular-user on/off for the
- * contract-derived drill assist. Mirrors the Developer-mode switch styling; the
- * green on-track is set explicitly because the app isn't wrapped in a MaterialTheme.
+ * A regular-user settings toggle row — a title + explanatory subtitle on the lead,
+ * a green-on-track [Switch] on the end. Shared by the assist-figure (6a-5, #73) and
+ * numerals-indicator (6a-14, #103) toggles. Mirrors the Developer-mode switch
+ * styling; the colors are set explicitly because the app isn't wrapped in a
+ * MaterialTheme.
  */
 @Composable
-private fun AssistToggleRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SettingsToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("Show assist figure", color = Color.White, fontSize = 17.sp)
+            Text(title, color = Color.White, fontSize = 17.sp)
             Spacer(Modifier.height(4.dp))
-            Text(
-                "Shows a stick figure of the arm positions to copy for each letter " +
-                    "while practising a passage in Learn.",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 13.sp,
-            )
+            Text(subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp)
         }
         Spacer(Modifier.width(16.dp))
         Switch(
