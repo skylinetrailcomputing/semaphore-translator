@@ -18,6 +18,12 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var model: PreviewViewModel
     @AppStorage(AppSettingsKeys.developerMode) private var developerMode = false
+    /// Whether to draw the contract-derived assist figure in the drill card (#73,
+    /// 6a-5). Defaults ON — it's the primary teaching aid for Learn; the Settings
+    /// toggle writes the same `@AppStorage` key. Only consulted on a drill screen,
+    /// and `model.assistPose` adds the front-lens gate, so this is purely the
+    /// user's on/off.
+    @AppStorage(AppSettingsKeys.showAssistFigure) private var showAssistFigure = true
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
@@ -110,6 +116,15 @@ struct ContentView: View {
             Text(targetGlyph(hud.target))
                 .font(.system(size: 72, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
+            // The contract-derived assist figure (#73, 6a-5): the pose to make for
+            // this target, drawn at the exact alphabet angles. `assistPose` is the
+            // structural gate (nil off the front lens / off a drill screen);
+            // `showAssistFigure` is the user's on/off.
+            if showAssistFigure, let pose = model.assistPose(for: hud.target) {
+                AssistFigureView(pose: pose)
+                    .frame(height: 132)
+                    .padding(.vertical, 2)
+            }
             ProgressView(value: Double(hud.index), total: Double(max(hud.count, 1)))
                 .tint(.white)
             Text("\(hud.index) / \(hud.count)")

@@ -51,6 +51,34 @@ enum ContractLoader {
             minKeypointConfidence: config.minKeypointConfidence)
     }
 
+    /// Build the assist-figure geometry (#73 / 6a-5) from the bundled alphabet.
+    /// Deliberately a *second* parse of `semaphore_alphabet.json` rather than a
+    /// reach into the `SemaphoreDecoder`: the decoder stores the pairs in an
+    /// order-*insensitive* lookup that discards which id is the left vs right arm,
+    /// but the figure draws each arm from its own shoulder and needs the ordered
+    /// `(left, right)`. The extra parse is one ~8 KB file, only on a drill screen.
+    static func makeAssistGeometry(bundle: Bundle = .main) throws -> AssistGeometry {
+        let alphabet = try load(Alphabet.self, "semaphore_alphabet", bundle)
+
+        var octantAngles: [Int: Double] = [:]
+        for position in alphabet.positionModel.positions.values {
+            octantAngles[position.id] = position.angleDeg
+        }
+
+        var letterPairs: [String: (left: Int, right: Int)] = [:]
+        for (symbol, ids) in alphabet.letters {
+            letterPairs[symbol] = (ids.left, ids.right)
+        }
+        letterPairs["REST"] = (
+            alphabet.controlSignals.rest.left, alphabet.controlSignals.rest.right
+        )
+
+        return AssistGeometry(
+            octantAngles: octantAngles,
+            letterPairs: letterPairs,
+            digitMap: alphabet.numericMode.digitMap)
+    }
+
     /// Parse the frozen temporal-commit constants (spec §4.4) from the bundled
     /// `semaphore_config.json`. No committer is built here — that is #4.5; this
     /// only surfaces the constants the live layer will inject.
