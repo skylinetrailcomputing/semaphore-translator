@@ -30,6 +30,12 @@ struct ContentView: View {
     /// `developerMode` is on, since the readout's NUMERIC/LETTERS badge already shows
     /// the mode, so a regular user never sees both. See `numeralsIndicator`.
     @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
+    /// The forgiving "easy mode" drill readout on/off (6a-10, #95). Defaults ON; the
+    /// Settings toggle writes the same `@AppStorage` key. Only consulted on a drill
+    /// screen (see `displayedReadout` / `drillCardColor`) — free-form Learn/Interpret
+    /// is always verbatim. Purely a render projection over the existing drill index;
+    /// the committer/engine are untouched.
+    @AppStorage(AppSettingsKeys.drillMatchedOnlyReadout) private var drillMatchedOnlyReadout = true
     /// Whether a completed drill auto-resets after a short countdown (#97, 6a-12).
     /// Default ON — the hands-free practice loop. The Settings toggle writes the same
     /// `@AppStorage` key; read here so the ON default lives in the property wrapper
@@ -43,6 +49,10 @@ struct ContentView: View {
     /// Whether this screen is a passage drill (6a-2, #70) — derived from a non-nil
     /// `drillTargets`. Drives the drill HUD; the free-form path is otherwise intact.
     private let isDrill: Bool
+    /// The drill passage, kept so the forgiving readout (6a-10, #95) can render
+    /// `passage.prefix(drillHUD.index)`. `nil` off a drill screen. The `DrillSession`
+    /// in the view model owns the live index; this is the text behind it.
+    private let drillTargets: String?
 
     /// `cameraPosition` is injected into the `@StateObject` via
     /// `StateObject(wrappedValue:)` (the autoclosure is evaluated once, so each
@@ -59,6 +69,7 @@ struct ContentView: View {
                 cameraPosition: cameraPosition, drillTargets: drillTargets))
         self.emptyHint = emptyHint
         self.isDrill = drillTargets != nil
+        self.drillTargets = drillTargets
     }
 
     var body: some View {
@@ -166,10 +177,14 @@ struct ContentView: View {
     }
 
     /// Neutral by default; tinted briefly by the last commit's success/miss flash.
+    /// The forgiving readout (6a-10, #95) drops the red miss-flash entirely — a miss
+    /// stays neutral so the easy mode reads gently. The green hit-flash is kept. This
+    /// is the only behavioural effect of the toggle on the card; the engine still
+    /// reports the miss (stay-until-success is unchanged), only the tint is suppressed.
     private var drillCardColor: Color {
         switch model.drillFlash {
         case .hit: return Color.green.opacity(0.55)
-        case .miss: return Color.red.opacity(0.5)
+        case .miss: return drillMatchedOnlyReadout ? Color.black.opacity(0.55) : Color.red.opacity(0.5)
         case .none: return Color.black.opacity(0.55)
         }
     }
@@ -223,18 +238,33 @@ struct ContentView: View {
         .transition(.scale.combined(with: .opacity))
     }
 
+    /// The text shown in the committed hero. Free-form Learn/Interpret (and the
+    /// verbatim toggle) show the committer's raw accumulation. In a passage drill
+    /// with the forgiving readout on (6a-10, #95, the default), it instead shows the
+    /// passage prefix the signer has matched (`passage.prefix(drillHUD.index)`), so
+    /// wrong letters and stray rests never pollute the readout. Pure render over the
+    /// existing drill index — no decode/engine/committer change.
+    private var displayedReadout: String {
+        guard isDrill, drillMatchedOnlyReadout,
+            let hud = model.drillHUD, let passage = drillTargets
+        else { return model.committedText }
+        return String(passage.prefix(hud.index))
+    }
+
     /// The committed output (#4.5) as the Learn screen's hero — the debounced
     /// text the committer emits, large and centered. Empty shows a gentle hint;
     /// non-empty shows the text plus Clear (FR5). Head truncation keeps the
-    /// most-recent characters visible as the string grows.
+    /// most-recent characters visible as the string grows. In a drill the displayed
+    /// text comes from `displayedReadout` (forgiving vs verbatim, #95).
     private var committedHero: some View {
-        VStack(spacing: 12) {
-            if model.committedText.isEmpty {
+        let readout = displayedReadout
+        return VStack(spacing: 12) {
+            if readout.isEmpty {
                 Text(emptyHint)
                     .font(.system(.title3, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
             } else {
-                Text(model.committedText)
+                Text(readout)
                     .font(.system(size: 40, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white)
                     .lineLimit(2)

@@ -48,6 +48,8 @@ fun SettingsScreen(
     onShowAssistChange: (Boolean) -> Unit,
     showNumeralsIndicator: Boolean,
     onShowNumeralsIndicatorChange: (Boolean) -> Unit,
+    matchedOnlyReadout: Boolean,
+    onMatchedOnlyReadoutChange: (Boolean) -> Unit,
     autoResetOnComplete: Boolean,
     onAutoResetOnCompleteChange: (Boolean) -> Unit,
     onAbout: () -> Unit,
@@ -95,6 +97,17 @@ fun SettingsScreen(
                         "digits, and hides it when it returns to letters.",
                 checked = showNumeralsIndicator,
                 onCheckedChange = onShowNumeralsIndicatorChange,
+            )
+            // The forgiving "easy mode" drill readout (6a-10, #95) — a Learn-drill
+            // behaviour toggle, so it sits with the other regular-user toggles.
+            SettingsToggleRow(
+                title = "Forgiving drill readout",
+                subtitle =
+                    "While drilling a passage, the readout fills in only the letters " +
+                        "you've matched — wrong letters and pauses are ignored. Turn " +
+                        "off to show everything you sign.",
+                checked = matchedOnlyReadout,
+                onCheckedChange = onMatchedOnlyReadoutChange,
             )
             // Drill auto-reset (6a-12, #97) — a Learn drill-flow affordance, so it
             // sits with the other regular-user toggles. The iOS twin is the matching
