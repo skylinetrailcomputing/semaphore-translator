@@ -52,6 +52,7 @@ import com.skylinetrailcomputing.semaphore.core.AssistCueKind
 import com.skylinetrailcomputing.semaphore.core.AssistGeometry
 import com.skylinetrailcomputing.semaphore.core.AssistPoint
 import com.skylinetrailcomputing.semaphore.core.AssistPose
+import com.skylinetrailcomputing.semaphore.core.CommittedText
 import com.skylinetrailcomputing.semaphore.core.Committer
 import com.skylinetrailcomputing.semaphore.core.ContractLoader
 import com.skylinetrailcomputing.semaphore.core.DrillSession
@@ -303,7 +304,11 @@ private fun CameraScreen(
             val symbol = decoder.classify(kp)
             val emitted = committer.process(symbol, frame.tMs)
             if (emitted.isNotEmpty()) {
-                committedText += emitted
+                // Coalesce spaces into the readout buffer: no leading space, no two in
+                // a row (ADR 0010). The drill still observes the raw token below — its
+                // own space-leniency absorbs the same spaces, so the two stay coherent
+                // without a behaviour change here.
+                committedText = CommittedText.append(committedText, emitted)
                 // Drill (6a-2, #70): feed the committed character to the engine.
                 // Stay-until-success is the engine's own policy (a hit advances, a
                 // miss is a no-op), so we just republish the HUD + flash the result.

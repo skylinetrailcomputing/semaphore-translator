@@ -313,7 +313,11 @@ final class PreviewViewModel: ObservableObject {
         let symbol = decoder.classify(kp)
         let emitted = committer.process(symbol, at: frame.tMs)
         if !emitted.isEmpty {
-            committedText += emitted
+            // Coalesce spaces into the readout buffer: no leading space, no two in a
+            // row (ADR 0010). The drill still observes the raw token — its own
+            // space-leniency (observeDrill) absorbs the same spaces, so the two stay
+            // coherent without a behaviour change here.
+            committedText = CommittedText.append(committedText, emitted)
             observeDrill(emitted)
         }
 
