@@ -30,6 +30,12 @@ struct ContentView: View {
     /// `developerMode` is on, since the readout's NUMERIC/LETTERS badge already shows
     /// the mode, so a regular user never sees both. See `numeralsIndicator`.
     @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
+    /// Whether a completed drill auto-resets after a short countdown (#97, 6a-12).
+    /// Default ON — the hands-free practice loop. The Settings toggle writes the same
+    /// `@AppStorage` key; read here so the ON default lives in the property wrapper
+    /// (a raw `UserDefaults.bool` would read an unset key as `false`). Consulted only
+    /// on the drill COMPLETE transition below.
+    @AppStorage(AppSettingsKeys.autoResetOnComplete) private var autoResetOnComplete = true
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
@@ -77,6 +83,15 @@ struct ContentView: View {
         }
         .task { await model.start() }
         .onDisappear { Task { await model.stop() } }
+        // Arm the post-completion auto-reset countdown (#97, 6a-12) on the drill's
+        // false→true COMPLETE transition, when the setting is on. Non-drill screens
+        // keep `drillHUD == nil`, so this never fires there. `resetDrill()` flips
+        // `complete` back to false, so a hands-free replay re-arms on the next finish.
+        .onChange(of: model.drillHUD?.complete) { _, isComplete in
+            if isComplete == true, autoResetOnComplete {
+                model.startAutoReset()
+            }
+        }
     }
 
     private var cameraStack: some View {
@@ -167,20 +182,40 @@ struct ContentView: View {
     }
 
     /// The small celebration shown on COMPLETE (6a-2): a centered card with a
-    /// replay affordance that calls `resetDrill()` to run the passage again.
+    /// replay affordance that calls `resetDrill()` to run the passage again. When the
+    /// auto-reset countdown is running (#97, 6a-12) it also shows "Resetting in N…"
+    /// and a "Stay" button that cancels the countdown (leaving the card up); "Practice
+    /// again" resets immediately whether or not a countdown is in flight.
     private var celebrationOverlay: some View {
         VStack(spacing: 16) {
             Text("🎉").font(.system(size: 64))
             Text("Passage complete!")
                 .font(.title2.bold())
                 .foregroundStyle(.white)
-            Button(action: { model.resetDrill() }) {
-                Label("Practice again", systemImage: "arrow.counterclockwise")
-                    .font(.headline)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(.white.opacity(0.2), in: Capsule())
-                    .foregroundStyle(.white)
+            if let remaining = model.autoResetRemaining {
+                Text("Resetting in \(remaining)…")
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            HStack(spacing: 12) {
+                Button(action: { model.resetDrill() }) {
+                    Label("Practice again", systemImage: "arrow.counterclockwise")
+                        .font(.headline)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(.white.opacity(0.2), in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                if model.autoResetRemaining != nil {
+                    Button(action: { model.cancelAutoReset() }) {
+                        Text("Stay")
+                            .font(.headline)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(.white.opacity(0.12), in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                }
             }
         }
         .padding(32)
