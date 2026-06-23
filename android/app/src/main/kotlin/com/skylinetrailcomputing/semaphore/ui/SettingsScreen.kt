@@ -3,15 +3,20 @@ package com.skylinetrailcomputing.semaphore.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -39,6 +44,8 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    showAssist: Boolean,
+    onShowAssistChange: (Boolean) -> Unit,
     onAbout: () -> Unit,
     onDeveloper: () -> Unit,
     onBack: () -> Unit,
@@ -65,9 +72,9 @@ fun SettingsScreen(
         },
     ) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
-            // Assist & practice-mode toggles (6a-5 #73, 6a-6 #74) land here as their
-            // own section — the primary regular-user content. Until then, About +
-            // Developer are the only rows in the closed-beta cut.
+            // Assist & practice-mode toggles (6a-5 #73, 6a-6 #74) — the primary
+            // regular-user content, above the nav rows.
+            AssistToggleRow(checked = showAssist, onCheckedChange = onShowAssistChange)
 
             // The always-reachable About/privacy surface ([6b-4], #82): app version,
             // AS-IS beta line, and the hosted EULA + Privacy links.
@@ -76,6 +83,43 @@ fun SettingsScreen(
             // surface, not regular-user config, so it gets its own screen.
             SettingsRow("Developer", onClick = onDeveloper)
         }
+    }
+}
+
+/**
+ * The "Show assist figure" toggle (6a-5, #73) — the regular-user on/off for the
+ * contract-derived drill assist. Mirrors the Developer-mode switch styling; the
+ * green on-track is set explicitly because the app isn't wrapped in a MaterialTheme.
+ */
+@Composable
+private fun AssistToggleRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Show assist figure", color = Color.White, fontSize = 17.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Shows a stick figure of the arm positions to copy for each letter " +
+                    "while practising a passage in Learn.",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 13.sp,
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors =
+                SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF4CAF50),
+                    uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.20f),
+                    uncheckedBorderColor = Color.White.copy(alpha = 0.30f),
+                ),
+        )
     }
 }
 

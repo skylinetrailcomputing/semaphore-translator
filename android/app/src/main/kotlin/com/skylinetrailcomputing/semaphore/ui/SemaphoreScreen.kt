@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -43,6 +45,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LifecycleOwner
+import com.skylinetrailcomputing.semaphore.core.AssistGeometry
+import com.skylinetrailcomputing.semaphore.core.AssistPoint
+import com.skylinetrailcomputing.semaphore.core.AssistPose
 import com.skylinetrailcomputing.semaphore.core.Committer
 import com.skylinetrailcomputing.semaphore.core.ContractLoader
 import com.skylinetrailcomputing.semaphore.core.DrillSession
@@ -77,6 +82,7 @@ fun SemaphoreScreen(
     cameraLens: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
     emptyHint: String = "Sign a letter to begin",
     drillTargets: String? = null,
+    showAssist: Boolean = false,
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -101,7 +107,7 @@ fun SemaphoreScreen(
                     "on-device. Frames are processed live and never stored or transmitted. " +
                     "Grant camera access to use the live preview.",
             )
-        else -> CameraScreen(developerMode, cameraLens, emptyHint, drillTargets)
+        else -> CameraScreen(developerMode, cameraLens, emptyHint, drillTargets, showAssist)
     }
 }
 
@@ -122,11 +128,20 @@ private fun CameraScreen(
     cameraLens: CameraSelector,
     emptyHint: String,
     drillTargets: String?,
+    showAssist: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
     val decoder = remember { runCatching { ContractLoader.makeDecoder(context) }.getOrNull() }
+    // Contract-derived assist-figure geometry (#73, 6a-5), loaded only for drill
+    // screens. A parse failure is non-fatal — the figure just doesn't draw.
+    val assistGeometry =
+        remember(drillTargets) {
+            if (drillTargets != null)
+                runCatching { ContractLoader.makeAssistGeometry(context) }.getOrNull()
+            else null
+        }
     val committer =
         remember(decoder) {
             decoder?.let { d ->
@@ -316,9 +331,17 @@ private fun CameraScreen(
         // Hidden once complete; the celebration overlay takes over.
         drillUi?.let { ui ->
             if (!ui.complete) {
+                // Structural front-lens gate (#73, 6a-5): the figure only reads
+                // right over the mirrored selfie preview, so a non-front lens (a
+                // hypothetical future rear drill) yields no pose. `showAssist` is
+                // the user's on/off; `drillTargets != null` made `assistGeometry`.
+                val isFront = cameraLens.lensFacing == CameraSelector.LENS_FACING_FRONT
+                val assistPose =
+                    if (showAssist && isFront) assistGeometry?.pose(ui.target) else null
                 DrillTargetCard(
                     ui,
                     drillFlash,
+                    assistPose,
                     Modifier.align(Alignment.TopCenter)
                         .systemBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -367,6 +390,7 @@ private data class DrillUi(
 private const val SIGNER_TIMEOUT_MS = 500L
 private val leftColor = Color.Cyan
 private val rightColor = Color(0xFFFF9800)
+private val assistBodyColor = Color.White.copy(alpha = 0.85f)
 
 /**
  * Draws the 6 post-adapter [Keypoints] over the preview — the human-visible
@@ -488,7 +512,12 @@ private fun CommittedHero(
  * settles back to neutral. The iOS twin is `ContentView.drillTargetCard`.
  */
 @Composable
-private fun DrillTargetCard(ui: DrillUi, flash: Boolean?, modifier: Modifier = Modifier) {
+private fun DrillTargetCard(
+    ui: DrillUi,
+    flash: Boolean?,
+    assistPose: AssistPose?,
+    modifier: Modifier = Modifier,
+) {
     val targetBg =
         when (flash) {
             true -> Color(0xFF2E7D32).copy(alpha = 0.85f) // green — matched
@@ -506,6 +535,12 @@ private fun DrillTargetCard(ui: DrillUi, flash: Boolean?, modifier: Modifier = M
     ) {
         Text("Sign this letter", color = Color.White.copy(alpha = 0.75f), fontSize = 13.sp)
         Text(targetGlyph(ui.target), color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+        // The contract-derived assist figure (#73, 6a-5): the pose to make for this
+        // target, drawn at the exact alphabet angles. Non-null only when the caller's
+        // setting + front-lens gate pass.
+        if (assistPose != null) {
+            AssistFigure(assistPose, Modifier.size(132.dp))
+        }
         LinearProgressIndicator(
             progress = { if (ui.count == 0) 0f else ui.index.toFloat() / ui.count },
             color = Color.White,
@@ -518,6 +553,41 @@ private fun DrillTargetCard(ui: DrillUi, flash: Boolean?, modifier: Modifier = M
             fontFamily = FontFamily.Monospace,
             fontSize = 12.sp,
         )
+    }
+}
+
+/**
+ * The contract-derived assist figure (#73 / 6a-5): a compact stick figure whose two
+ * arms are drawn at the *exact* `semaphore_alphabet.json` angles for the current
+ * drill target ([AssistGeometry.endpoints]), so the teaching aid is
+ * perspective-correct by construction and can't drift from the contract. Left arm
+ * cyan / right arm orange — the same legend as [SkeletonOverlay], in the same
+ * mirrored-front convention so the user mirrors the pose directly. The iOS twin is
+ * `AssistFigureView`.
+ */
+@Composable
+private fun AssistFigure(pose: AssistPose, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val pts = AssistGeometry.endpoints(pose)
+        // Draw into a centered square so the arm angles are never distorted by a
+        // non-square canvas (a 45° arm must look 45°).
+        val side = minOf(size.width, size.height)
+        val ox = (size.width - side) / 2f
+        val oy = (size.height - side) / 2f
+        fun at(p: AssistPoint) = Offset(ox + p.x.toFloat() * side, oy + p.y.toFloat() * side)
+
+        // Body: neck→head + torso (neck→hip) + shoulder line + a stroked head.
+        drawLine(assistBodyColor, at(pts.neck), at(pts.head), strokeWidth = 4f)
+        drawLine(assistBodyColor, at(pts.neck), at(pts.hip), strokeWidth = 4f)
+        drawLine(assistBodyColor, at(pts.leftShoulder), at(pts.rightShoulder), strokeWidth = 4f)
+        drawCircle(assistBodyColor, radius = side * 0.06f, center = at(pts.head), style = Stroke(width = 4f))
+
+        // Arms, colour-coded, with a dot at each wrist (the flag end).
+        drawLine(leftColor, at(pts.leftShoulder), at(pts.leftWrist), strokeWidth = 7f, cap = StrokeCap.Round)
+        drawLine(
+            rightColor, at(pts.rightShoulder), at(pts.rightWrist), strokeWidth = 7f, cap = StrokeCap.Round)
+        drawCircle(leftColor, radius = 6f, center = at(pts.leftWrist))
+        drawCircle(rightColor, radius = 6f, center = at(pts.rightWrist))
     }
 }
 
