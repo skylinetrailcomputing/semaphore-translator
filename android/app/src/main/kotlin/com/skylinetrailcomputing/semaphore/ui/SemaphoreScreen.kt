@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LifecycleOwner
+import com.skylinetrailcomputing.semaphore.core.AssistCue
+import com.skylinetrailcomputing.semaphore.core.AssistCueKind
 import com.skylinetrailcomputing.semaphore.core.AssistGeometry
 import com.skylinetrailcomputing.semaphore.core.AssistPoint
 import com.skylinetrailcomputing.semaphore.core.AssistPose
@@ -331,17 +333,20 @@ private fun CameraScreen(
         // Hidden once complete; the celebration overlay takes over.
         drillUi?.let { ui ->
             if (!ui.complete) {
-                // Structural front-lens gate (#73, 6a-5): the figure only reads
-                // right over the mirrored selfie preview, so a non-front lens (a
-                // hypothetical future rear drill) yields no pose. `showAssist` is
-                // the user's on/off; `drillTargets != null` made `assistGeometry`.
+                // Structural front-lens gate (#73, 6a-5): the figure only reads right
+                // over the mirrored selfie preview, so a non-front lens (a hypothetical
+                // future rear drill) yields no cues. `showAssist` is the user's on/off;
+                // `drillTargets != null` made `assistGeometry`. The filmstrip walks the
+                // whole passage to find the transition cues for the current index (#100).
                 val isFront = cameraLens.lensFacing == CameraSelector.LENS_FACING_FRONT
-                val assistPose =
-                    if (showAssist && isFront) assistGeometry?.pose(ui.target) else null
+                val assistCues =
+                    if (showAssist && isFront && drillTargets != null)
+                        assistGeometry?.cues(drillTargets, ui.index).orEmpty()
+                    else emptyList()
                 DrillTargetCard(
                     ui,
                     drillFlash,
-                    assistPose,
+                    assistCues,
                     Modifier.align(Alignment.TopCenter)
                         .systemBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -515,7 +520,7 @@ private fun CommittedHero(
 private fun DrillTargetCard(
     ui: DrillUi,
     flash: Boolean?,
-    assistPose: AssistPose?,
+    assistCues: List<AssistCue>,
     modifier: Modifier = Modifier,
 ) {
     val targetBg =
@@ -535,11 +540,12 @@ private fun DrillTargetCard(
     ) {
         Text("Sign this letter", color = Color.White.copy(alpha = 0.75f), fontSize = 13.sp)
         Text(targetGlyph(ui.target), color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold)
-        // The contract-derived assist figure (#73, 6a-5): the pose to make for this
-        // target, drawn at the exact alphabet angles. Non-null only when the caller's
-        // setting + front-lens gate pass.
-        if (assistPose != null) {
-            AssistFigure(assistPose, Modifier.size(132.dp))
+        // The contract-derived assist filmstrip (#73 6a-5 + transitions #100): the
+        // ordered steps to make for this target — an optional transition pre-cue, then
+        // the target pose, all at the exact alphabet angles. Non-empty only when the
+        // caller's setting + front-lens gate pass.
+        if (assistCues.isNotEmpty()) {
+            AssistFilmstrip(assistCues)
         }
         LinearProgressIndicator(
             progress = { if (ui.count == 0) 0f else ui.index.toFloat() / ui.count },
@@ -557,13 +563,104 @@ private fun DrillTargetCard(
 }
 
 /**
+ * The contract-derived assist filmstrip (#73 / 6a-5 + transition cues #100): the
+ * ordered steps to make for the current drill target — an optional transition pre-cue
+ * (a NUMERALS / J-LETTERS pose, or a drop-to-REST), then the target's own pose, drawn
+ * left→right with a chevron between. A single-step filmstrip (the common case: just
+ * the target) renders as the original full-size figure, so the 6a-5 look is unchanged
+ * when no transition is needed. The iOS twin is `AssistFilmstripView`.
+ */
+@Composable
+private fun AssistFilmstrip(cues: List<AssistCue>, modifier: Modifier = Modifier) {
+    if (cues.size <= 1) {
+        // No transition: the original single full-size figure (6a-5 look).
+        cues.firstOrNull()?.let { AssistFigure(it.pose, modifier.size(132.dp)) }
+        return
+    }
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        cues.forEachIndexed { i, cue ->
+            if (i > 0) ChevronRight(Modifier.size(16.dp, 92.dp))
+            AssistCueCell(cue)
+        }
+    }
+}
+
+/**
+ * One filmstrip cell: the figure (or the drop-to-rest indicator for a double letter)
+ * over a short caption naming the step. The iOS twin is `AssistFigureView.AssistCueCell`.
+ */
+@Composable
+private fun AssistCueCell(cue: AssistCue) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.size(92.dp), contentAlignment = Alignment.Center) {
+            if (cue.kind == AssistCueKind.REST_BETWEEN_DOUBLES) {
+                RestDropIndicator(Modifier.fillMaxSize())
+            } else {
+                AssistFigure(cue.pose, Modifier.fillMaxSize())
+            }
+        }
+        cueCaption(cue.kind)?.let {
+            Text(it, color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/** A short label under a filmstrip step; the target step already has the big glyph. */
+private fun cueCaption(kind: AssistCueKind): String? =
+    when (kind) {
+        AssistCueKind.NUMERALS_SHIFT -> "Numbers"
+        AssistCueKind.LETTERS_SHIFT -> "Letters"
+        AssistCueKind.REST_BETWEEN_DOUBLES -> "Rest"
+        AssistCueKind.TARGET -> "Sign"
+    }
+
+/**
+ * The drop-to-REST cue, drawn distinctly from the arm-pose figures (#100): two
+ * downward chevrons that read as "drop your arms briefly", NOT a pose to hold.
+ */
+@Composable
+private fun RestDropIndicator(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val cx = size.width / 2f
+        val half = size.width * 0.18f
+        for (k in 0..1) {
+            val topY = size.height * (0.36f + 0.18f * k)
+            val botY = topY + size.height * 0.14f
+            drawLine(assistBodyColor, Offset(cx - half, topY), Offset(cx, botY), strokeWidth = 7f, cap = StrokeCap.Round)
+            drawLine(assistBodyColor, Offset(cx + half, topY), Offset(cx, botY), strokeWidth = 7f, cap = StrokeCap.Round)
+        }
+    }
+}
+
+/** The "then" separator between two filmstrip cells. */
+@Composable
+private fun ChevronRight(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val cy = size.height / 2f
+        val x0 = size.width * 0.3f
+        val x1 = size.width * 0.7f
+        val half = size.height * 0.10f
+        val color = Color.White.copy(alpha = 0.7f)
+        drawLine(color, Offset(x0, cy - half), Offset(x1, cy), strokeWidth = 6f, cap = StrokeCap.Round)
+        drawLine(color, Offset(x0, cy + half), Offset(x1, cy), strokeWidth = 6f, cap = StrokeCap.Round)
+    }
+}
+
+/**
  * The contract-derived assist figure (#73 / 6a-5): a compact stick figure whose two
- * arms are drawn at the *exact* `semaphore_alphabet.json` angles for the current
- * drill target ([AssistGeometry.endpoints]), so the teaching aid is
- * perspective-correct by construction and can't drift from the contract. Left arm
- * cyan / right arm orange — the same legend as [SkeletonOverlay], in the same
- * mirrored-front convention so the user mirrors the pose directly. The iOS twin is
- * `AssistFigureView`.
+ * arms are drawn at the *exact* `semaphore_alphabet.json` angles for one pose
+ * ([AssistGeometry.endpoints]), so the teaching aid is perspective-correct by
+ * construction and can't drift from the contract. Used for each pose step of the
+ * [AssistFilmstrip]. Left arm cyan / right arm orange — the same legend as
+ * [SkeletonOverlay], in the same mirrored-front convention so the user mirrors the
+ * pose directly. The iOS twin is `AssistFigureView`.
  */
 @Composable
 private fun AssistFigure(pose: AssistPose, modifier: Modifier = Modifier) {

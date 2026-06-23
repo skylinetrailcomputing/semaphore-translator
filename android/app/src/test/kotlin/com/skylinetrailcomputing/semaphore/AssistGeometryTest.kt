@@ -27,12 +27,18 @@ class AssistGeometryTest {
     private fun geometry(): AssistGeometry {
         val alphabet = SharedFiles.load<Alphabet>("semaphore_alphabet.json")
         val octantAngles = alphabet.positionModel.positions.values.associate { it.id to it.angleDeg }
-        val letterPairs =
+        val symbolPairs =
             buildMap {
                 alphabet.letters.forEach { (symbol, ids) -> put(symbol, ids.left to ids.right) }
                 put("REST", alphabet.controlSignals.rest.left to alphabet.controlSignals.rest.right)
+                put(
+                    "NUMERALS",
+                    alphabet.controlSignals.numerals.left to alphabet.controlSignals.numerals.right,
+                )
             }
-        return AssistGeometry(octantAngles, letterPairs)
+        val digitToLetter =
+            alphabet.numericMode.digitMap.entries.associate { (letter, digit) -> digit.first() to letter }
+        return AssistGeometry(octantAngles, symbolPairs, digitToLetter)
     }
 
     // --- pose() against the contract angles ---
@@ -57,14 +63,15 @@ class AssistGeometryTest {
     }
 
     @Test
-    fun digitTargetsHaveNoPose() {
-        // Digits are deliberately suppressed (#73 review): a digit's arms are its
-        // letter pose, but the figure can't convey the NUMERALS mode-switch the
-        // digit also needs, so drawing the bare letter pose would misguide.
+    fun digitTargetsMapToTheirLetterPose() {
+        // #100 un-suppressed digits: a digit's own pose is the letter pose that
+        // produces it in numeric mode (the reverse of A=1..I=9, K=0). The NUMERALS
+        // pre-cue from `cues` is what now conveys the mode-switch, so the bare pose is
+        // no longer misleading on its own.
         val g = geometry()
-        assertNull(g.pose('1'))
-        assertNull(g.pose('7'))
-        assertNull(g.pose('0'))
+        assertEquals(g.pose('A'), g.pose('1')) // 1 -> A pose
+        assertEquals(g.pose('G'), g.pose('7')) // 7 -> G pose
+        assertEquals(g.pose('K'), g.pose('0')) // 0 -> K pose
     }
 
     @Test

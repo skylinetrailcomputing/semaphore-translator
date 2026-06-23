@@ -51,12 +51,15 @@ enum ContractLoader {
             minKeypointConfidence: config.minKeypointConfidence)
     }
 
-    /// Build the assist-figure geometry (#73 / 6a-5) from the bundled alphabet.
-    /// Deliberately a *second* parse of `semaphore_alphabet.json` rather than a
-    /// reach into the `SemaphoreDecoder`: the decoder stores the pairs in an
-    /// order-*insensitive* lookup that discards which id is the left vs right arm,
-    /// but the figure draws each arm from its own shoulder and needs the ordered
-    /// `(left, right)`. The extra parse is one ~8 KB file, only on a drill screen.
+    /// Build the assist-figure geometry (#73 / 6a-5, extended for transition cues in
+    /// #100) from the bundled alphabet. Deliberately a *second* parse of
+    /// `semaphore_alphabet.json` rather than a reach into the `SemaphoreDecoder`: the
+    /// decoder stores the pairs in an order-*insensitive* lookup that discards which
+    /// id is the left vs right arm, but the figure draws each arm from its own
+    /// shoulder and needs the ordered `(left, right)`. It also carries `NUMERALS`
+    /// (the numeric-shift pre-pose) and the reversed digit map (digit → its letter
+    /// pose), which the decoder doesn't expose. The extra parse is one ~8 KB file,
+    /// only on a drill screen.
     static func makeAssistGeometry(bundle: Bundle = .main) throws -> AssistGeometry {
         let alphabet = try load(Alphabet.self, "semaphore_alphabet", bundle)
 
@@ -65,15 +68,24 @@ enum ContractLoader {
             octantAngles[position.id] = position.angleDeg
         }
 
-        var letterPairs: [String: (left: Int, right: Int)] = [:]
+        var symbolPairs: [String: (left: Int, right: Int)] = [:]
         for (symbol, ids) in alphabet.letters {
-            letterPairs[symbol] = (ids.left, ids.right)
+            symbolPairs[symbol] = (ids.left, ids.right)
         }
-        letterPairs["REST"] = (
+        symbolPairs["REST"] = (
             alphabet.controlSignals.rest.left, alphabet.controlSignals.rest.right
         )
+        symbolPairs["NUMERALS"] = (
+            alphabet.controlSignals.numerals.left, alphabet.controlSignals.numerals.right
+        )
 
-        return AssistGeometry(octantAngles: octantAngles, letterPairs: letterPairs)
+        var digitToLetter: [Character: String] = [:]
+        for (letter, digit) in alphabet.numericMode.digitMap {
+            if let d = digit.first { digitToLetter[d] = letter }
+        }
+
+        return AssistGeometry(
+            octantAngles: octantAngles, symbolPairs: symbolPairs, digitToLetter: digitToLetter)
     }
 
     /// Parse the frozen temporal-commit constants (spec §4.4) from the bundled
