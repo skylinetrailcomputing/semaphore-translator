@@ -5,6 +5,8 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.core.content.ContextCompat
@@ -79,8 +81,21 @@ class PoseCaptureSession(
                     .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
                     .build()
             )
+        // #110 (6a-16, lever A): pin the analysis stream to 4:3. CameraX already
+        // defaults to ~4:3 here (no ResolutionSelector ⇒ a sensor-native aspect),
+        // which is why Android keeps an arms-out wrist in frame where iOS's 16:9
+        // gated it (the #101 diagnostic). Pinning it explicitly so a future CameraX
+        // default can't silently regress the FOV to 16:9. 4:3 is the wider
+        // horizontal FOV in portrait, where the horizontal dimension is the narrow
+        // one. Capture-path only: the adapter normalizes to [0,1], so the frozen
+        // contract and parity vectors are untouched.
+        val resolutionSelector =
+            ResolutionSelector.Builder()
+                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+                .build()
         val analysis =
             ImageAnalysis.Builder()
+                .setResolutionSelector(resolutionSelector)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 
