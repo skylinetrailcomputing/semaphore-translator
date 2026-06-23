@@ -1,0 +1,674 @@
+{
+  "$schema_version": "1.0",
+  "_README": "Assist TRANSITION-cue parity vectors (Epic 6a, #100 / 6a-13): a target passage -> the per-index ordered assist filmstrip (the optional transition pre-cue + the target's own pose) the Learn drill assist draws. Like the 6a-5 figure, the cues are read-only over the frozen alphabet and sit BESIDE the decode/commit core (ADR 0007), so they carry NO keypoints and NO timing — only target characters and contract-derived arm angles. Both platform ports compute AssistGeometry.cues / impliedMode over each sequence and MUST produce identical per-index results.",
+  "_generated_by": "shared/tools/gen_assist_cue_vectors.py (uv run). Generated, not hand-edited. Before writing, the generator runs the canonical pose sequence (the cue pre-poses + each target pose) through the SAME reference interpret() the committer fixtures use (_semaphore_ref.py) and asserts, per target, that the committer's mode matches the assist's implied-mode walk and that the committer emits exactly the target — so the assist walk cannot drift from the committer's mode rules (the #100 correctness risk). Re-run after any change to semaphore_alphabet.json.",
+  "_format": {
+    "sequence_vectors": "Each is {name, targets, steps:[...]}. One step per target index (0..len(targets)-1) — the active drill positions the assist renders.",
+    "targets": "The drill's target sequence as a plain string (frozen ASCII alphabet: A-Z / 0-9 / SPACE), split into single-character targets in signing order — already sanitised by the source (6a-3).",
+    "steps": "Each step is {index, target, implied_mode_before, cues}. Assert AssistGeometry.impliedMode(targets, index) == implied_mode_before and AssistGeometry.cues(targets, index) == cues (kinds + angles, in order).",
+    "implied_mode_before": "LETTERS or NUMERIC — the mode the signer is in just before producing this target, walking the canonical path from the start. The correctness-critical pin: it equals the committer's mode at that point.",
+    "cues": "Ordered filmstrip for this target. Each is {kind, left_angle_deg, right_angle_deg}. kind is one of: rest_between_doubles (drop-to-REST re-arm before a repeated target; a timing cue, drawn distinctly — not a pose to hold), numerals_shift (the NUMERALS pose, before a digit signed from letter mode), letters_shift (the J/LETTERS pose, before a letter signed from numeric mode), target (the target's own arm pose). At most one pre-cue precedes the always-present target step.",
+    "left_angle_deg": "Signer's-frame angle (deg, CCW from +x = signer's right) of the LEFT arm.",
+    "right_angle_deg": "Signer's-frame angle of the RIGHT arm.",
+    "name": "Human-readable label for debugging. Ignored by the parity harness.",
+    "_note": "Optional human explanation. Ignored by the parity harness."
+  },
+  "sequence_vectors": [
+    {
+      "name": "letters_hello",
+      "targets": "HELLO",
+      "steps": [
+        {
+          "index": 0,
+          "target": "H",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -45,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "E",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": 135,
+              "right_angle_deg": -90
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "L",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": 135,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "target": "L",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "rest_between_doubles",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": 135,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "target": "O",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": 45,
+              "right_angle_deg": 0
+            }
+          ]
+        }
+      ],
+      "_note": "All letters in letter mode -> no mode cues. The repeated L (index 3) gets the rest_between_doubles drop cue so the second L re-commits (ADR 0005); every other step is just the target pose."
+    },
+    {
+      "name": "double_letter_AA",
+      "targets": "AA",
+      "steps": [
+        {
+          "index": 0,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "rest_between_doubles",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "Index 1 repeats index 0 -> rest_between_doubles before the A pose."
+    },
+    {
+      "name": "letter_to_number_A1",
+      "targets": "A1",
+      "steps": [
+        {
+          "index": 0,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "At index 1 the target is a digit and the implied mode is LETTERS, so the NUMERALS pre-pose fires, then the digit's own pose (1 -> the A pose)."
+    },
+    {
+      "name": "number_to_letter_1A",
+      "targets": "1A",
+      "steps": [
+        {
+          "index": 0,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "A",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "letters_shift",
+              "left_angle_deg": 180,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "Index 0 (digit from LETTERS) -> NUMERALS then the digit pose; index 1 (letter from NUMERIC) -> the J/LETTERS shift then the letter pose."
+    },
+    {
+      "name": "abba",
+      "targets": "ABBA",
+      "steps": [
+        {
+          "index": 0,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "B",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "B",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "rest_between_doubles",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "rest_between_doubles fires only at index 2 (the second B); A->B and B->A are distinct poses that commit on their own hold."
+    },
+    {
+      "name": "mixed_AB12C_AA",
+      "targets": "AB12C AA",
+      "steps": [
+        {
+          "index": 0,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "B",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "target": "2",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "target": "C",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "letters_shift",
+              "left_angle_deg": 180,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 45
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "target": " ",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "rest_between_doubles",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "A,B letters (no cue); 1 from LETTERS -> NUMERALS; 2 from NUMERIC -> none (already numeric); C from NUMERIC -> J/LETTERS; space (no cue); A; A repeated -> rest. Pins the full cue ordering across a realistic mixed passage."
+    },
+    {
+      "name": "leading_digit_7",
+      "targets": "7",
+      "steps": [
+        {
+          "index": 0,
+          "target": "7",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -135,
+              "right_angle_deg": -90
+            }
+          ]
+        }
+      ],
+      "_note": "Start mode is LETTERS, so a leading digit gets NUMERALS first; 7 -> the G pose (the reverse of the A=1..I=9 digit map)."
+    },
+    {
+      "name": "digit_run_100",
+      "targets": "100",
+      "steps": [
+        {
+          "index": 0,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "0",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": 90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "0",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "rest_between_doubles",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": 90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "NUMERALS at index 0 only; index 1 (0 -> the K pose) is already numeric so no cue; index 2 repeats the 0 -> rest_between_doubles. Pins K=0 and that a digit run shifts to numeric just once."
+    },
+    {
+      "name": "digit_space_digit_1_2",
+      "targets": "1 2",
+      "steps": [
+        {
+          "index": 0,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": " ",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "2",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        }
+      ],
+      "_note": "1 from LETTERS -> NUMERALS; the space is REST and persists numeric mode (it does not reset it), so the trailing 2 needs NO second NUMERALS — pins that REST/space preserves mode exactly as the committer does (spec §4.5)."
+    },
+    {
+      "name": "alternating_A1A",
+      "targets": "A1A",
+      "steps": [
+        {
+          "index": 0,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "A",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "letters_shift",
+              "left_angle_deg": 180,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        }
+      ],
+      "_note": "A (no cue); 1 -> NUMERALS; A -> J/LETTERS. Stresses both mode-shift cues in one short sequence."
+    },
+    {
+      "name": "letters_space_A_B",
+      "targets": "A B",
+      "steps": [
+        {
+          "index": 0,
+          "target": "A",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": " ",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -90
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "B",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        }
+      ],
+      "_note": "The space target draws the REST pose with no pre-cue; A and B are plain letter poses. Confirms a SPACE target is never given a transition cue."
+    },
+    {
+      "name": "letters_then_digit_run_GO123",
+      "targets": "GO123",
+      "steps": [
+        {
+          "index": 0,
+          "target": "G",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -135,
+              "right_angle_deg": -90
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "target": "O",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": 45,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "target": "1",
+          "implied_mode_before": "LETTERS",
+          "cues": [
+            {
+              "kind": "numerals_shift",
+              "left_angle_deg": 135,
+              "right_angle_deg": 90
+            },
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": -45
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "target": "2",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 0
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "target": "3",
+          "implied_mode_before": "NUMERIC",
+          "cues": [
+            {
+              "kind": "target",
+              "left_angle_deg": -90,
+              "right_angle_deg": 45
+            }
+          ]
+        }
+      ],
+      "_note": "G,O letters; 1 from LETTERS -> NUMERALS; 2 and 3 stay numeric (no cue). A second pin that a numeric run shifts mode exactly once."
+    }
+  ]
+}

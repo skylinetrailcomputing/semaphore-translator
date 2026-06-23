@@ -72,11 +72,15 @@ final class PreviewViewModel: ObservableObject {
     var isPreviewMirrored: Bool { cameraPosition == .front }
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
-    /// Contract-derived assist-figure geometry (#73 / 6a-5), loaded only for drill
-    /// screens. `nil` on free-form Learn/Interpret and if the (frozen, already
-    /// decode-critical) contract somehow fails to parse — the figure just doesn't
-    /// draw. Read-only over the alphabet, strictly beside the decode core.
+    /// Contract-derived assist-figure geometry (#73 / 6a-5, transition cues #100),
+    /// loaded only for drill screens. `nil` on free-form Learn/Interpret and if the
+    /// (frozen, already decode-critical) contract somehow fails to parse — the figure
+    /// just doesn't draw. Read-only over the alphabet, strictly beside the decode core.
     private var assistGeometry: AssistGeometry?
+    /// The drill passage (#100), kept so the assist can walk the whole target
+    /// sequence to compute the transition cues for the current index. `nil` off a
+    /// drill screen. The `DrillSession` owns the live index; this owns the text.
+    private let drillTargets: String?
     /// The drill engine (6a-1, ADR 0007) for a passage-drill screen, or `nil` for
     /// free-form Learn/Interpret. Strictly downstream of the committer: it observes
     /// only committed characters and never the decode/adapter/commit core.
@@ -107,6 +111,7 @@ final class PreviewViewModel: ObservableObject {
     /// from the same hardcoded starter passage — the custom source lands in 6a-3.
     init(cameraPosition: AVCaptureDevice.Position = .front, drillTargets: String? = nil) {
         self.cameraPosition = cameraPosition
+        self.drillTargets = drillTargets
         if let drillTargets {
             let session = DrillSession(targets: drillTargets)
             self.drill = session
@@ -162,15 +167,17 @@ final class PreviewViewModel: ObservableObject {
         committedText = ""
     }
 
-    /// The assist-figure pose for a drill target (#73 / 6a-5), or `nil` if there's
-    /// no figure to draw. This is the **structural front-lens gate**: the figure
-    /// only makes sense over the mirrored selfie preview, so a non-front lens
-    /// (a hypothetical future rear drill) returns `nil` here rather than rendering
-    /// an un-mirrored, wrong-handed pose. Drill-only by construction —
-    /// `assistGeometry` is `nil` off a drill screen.
-    func assistPose(for target: Character?) -> AssistPose? {
-        guard isPreviewMirrored else { return nil }
-        return assistGeometry?.pose(for: target)
+    /// The ordered assist filmstrip for the drill target at `index` (#73 / 6a-5 +
+    /// transition cues #100): an optional transition pre-cue, then the target pose.
+    /// Empty when there's nothing to draw. This is the **structural front-lens
+    /// gate**: the figure only makes sense over the mirrored selfie preview, so a
+    /// non-front lens (a hypothetical future rear drill) returns `[]` rather than an
+    /// un-mirrored, wrong-handed pose. Drill-only by construction — `assistGeometry`
+    /// and `drillTargets` are both `nil` off a drill screen.
+    func assistCues(at index: Int) -> [AssistCue] {
+        guard isPreviewMirrored, let targets = drillTargets, let geometry = assistGeometry
+        else { return [] }
+        return geometry.cues(targets: targets, index: index)
     }
 
     /// Feed one committed character to the drill (6a-2, #70). Stay-until-success is
