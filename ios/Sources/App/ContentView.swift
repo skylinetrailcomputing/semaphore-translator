@@ -21,7 +21,7 @@ struct ContentView: View {
     /// Whether to draw the contract-derived assist figure in the drill card (#73,
     /// 6a-5). Defaults ON — it's the primary teaching aid for Learn; the Settings
     /// toggle writes the same `@AppStorage` key. Only consulted on a drill screen,
-    /// and `model.assistPose` adds the front-lens gate, so this is purely the
+    /// and `model.assistCues` adds the front-lens gate, so this is purely the
     /// user's on/off.
     @AppStorage(AppSettingsKeys.showAssistFigure) private var showAssistFigure = true
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
@@ -116,14 +116,17 @@ struct ContentView: View {
             Text(targetGlyph(hud.target))
                 .font(.system(size: 72, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
-            // The contract-derived assist figure (#73, 6a-5): the pose to make for
-            // this target, drawn at the exact alphabet angles. `assistPose` is the
-            // structural gate (nil off the front lens / off a drill screen);
-            // `showAssistFigure` is the user's on/off.
-            if showAssistFigure, let pose = model.assistPose(for: hud.target) {
-                AssistFigureView(pose: pose)
-                    .frame(height: 132)
-                    .padding(.vertical, 2)
+            // The contract-derived assist filmstrip (#73 6a-5 + transitions #100):
+            // the ordered steps to make for this target — an optional transition
+            // pre-cue (NUMERALS / J-LETTERS / drop-to-rest), then the target pose,
+            // all at the exact alphabet angles. `assistCues` is the structural gate
+            // (empty off the front lens / off a drill screen); `showAssistFigure` is
+            // the user's on/off.
+            if showAssistFigure {
+                let cues = model.assistCues(at: hud.index)
+                if !cues.isEmpty {
+                    AssistFilmstripView(cues: cues)
+                }
             }
             ProgressView(value: Double(hud.index), total: Double(max(hud.count, 1)))
                 .tint(.white)

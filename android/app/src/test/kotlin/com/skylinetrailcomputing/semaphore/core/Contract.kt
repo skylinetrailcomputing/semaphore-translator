@@ -151,6 +151,34 @@ data class DrillVectors(
     @SerializedName("sequence_vectors") val sequenceVectors: List<DrillSequence>,
 )
 
+// --- assist_cue_vectors.json (Epic 6a #100; the assist transition-cue fixtures) ---
+
+// One cue in a filmstrip step: its `kind` (matching AssistCueKind.json) and the two
+// arm angles the figure draws. The drill assist is read-only over the alphabet, so a
+// cue carries only a kind + contract angles -- no keypoints, timing, or decode state.
+data class AssistCueVector(
+    val kind: String,
+    @SerializedName("left_angle_deg") val leftAngleDeg: Double,
+    @SerializedName("right_angle_deg") val rightAngleDeg: Double,
+)
+
+data class AssistCueStep(
+    val index: Int,
+    val target: String,
+    @SerializedName("implied_mode_before") val impliedModeBefore: String,
+    val cues: List<AssistCueVector>,
+)
+
+data class AssistCueSequence(
+    val name: String,
+    val targets: String,
+    val steps: List<AssistCueStep>,
+)
+
+data class AssistCueVectors(
+    @SerializedName("sequence_vectors") val sequenceVectors: List<AssistCueSequence>,
+)
+
 // --- source_contract.json (Epic 6a #71; the passage-source contract) ---
 
 // The light, machine-checkable slice: version, the frozen supported_chars output

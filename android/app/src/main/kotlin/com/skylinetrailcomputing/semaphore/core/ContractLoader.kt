@@ -86,12 +86,15 @@ object ContractLoader {
     }
 
     /**
-     * Build the assist-figure geometry (#73 / 6a-5) from the bundled alphabet.
-     * Deliberately a *second* parse of `semaphore_alphabet.json` rather than a
-     * reach into the [SemaphoreDecoder]: the decoder stores the pairs in an
-     * order-*insensitive* lookup that discards which id is the left vs right arm,
-     * but the figure draws each arm from its own shoulder and needs the ordered
-     * `(left, right)`. The extra parse is one ~8 KB file, only on a drill screen.
+     * Build the assist-figure geometry (#73 / 6a-5, extended for transition cues in
+     * #100) from the bundled alphabet. Deliberately a *second* parse of
+     * `semaphore_alphabet.json` rather than a reach into the [SemaphoreDecoder]: the
+     * decoder stores the pairs in an order-*insensitive* lookup that discards which
+     * id is the left vs right arm, but the figure draws each arm from its own
+     * shoulder and needs the ordered `(left, right)`. It also carries `NUMERALS` (the
+     * numeric-shift pre-pose) and the reversed digit map (digit → its letter pose),
+     * which the decoder doesn't expose. The extra parse is one ~8 KB file, only on a
+     * drill screen.
      *
      * The geometry *logic* lives in the pure [AssistGeometry] (unit-tested in
      * `src/test` from a Gson-parsed alphabet); this thin `org.json` wrapper mirrors
@@ -110,17 +113,29 @@ object ContractLoader {
             }
 
         val letters = alphabet.getJSONObject("letters")
-        val rest = alphabet.getJSONObject("control_signals").getJSONObject("REST")
-        val letterPairs =
+        val controls = alphabet.getJSONObject("control_signals")
+        val rest = controls.getJSONObject("REST")
+        val numerals = controls.getJSONObject("NUMERALS")
+        val symbolPairs =
             buildMap {
                 for (symbol in letters.keys()) {
                     val p = letters.getJSONObject(symbol)
                     put(symbol, p.getInt("left") to p.getInt("right"))
                 }
                 put("REST", rest.getInt("left") to rest.getInt("right"))
+                put("NUMERALS", numerals.getInt("left") to numerals.getInt("right"))
             }
 
-        return AssistGeometry(octantAngles, letterPairs)
+        val digitMap = alphabet.getJSONObject("numeric_mode").getJSONObject("digit_map")
+        val digitToLetter =
+            buildMap {
+                for (letter in digitMap.keys()) {
+                    val digit = digitMap.getString(letter)
+                    digit.firstOrNull()?.let { put(it, letter) }
+                }
+            }
+
+        return AssistGeometry(octantAngles, symbolPairs, digitToLetter)
     }
 
     /**

@@ -272,6 +272,50 @@ struct DrillVectors: Decodable {
     }
 }
 
+// MARK: - assist_cue_vectors.json (Epic 6a #100; the assist transition-cue fixtures)
+
+/// One cue in a filmstrip step: its `kind` (matching `AssistCueKind.rawValue`) and
+/// the two arm angles the figure draws. The drill assist is read-only over the
+/// alphabet, so a cue carries only a kind + contract angles — no keypoints, timing,
+/// or decode state.
+struct AssistCueVector: Decodable {
+    let kind: String
+    let leftAngleDeg: Double
+    let rightAngleDeg: Double
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case leftAngleDeg = "left_angle_deg"
+        case rightAngleDeg = "right_angle_deg"
+    }
+}
+
+struct AssistCueStep: Decodable {
+    let index: Int
+    let target: String
+    let impliedModeBefore: String
+    let cues: [AssistCueVector]
+
+    enum CodingKeys: String, CodingKey {
+        case index, target, cues
+        case impliedModeBefore = "implied_mode_before"
+    }
+}
+
+struct AssistCueSequence: Decodable {
+    let name: String
+    let targets: String
+    let steps: [AssistCueStep]
+}
+
+struct AssistCueVectors: Decodable {
+    let sequenceVectors: [AssistCueSequence]
+
+    enum CodingKeys: String, CodingKey {
+        case sequenceVectors = "sequence_vectors"
+    }
+}
+
 // MARK: - source_contract.json (Epic 6a #71; the passage-source contract)
 
 /// The light, machine-checkable slice of the source contract: `version`, the frozen
