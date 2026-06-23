@@ -72,6 +72,11 @@ final class PreviewViewModel: ObservableObject {
     var isPreviewMirrored: Bool { cameraPosition == .front }
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
+    /// Contract-derived assist-figure geometry (#73 / 6a-5), loaded only for drill
+    /// screens. `nil` on free-form Learn/Interpret and if the (frozen, already
+    /// decode-critical) contract somehow fails to parse — the figure just doesn't
+    /// draw. Read-only over the alphabet, strictly beside the decode core.
+    private var assistGeometry: AssistGeometry?
     /// The drill engine (6a-1, ADR 0007) for a passage-drill screen, or `nil` for
     /// free-form Learn/Interpret. Strictly downstream of the committer: it observes
     /// only committed characters and never the decode/adapter/commit core.
@@ -122,6 +127,11 @@ final class PreviewViewModel: ObservableObject {
                 let timing = try ContractLoader.makeCommitTiming()
                 self.decoder = decoder
                 self.committer = Committer(decoder: decoder, timing: timing)
+                // Only drill screens render the assist figure (#73); skip the parse
+                // otherwise. A failure here is non-fatal — the figure just won't draw.
+                if drill != nil {
+                    self.assistGeometry = try? ContractLoader.makeAssistGeometry()
+                }
             } catch {
                 status = .failed("Couldn’t load the semaphore contract: \(error)")
                 return
@@ -150,6 +160,17 @@ final class PreviewViewModel: ObservableObject {
     /// committer's internal state — just empties the displayed accumulation.
     func clearCommitted() {
         committedText = ""
+    }
+
+    /// The assist-figure pose for a drill target (#73 / 6a-5), or `nil` if there's
+    /// no figure to draw. This is the **structural front-lens gate**: the figure
+    /// only makes sense over the mirrored selfie preview, so a non-front lens
+    /// (a hypothetical future rear drill) returns `nil` here rather than rendering
+    /// an un-mirrored, wrong-handed pose. Drill-only by construction —
+    /// `assistGeometry` is `nil` off a drill screen.
+    func assistPose(for target: Character?) -> AssistPose? {
+        guard isPreviewMirrored else { return nil }
+        return assistGeometry?.pose(for: target)
     }
 
     /// Feed one committed character to the drill (6a-2, #70). Stay-until-success is
