@@ -40,8 +40,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
@@ -687,7 +689,15 @@ private fun CommittedHero(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                // Label the decode result so TalkBack reads "Decoded text: HELLO"
+                // rather than spelling the raw monospaced string. Deliberately not an
+                // auto-announcing live region this pass (the readout updates while the
+                // user aims the camera; polite announcements would fight aiming) —
+                // parity with iOS's labelled-not-announced readout (#92).
+                modifier =
+                    Modifier.fillMaxWidth().clearAndSetSemantics {
+                        contentDescription = "Decoded text: $text"
+                    },
             )
             if (showClear) {
                 Text(
@@ -695,7 +705,8 @@ private fun CommittedHero(
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable(onClick = onClear).padding(8.dp),
+                    modifier =
+                        Modifier.clickable(role = Role.Button, onClick = onClear).padding(8.dp),
                 )
             }
         }
@@ -731,7 +742,13 @@ private fun DrillTargetCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text("Sign this letter", color = Color.White.copy(alpha = 0.75f), fontSize = 13.sp)
-        Text(targetGlyph(ui.target), color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+        Text(
+            targetGlyph(ui.target),
+            color = Color.White,
+            fontSize = 64.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.clearAndSetSemantics { contentDescription = targetSpoken(ui.target) },
+        )
         // The contract-derived assist filmstrip (#73 6a-5 + transitions #100): the
         // ordered steps to make for this target — an optional transition pre-cue, then
         // the target pose, all at the exact alphabet angles. Non-empty only when the
@@ -902,7 +919,7 @@ private fun CelebrationOverlay(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("🎉", fontSize = 56.sp)
+        Text("🎉", fontSize = 56.sp, modifier = Modifier.clearAndSetSemantics {})
         Text("Passage complete!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         if (autoResetRemaining != null) {
             Text(
@@ -924,7 +941,7 @@ private fun CelebrationOverlay(
                 modifier =
                     Modifier.clip(RoundedCornerShape(50))
                         .background(Color.White.copy(alpha = 0.2f))
-                        .clickable(onClick = onReplay)
+                        .clickable(role = Role.Button, onClick = onReplay)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
             )
             if (autoResetRemaining != null) {
@@ -936,7 +953,7 @@ private fun CelebrationOverlay(
                     modifier =
                         Modifier.clip(RoundedCornerShape(50))
                             .background(Color.White.copy(alpha = 0.12f))
-                            .clickable(onClick = onStay)
+                            .clickable(role = Role.Button, onClick = onStay)
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                 )
             }
@@ -949,6 +966,18 @@ private fun targetGlyph(target: Char?): String =
     when {
         target == null -> "✓"
         target == ' ' -> "␣"
+        else -> target.toString()
+    }
+
+/**
+ * Screen-reader reading of the target glyph (#92): the `␣`/`✓` shorthands read as
+ * gibberish (or silence) aloud, so TalkBack hears the meaning — the letter itself,
+ * "Space", or "Passage complete". Mirrors iOS's `targetAccessibilityLabel`.
+ */
+private fun targetSpoken(target: Char?): String =
+    when {
+        target == null -> "Passage complete"
+        target == ' ' -> "Space"
         else -> target.toString()
     }
 
