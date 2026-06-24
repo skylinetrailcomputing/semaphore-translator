@@ -1,0 +1,15 @@
+# Project-specific gitleaks config. Extends the upstream default rules
+# with bans relevant to this repo. https://github.com/gitleaks/gitleaks
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "deprecated-cu-email"
+description = "Brad's deprecating CU Boulder email — must not appear in this repo (Aug-2026 access cutoff)."
+regex = '''brma7253@colorado\.edu'''
+keywords = ["brma7253"]
+
+[allowlist]
+description = "Don't flag this config file's own ban patterns."
+paths = ['''\.gitleaks\.toml''']
