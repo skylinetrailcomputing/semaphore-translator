@@ -107,6 +107,26 @@ actor PoseCaptureSession {
             (try? camera.lockForConfiguration()) != nil
         {
             camera.activeFormat = format
+            // Setting an explicit `activeFormat` resets the frame duration to the
+            // format's default, which is its MAX rate (60 fps on a modern iPhone) —
+            // so #110 inadvertently doubled the capture rate vs the `.high` preset's
+            // ~30. Pin the analysis stream back to 30 fps: ample for semaphore, it
+            // halves the per-frame `VNDetectHumanBodyPoseRequest` cost (the 60-fps
+            // regression made iOS markedly heavier than Android's CameraX path), and
+            // it keeps the frame-counted `SMOOTHING_WINDOW` at its intended ~30-fps
+            // wall-clock span (at 60 fps a 5-frame window is half the time, twitchier).
+            // `COMMIT_HOLD_MS` is wall-clock, so commit latency is unchanged either way.
+            // Guarded: only pin when the chosen format actually covers 30 fps (it does
+            // on every current iPhone; the selector already requires a range ≥ 30).
+            let targetFps = 30.0
+            let supports30 = format.videoSupportedFrameRateRanges.contains {
+                $0.minFrameRate <= targetFps && targetFps <= $0.maxFrameRate
+            }
+            if supports30 {
+                let duration = CMTime(value: 1, timescale: Int32(targetFps))
+                camera.activeVideoMinFrameDuration = duration
+                camera.activeVideoMaxFrameDuration = duration
+            }
             camera.unlockForConfiguration()
         }
 
