@@ -11,10 +11,16 @@
 
 ## What this spike is measuring
 
+> **Superseded (2026-06-24):** the "shoulder→wrist only, elbow never used"
+> behaviour described in this section was the *pre-spike* state. Lever C shipped in
+> #111 / **ADR 0012**: `armId` now falls back to the collinear `shoulder→elbow`
+> vector when the wrist is below the confidence floor but the elbow is not. The
+> rest of this doc records what the spike measured against the old behaviour.
+
 `SemaphoreDecoder.armId` classifies each arm from **`shoulder→wrist` only**,
 gated on shoulder+wrist confidence; the elbow is carried in the frozen 12-float
-input but never used by the rules classifier
-(`SemaphoreDecoder.swift:95-99` / `SemaphoreDecoder.kt:94-98`). Field reports
+input but never used by the rules classifier (pre-#111; the file:line citations
+below predate that change). Field reports
 say some pose classes are higher-friction than they should be for non-expert
 users. The hypothesis (issue #101): **the wrist is the weak link**, and every
 hard class puts it somewhere unreliable:

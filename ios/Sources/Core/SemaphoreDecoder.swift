@@ -89,18 +89,34 @@ struct SemaphoreDecoder {
         return best <= toleranceDeg ? bestId : nil
     }
 
-    /// Position id for one arm, or nil if indeterminate (angle out of tolerance
-    /// or a defining keypoint below the confidence floor). Only shoulder and
-    /// wrist define the arm vector; the elbow does not gate.
-    private func armId(shoulder: Keypoint, wrist: Keypoint) -> Int? {
-        if shoulder.confidence < minConfidence || wrist.confidence < minConfidence { return nil }
-        let angle = atan2(wrist.y - shoulder.y, wrist.x - shoulder.x) * 180 / .pi
+    /// Position id for one arm, or nil if indeterminate (angle out of tolerance,
+    /// or no usable keypoint above the confidence floor).
+    ///
+    /// The primary arm vector is shoulder→wrist. When the wrist is below the
+    /// floor but the elbow is not, fall back to the collinear shoulder→elbow
+    /// vector (#111, lever C from the #101 diagnostic): semaphore arms are held
+    /// straight, so the two share an angle, and the elbow is the more proximal,
+    /// lower-variance joint that survives the frame-clipping / body-crossing that
+    /// gates the wrist. The shoulder is the common origin for both vectors, so a
+    /// low-confidence shoulder is unrecoverable → nil, as is a low wrist with no
+    /// in-frame elbow proxy. Mirrors `arm_id` in the Python reference.
+    private func armId(shoulder: Keypoint, elbow: Keypoint, wrist: Keypoint) -> Int? {
+        if shoulder.confidence < minConfidence { return nil }
+        let tip: Keypoint
+        if wrist.confidence >= minConfidence {
+            tip = wrist
+        } else if elbow.confidence >= minConfidence {
+            tip = elbow
+        } else {
+            return nil
+        }
+        let angle = atan2(tip.y - shoulder.y, tip.x - shoulder.x) * 180 / .pi
         return quantize(angle)
     }
 
     private func classifyArms(_ kp: Keypoints) -> (left: Int?, right: Int?, symbol: String?) {
-        let left = armId(shoulder: kp.leftShoulder, wrist: kp.leftWrist)
-        let right = armId(shoulder: kp.rightShoulder, wrist: kp.rightWrist)
+        let left = armId(shoulder: kp.leftShoulder, elbow: kp.leftElbow, wrist: kp.leftWrist)
+        let right = armId(shoulder: kp.rightShoulder, elbow: kp.rightElbow, wrist: kp.rightWrist)
         var symbol: String?
         if let left, let right { symbol = lookup[Pair(left, right)] }
         return (left, right, symbol)
