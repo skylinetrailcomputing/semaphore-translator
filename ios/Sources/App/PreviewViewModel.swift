@@ -77,6 +77,11 @@ final class PreviewViewModel: ObservableObject {
     /// registers against what's shown. Display-only — distinct from the adapter
     /// mirror, which stays quarantined regardless of lens (spec §3.2, NFR3).
     var isPreviewMirrored: Bool { cameraPosition == .front }
+    /// Whether the live preview offers pinch-to-zoom — Interpret (rear lens) only,
+    /// the twin of `isPreviewMirrored`. Learn is front-lens self-signing at arm's
+    /// length, where zoom buys nothing and a tight crop would only push the signer's
+    /// own arms out of frame. Drives `CameraPreviewView.zoomEnabled`.
+    var isZoomEnabled: Bool { cameraPosition == .back }
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
     /// Contract-derived assist-figure geometry (#73 / 6a-5, transition cues #100),
