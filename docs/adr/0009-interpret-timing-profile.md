@@ -1,10 +1,10 @@
 # ADR 0009 — Per-fork committer timing profiles (the Interpret timing fork)
 
-- **Status:** Accepted (2026-06-23). The contract + the cross-platform mechanism
-  are verified by the dual-platform parity tests below; the Interpret *values* are
-  a provisional starter that **#76 (6a-8)** tunes against real footage, and the
+- **Status:** Accepted (2026-06-23); Interpret values tuned against footage by
+  **#76 (6a-8)** (2026-06-23): `COMMIT_HOLD_MS` 400 → **350**. The contract + the
+  cross-platform mechanism are verified by the dual-platform parity tests below; the
   on-device behavioural smoke is the remaining guardrail-(d) step (see
-  *Consequences*).
+  *Consequences*). Tuning method + before/after: `docs/interpret-timing-tuning.md`.
 - **Issue:** [#75](https://github.com/skylinetrailcomputing/semaphore-translator/issues/75)
   ([6a-7], the architectural fork for the Interpret push); parent epic
   [#67](https://github.com/skylinetrailcomputing/semaphore-translator/issues/67) (6a).
@@ -60,7 +60,7 @@ Learn (front-camera) profile, the single source of truth for it. A new additive
 ```jsonc
 "COMMIT_HOLD_MS": 600, "INTER_CHAR_GAP_MS": 200, "SMOOTHING_WINDOW": 5,  // Learn (flat)
 "timing_profiles": {
-  "interpret": { "COMMIT_HOLD_MS": 400, "INTER_CHAR_GAP_MS": 200, "SMOOTHING_WINDOW": 5 }
+  "interpret": { "COMMIT_HOLD_MS": 350, "INTER_CHAR_GAP_MS": 200, "SMOOTHING_WINDOW": 5 }
 }
 ```
 
@@ -124,29 +124,33 @@ guarantee (spec §6), now for the rear fork too.
 
 `COMMIT_HOLD_MS` is **not only** a commit-latency knob — it is the **upper bound of
 the brief-REST double-letter re-arm window `[INTER_CHAR_GAP_MS, COMMIT_HOLD_MS)`**
-(ADR 0005). Lowering it 600 → 400 *narrows* that window, so the rear-fork timing
+(ADR 0005). Lowering it 600 → 350 *narrows* that window, so the rear-fork timing
 genuinely changes the double-letter boundary, not just *when* a commit lands. Two
 consequences, both pinned by the generator's self-validation and the parity tests:
 
-1. **The fixture's brief-REST double count `REST_REARM` is profile-dependent.** At
-   `DT_MS=100`, the window-flush keeps `REST` the voted candidate for
-   `(SMOOTHING_WINDOW−1)×DT_MS = 400 ms` past its last raw frame — which, under the
-   Interpret 400 ms hold, *reaches* the hold and commits a **space** instead of
-   re-arming. So Learn uses `REST_REARM=5` (→ `"LL"`) and Interpret uses
-   `REST_REARM=4` (peaks strictly below 400 ms → still `"LL"`). Every *other*
-   authored count is profile-independent — including the `[INTER_CHAR_GAP_MS]`
-   re-arm boundary pair (`REST_GAP_TOO_SHORT=2` / `REST_GAP_MIN_REARM=3`), which is
-   set by the smoothing vote floor and the shared `INTER_CHAR_GAP_MS`, both
-   unchanged.
+1. **The fixture's brief-REST double count `REST_REARM` is profile-dependent.** In
+   the brief-REST fixtures the rest is bracketed by held `L` frames, so the trailing
+   `L` truncates the exit flush and the *raw* rest count sets the peak: at
+   `DT_MS=100` the voted-candidate `REST` dwell steps `200 / 300 / 400 ms` for a
+   3 / 4 / 5-frame rest. The Interpret hold gives the re-arm window `[200, 350)` — it
+   admits the 4-frame dwell (`300 ms` → re-arm → `"LL"`) but excludes the 5-frame
+   dwell (`400 ms ≥ 350` → **space** → `"L L"`). Learn's `[200, 600)` admits the
+   5-frame dwell too, so Learn uses `REST_REARM=5` (→ `"LL"`) and Interpret
+   `REST_REARM=4`. Every *other* authored count is profile-independent — including
+   the re-arm boundary pair (`REST_GAP_TOO_SHORT=2` / `REST_GAP_MIN_REARM=3`), which
+   is set by the smoothing vote floor and the shared `INTER_CHAR_GAP_MS`, both
+   unchanged. (At the old 400 ms hold the window was `[200, 400)`; the same `4 / 5`
+   split holds, so the tune to 350 regenerated the file without changing any frame —
+   only the embedded hold metadata moved.)
 2. **A discriminating sequence proves the fork is real, not self-consistent.** The
    Interpret file carries `interpret_rest5_spaces_not_doubles`: a `REST_REARM`-Learn
    (5)-frame brief rest — the dwell that *doubles* under Learn's 600 ms hold —
-   instead commits a **space** under the 400 ms hold (`"L L"`, not `"LL"`). Both
+   instead commits a **space** under the 350 ms hold (`"L L"`, not `"LL"`). Both
    platforms assert it, and the unit test also replays its frames through *Learn*
    timing and asserts the opposite `"LL"`, so a port that ignored the Interpret
    `COMMIT_HOLD_MS` would fail loudly.
 
-(The fixtures' `DT_MS=100` is illustrative, not normative — at hold 400 it is below
+(The fixtures' `DT_MS=100` is illustrative, not normative — at hold 350 it is below
 `SMOOTHING_WINDOW` (5), losing ADR 0004 Decision 2's *nice* "rollup insensitive to
 the partial-window choice" property, but **not** correctness: both ports vote on
 the partial window identically, mirror the reference, and assert the per-frame
@@ -165,10 +169,20 @@ nothing.)
   suites (iOS XCTest, Android JUnit) replay the Interpret file and assert the
   lens→profile mapping + the discriminating boundary; green on both is the
   cross-platform guarantee for the rear fork.
-- **The Interpret values are provisional.** `COMMIT_HOLD_MS=400` is a sensible
-  "noticeably faster than 600" starter; **#76 (6a-8)** tunes the full profile
-  against real fast-signer footage (and may move `INTER_CHAR_GAP_MS` /
-  `SMOOTHING_WINDOW`, regenerating the Interpret vectors — no code change).
+- **The Interpret values are tuned against footage (#76 / 6a-8).**
+  `COMMIT_HOLD_MS` is **350** (down from the provisional 400). Replaying a real
+  ~A–Z fast-signer clip through the canonical decode + commit reference showed the
+  fork already lifts capture from **9/26** letters (Learn 600) to **16/26**
+  (Interpret), and that the residual misses are *geometry* — 8 letters never
+  classify (wide / across-body poses; #110–112) — not timing. 350 matches 400's
+  decode **and** its brief-REST double-letter window on that clip while adding
+  headroom for slightly-faster field signers; pushing below ~350 buys a couple more
+  single letters but narrows the double-letter window, which an all-distinct clip
+  can't validate (deferred to a doubles-containing clip). The tune was
+  **values-only** — regenerated `temporal_vectors_interpret.json` (at `DT_MS=100`
+  not a single frame changed, only the hold metadata), no code change.
+  `INTER_CHAR_GAP_MS` / `SMOOTHING_WINDOW` unchanged. Method + before/after +
+  reusable harness: `docs/interpret-timing-tuning.md`.
 - **Remaining acceptance (guardrail-d):** an on-device smoke on both targets
   (iPhone 16 + Pixel 9a) confirming Interpret (rear) commits visibly faster than
   Learn (front) and Learn is unaffected. The mechanism is parity-verified; this is
