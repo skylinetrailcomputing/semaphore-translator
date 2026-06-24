@@ -17,6 +17,7 @@ object AppSettings {
     private const val KEY_DEVELOPER_MODE = "developer_mode"
     private const val KEY_SHOW_ASSIST = "show_assist_figure"
     private const val KEY_SHOW_NUMERALS_INDICATOR = "show_numerals_indicator"
+    private const val KEY_SHOW_FRAMING_HINT = "show_framing_hint"
     private const val KEY_MATCHED_ONLY_READOUT = "drill_matched_only_readout"
     private const val KEY_AUTO_RESET = "auto_reset_on_complete"
     private const val KEY_DISCLAIMER_HASH = "disclaimer_accepted_hash"
@@ -51,6 +52,19 @@ object AppSettings {
 
     fun setShowNumeralsIndicator(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SHOW_NUMERALS_INDICATOR, enabled).apply()
+    }
+
+    /**
+     * Whether Learn shows the per-arm framing/visibility hint banner (#112, 6a-18;
+     * polish #125, 6a-20). Default ON — it helps a self-signer self-correct; a
+     * confident user can turn it off. A view-layer gate only (the screen keeps
+     * computing `poseHint`). The iOS twin is `@AppStorage("showFramingHint")`.
+     */
+    fun showFramingHint(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SHOW_FRAMING_HINT, true)
+
+    fun setShowFramingHint(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SHOW_FRAMING_HINT, enabled).apply()
     }
 
     /**

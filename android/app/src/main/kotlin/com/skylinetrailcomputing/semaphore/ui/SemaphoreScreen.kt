@@ -97,6 +97,7 @@ fun SemaphoreScreen(
     drillTargets: String? = null,
     showAssist: Boolean = false,
     showNumeralsIndicator: Boolean = false,
+    showFramingHint: Boolean = false,
     matchedOnlyReadout: Boolean = false,
     autoResetOnComplete: Boolean = false,
 ) {
@@ -131,6 +132,7 @@ fun SemaphoreScreen(
                 drillTargets,
                 showAssist,
                 showNumeralsIndicator,
+                showFramingHint,
                 matchedOnlyReadout,
                 autoResetOnComplete,
             )
@@ -156,6 +158,7 @@ private fun CameraScreen(
     drillTargets: String?,
     showAssist: Boolean,
     showNumeralsIndicator: Boolean,
+    showFramingHint: Boolean,
     matchedOnlyReadout: Boolean,
     autoResetOnComplete: Boolean,
 ) {
@@ -551,9 +554,11 @@ private fun CameraScreen(
         ) {
             // Framing/visibility hint (#112, 6a-18): only while a signer is tracked and
             // the drill (if any) isn't on its celebrate screen, so it never collides
-            // with the centered "no signer" capsule or the completion card.
+            // with the centered "no signer" capsule or the completion card. Gated by
+            // `showFramingHint` (#125, 6a-20) so a confident self-signer can silence it;
+            // the frame loop still computes `poseHint` regardless.
             poseHint?.let { hint ->
-                if (drillUi?.complete != true) {
+                if (showFramingHint && drillUi?.complete != true) {
                     PoseHintBanner(poseHintMessage(hint), Modifier.align(Alignment.CenterHorizontally))
                 }
             }
@@ -1116,8 +1121,12 @@ private fun PoseHintBanner(message: String, modifier: Modifier = Modifier) {
     Text(
         message,
         color = Color.Black,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
+        // Sized to read across the room (#125, 6a-20): in Learn the user stands back
+        // far enough to fit their wingspan, where the old 15.sp was legible-as-a-warning
+        // but not *readable*. 22.sp bold is the lockstep target shared with iOS's
+        // `.title2`; sp scales with the user's font setting (#92).
+        fontSize = 22.sp,
+        fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
         modifier =
             modifier
@@ -1147,7 +1156,11 @@ private fun NumeralsIndicator(modifier: Modifier = Modifier) {
                     contentDescription = "Numerals mode — the decoder is reading digits"
                 },
         color = Color.Black,
-        fontSize = 13.sp,
+        // Enlarged for legibility at the Learn standing-back distance (#125, 6a-20):
+        // 24.sp bold, bumped from the initial 16.sp after the on-device smoke. The
+        // capsule auto-sizes to the glyph, so this grows the whole pill. Lockstep with
+        // iOS's `numeralsFontSize` (24 pt); sp scales with the user's font setting (#92).
+        fontSize = 24.sp,
         fontWeight = FontWeight.Bold,
     )
 }
