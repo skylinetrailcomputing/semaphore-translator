@@ -20,7 +20,7 @@ import org.junit.Test
  *      `InterpretTemporalParityTests` asserts the same file);
  *   2. the lens -> profile mapping the app uses to *select* that timing; and
  *   3. that the profile actually changes committer behaviour (the discriminating
- *      `[400,600)` sequence commits a space under Interpret where Learn doubles).
+ *      `[350,600)` sequence commits a space under Interpret where Learn doubles).
  */
 class InterpretTemporalParityTest {
     /**

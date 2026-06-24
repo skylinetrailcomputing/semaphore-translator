@@ -12,7 +12,7 @@ import XCTest
 ///      `InterpretTemporalParityTest` asserts the same file);
 ///   2. the lens → profile mapping the app uses to *select* that timing; and
 ///   3. that the profile actually changes committer behaviour (the discriminating
-///      `[400,600)` sequence commits a space under Interpret where Learn doubles).
+///      `[350,600)` sequence commits a space under Interpret where Learn doubles).
 final class InterpretTemporalParityTests: XCTestCase {
     /// 1. Replay every Interpret sequence through the interpret-profile committer and
     /// assert per-frame `expected_emit` + the rollup — the temporal-parity guarantee
