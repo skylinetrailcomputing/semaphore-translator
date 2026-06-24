@@ -42,7 +42,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from _semaphore_ref import classify  # canonical reference decoder (stage 1)
+from _semaphore_ref import classify, timing_for  # canonical reference decoder + profiles
 from gen_temporal_vectors import Committer  # canonical reference committer (ADR 0004)
 
 GROUND_TRUTH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -214,8 +214,12 @@ def main():
         f"{frames[-1][0]/1000:.2f}s, truth={args.truth!r} ({len(args.truth)} letters)"
     )
 
+    # Shipped contract holds, so the markers below never go stale as #76 is tuned.
+    learn_hold = timing_for("learn")["commit_hold_ms"]
+    interp_hold = timing_for("interpret")["commit_hold_ms"]
+
     # Mirror selection (geometry only; auto = whichever decodes A–Z better).
-    base = dict(window=5, hold=400, gap=200)
+    base = dict(window=5, hold=interp_hold, gap=200)
     if args.mirror == "auto":
         on = score(decode(symbol_stream(frames, True), **base), args.truth)
         off = score(decode(symbol_stream(frames, False), **base), args.truth)
@@ -244,8 +248,8 @@ def main():
     )
     print(
         "   → COMMIT_HOLD_MS must be ≤ a letter's dwell to capture it; "
-        f"{sum(1 for d in durs if d < 600)}/{len(durs)} runs dwell <600ms (Learn), "
-        f"{sum(1 for d in durs if d < 400)}/{len(durs)} <400ms (current Interpret)."
+        f"{sum(1 for d in durs if d < learn_hold)}/{len(durs)} runs dwell <{learn_hold}ms (Learn), "
+        f"{sum(1 for d in durs if d < interp_hold)}/{len(durs)} <{interp_hold}ms (Interpret)."
     )
 
     # Primary sweep: COMMIT_HOLD_MS at gap=200, window=5.
@@ -255,7 +259,7 @@ def main():
     best = None
     for h in holds:
         s = score(decode(stream, window=5, hold=h, gap=200), args.truth)
-        flag = " ←current" if h == 400 else (" ←Learn" if h == 600 else "")
+        flag = " ←Interpret" if h == interp_hold else (" ←Learn" if h == learn_hold else "")
         print(
             f"   {h:>5} {s['accuracy']:>6.2f} {s['edit']:>5} {s['lcs']:>4} "
             f"{s['n_letters']:>4} {s['n_spaces']:>3}  {s['letters']}{flag}"
@@ -296,8 +300,6 @@ def main():
 
     # Before/after headline (the DoD), against the SHIPPED contract profiles so the
     # tool can't go stale as the Interpret values are tuned.
-    from _semaphore_ref import timing_for
-
     def shipped(profile):
         t = timing_for(profile)
         s = score(
