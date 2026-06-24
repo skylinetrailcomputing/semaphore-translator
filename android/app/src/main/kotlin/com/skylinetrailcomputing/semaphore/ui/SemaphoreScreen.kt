@@ -1157,10 +1157,10 @@ private fun NumeralsIndicator(modifier: Modifier = Modifier) {
                 },
         color = Color.Black,
         // Enlarged for legibility at the Learn standing-back distance (#125, 6a-20):
-        // 16.sp bold, up from 13.sp — a notch below the framing banner's 22.sp since
-        // it's a status badge, not a correction instruction. Lockstep with iOS's
-        // `.callout`; sp scales with the user's font setting (#92).
-        fontSize = 16.sp,
+        // 24.sp bold, bumped from the initial 16.sp after the on-device smoke. The
+        // capsule auto-sizes to the glyph, so this grows the whole pill. Lockstep with
+        // iOS's `numeralsFontSize` (24 pt); sp scales with the user's font setting (#92).
+        fontSize = 24.sp,
         fontWeight = FontWeight.Bold,
     )
 }

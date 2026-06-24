@@ -55,6 +55,12 @@ struct ContentView: View {
     /// Drill target-glyph size, scaled by Dynamic Type (#92) — same reasoning as
     /// `heroFontSize`. A single glyph, so it grows safely.
     @ScaledMetric(relativeTo: .largeTitle) private var drillGlyphSize: CGFloat = 72
+    /// The user-facing NUMERALS pill glyph size, scaled by Dynamic Type (#92) — same
+    /// reasoning as `heroFontSize`. Bumped to 24 pt after the #125 on-device smoke (50%
+    /// over the initial 16 pt) so the mode badge is glanceable at the Learn standing-back
+    /// distance. 24 pt isn't a named text style, so `@ScaledMetric` keeps the scaling.
+    /// Lockstep with Android's `24.sp`.
+    @ScaledMetric(relativeTo: .title2) private var numeralsFontSize: CGFloat = 24
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
@@ -404,12 +410,12 @@ struct ContentView: View {
     /// so the pill disappears when the signer leaves the frame.
     private var numeralsIndicator: some View {
         Text("123 · NUMERALS")
-            // Enlarged for legibility at the Learn standing-back distance (#125,
-            // 6a-20): `.callout` (~16 pt) bold, up from `.caption` (~12 pt). A notch
-            // below the framing banner's `.title2` — it's a status badge, not a
-            // correction instruction. `.callout` is a Dynamic Type style (scales with
-            // the user's text size, #92); 16 pt is the lockstep target with Android's `16.sp`.
-            .font(.callout.bold())
+            // Enlarged for legibility at the Learn standing-back distance (#125, 6a-20):
+            // 24 pt bold (`numeralsFontSize`), bumped from the initial 16 pt after the
+            // on-device smoke. The capsule auto-sizes to the glyph, so this grows the
+            // whole pill. `@ScaledMetric` keeps Dynamic Type scaling (#92); 24 pt is the
+            // lockstep target with Android's `24.sp`.
+            .font(.system(size: numeralsFontSize, weight: .bold))
             .foregroundStyle(.black)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
