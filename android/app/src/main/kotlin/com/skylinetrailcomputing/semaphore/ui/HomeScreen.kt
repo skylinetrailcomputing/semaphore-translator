@@ -58,7 +58,7 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Signal with flags, read with the camera.",
+                "Signal with flags or hands, read with the camera.",
                 color = Color.White.copy(alpha = 0.7f),
                 fontSize = 15.sp,
                 textAlign = TextAlign.Center,
