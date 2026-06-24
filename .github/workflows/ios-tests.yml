@@ -1,0 +1,65 @@
+name: ios-tests
+
+# Per-commit iOS unit tests — the cross-platform parity harness (#14) plus
+# the Layer-1 Vision adapter tests. Runs on a Simulator (no signing); the
+# device-only Layer-2 Vision calibration is skipped on the Simulator.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ios-tests:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      # The project's AVCaptureSession actor-isolation workaround
+      # (nonisolated(unsafe)) compiles on Swift 6.2+; older Xcodes reject
+      # it. Pin to the toolchain the app is developed against (Xcode 26).
+      - name: Show available Xcodes
+        run: ls /Applications | grep -i Xcode || true
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26'
+
+      - name: Show selected Xcode
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Select an available iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          NAME=$(xcrun simctl list devices available \
+            | grep -oE 'iPhone [0-9]+( Pro)?' | head -1)
+          if [ -z "$NAME" ]; then
+            echo "No available iPhone simulator found" >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          echo "Using simulator: $NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Run parity + adapter unit tests
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project SemaphoreTranslator.xcodeproj \
+            -scheme SemaphoreTranslator \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            CODE_SIGNING_ALLOWED=NO
