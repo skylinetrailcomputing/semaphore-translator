@@ -1,7 +1,9 @@
 package com.skylinetrailcomputing.semaphore.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -82,7 +84,17 @@ fun SettingsScreen(
             )
         },
     ) { innerPadding ->
-        Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
+        // Scrollable so every row stays reachable at large Dynamic Type / Display
+        // sizes — at the biggest font scales the four toggle rows (with wrapping
+        // subtitles) push About/Developer off-screen in a fixed Column (#92,
+        // caught on-device at font_scale 1.5). iOS's `Form` scrolls inherently;
+        // this restores parity.
+        Column(
+            Modifier.fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
             // Assist & practice-mode + display toggles (6a-5 #73, 6a-14 #103) — the
             // primary regular-user content, above the nav rows.
             SettingsToggleRow(
