@@ -90,7 +90,7 @@ struct HomeView: View {
                 .accessibilityHidden(true)
             Text("Semaphore Translator")
                 .font(.title.bold())
-            Text("Signal with flags, read with the camera.")
+            Text("Signal with flags or hands, read with the camera.")
                 .font(.callout)
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
