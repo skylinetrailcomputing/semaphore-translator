@@ -229,7 +229,7 @@ struct StockPassageView: View {
 
     private var unavailable: some View {
         VStack(spacing: 12) {
-            Image(systemName: "book.closed").font(.largeTitle)
+            Image(systemName: "book.closed").font(.largeTitle).accessibilityHidden(true)
             Text("Sight-read passages are unavailable.")
                 .font(.headline)
             Text("Try “Type a passage” instead.")

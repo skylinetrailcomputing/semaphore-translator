@@ -26,6 +26,7 @@ struct AssistFilmstripView: View {
                         Image(systemName: "chevron.right")
                             .font(.title3.bold())
                             .foregroundStyle(.white.opacity(0.7))
+                            .accessibilityHidden(true)
                     }
                     AssistCueCell(cue: cue)
                 }

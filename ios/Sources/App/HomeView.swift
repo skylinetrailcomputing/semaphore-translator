@@ -69,12 +69,17 @@ struct HomeView: View {
                 .padding(16)
                 .contentShape(Rectangle())
         }
+        // The gear is icon-only; without this VoiceOver announces "gearshape" (or
+        // nothing). The Android twin's IconButton already has contentDescription
+        // "Settings" (#92).
+        .accessibilityLabel("Settings")
     }
 
     private var header: some View {
         VStack(spacing: 12) {
             Image(systemName: "flag.2.crossed.fill")
                 .font(.system(size: 48))
+                .accessibilityHidden(true)
             Text("Semaphore Translator")
                 .font(.title.bold())
             Text("Signal with flags, read with the camera.")
@@ -99,6 +104,7 @@ struct ModePill: View {
             Image(systemName: systemImage)
                 .font(.title2)
                 .frame(width: 32)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.headline)
                 Text(subtitle)
@@ -109,6 +115,7 @@ struct ModePill: View {
             Image(systemName: "chevron.right")
                 .font(.footnote)
                 .foregroundStyle(.white.opacity(0.4))
+                .accessibilityHidden(true)
         }
         .foregroundStyle(.white)
         .padding()

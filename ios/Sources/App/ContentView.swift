@@ -42,6 +42,14 @@ struct ContentView: View {
     /// (a raw `UserDefaults.bool` would read an unset key as `false`). Consulted only
     /// on the drill COMPLETE transition below.
     @AppStorage(AppSettingsKeys.autoResetOnComplete) private var autoResetOnComplete = true
+    /// Hero readout font size, scaled by Dynamic Type (#92). A bare `.system(size:)`
+    /// is fixed; `@ScaledMetric` keeps the 40 pt base but grows it with the user's
+    /// text-size setting. The hero also caps at 2 lines with a 0.5 `minimumScaleFactor`,
+    /// so the largest accessibility sizes shrink-to-fit rather than clip.
+    @ScaledMetric(relativeTo: .largeTitle) private var heroFontSize: CGFloat = 40
+    /// Drill target-glyph size, scaled by Dynamic Type (#92) — same reasoning as
+    /// `heroFontSize`. A single glyph, so it grows safely.
+    @ScaledMetric(relativeTo: .largeTitle) private var drillGlyphSize: CGFloat = 72
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
@@ -190,8 +198,9 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.75))
             Text(targetGlyph(hud.target))
-                .font(.system(size: 72, weight: .bold, design: .rounded))
+                .font(.system(size: drillGlyphSize, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
+                .accessibilityLabel(targetAccessibilityLabel(hud.target))
             // The contract-derived assist filmstrip (#73 6a-5 + transitions #100):
             // the ordered steps to make for this target — an optional transition
             // pre-cue (NUMERALS / J-LETTERS / drop-to-rest), then the target pose,
@@ -237,6 +246,14 @@ struct ContentView: View {
         return target == " " ? "␣" : String(target)
     }
 
+    /// VoiceOver reading of the target glyph (#92): the `␣` and `✓` glyphs above are
+    /// visual shorthands that read as gibberish (or silence) aloud, so a screen reader
+    /// hears the meaning instead — the letter itself, "space", or "complete".
+    private func targetAccessibilityLabel(_ target: Character?) -> String {
+        guard let target else { return "Passage complete" }
+        return target == " " ? "Space" : String(target)
+    }
+
     /// The small celebration shown on COMPLETE (6a-2): a centered card with a
     /// replay affordance that calls `resetDrill()` to run the passage again. When the
     /// auto-reset countdown is running (#97, 6a-12) it also shows "Resetting in N…"
@@ -244,7 +261,7 @@ struct ContentView: View {
     /// again" resets immediately whether or not a countdown is in flight.
     private var celebrationOverlay: some View {
         VStack(spacing: 16) {
-            Text("🎉").font(.system(size: 64))
+            Text("🎉").font(.system(size: 64)).accessibilityHidden(true)
             Text("Passage complete!")
                 .font(.title2.bold())
                 .foregroundStyle(.white)
@@ -306,13 +323,21 @@ struct ContentView: View {
                     .foregroundStyle(.white.opacity(0.6))
             } else {
                 Text(readout)
-                    .font(.system(size: 40, weight: .semibold, design: .monospaced))
+                    .font(.system(size: heroFontSize, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white)
                     .lineLimit(2)
                     .minimumScaleFactor(0.5)
                     .truncationMode(.head)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
+                    // Label the decode result so VoiceOver reads "Decoded text, HELLO"
+                    // rather than spelling the raw monospaced string (#92). Deliberately
+                    // *not* an auto-announcing live region this pass: the readout updates
+                    // continuously while the user is aiming the camera, so polite
+                    // announcements would fight the aiming task. Follow-up if testers
+                    // want audible decode.
+                    .accessibilityLabel("Decoded text")
+                    .accessibilityValue(readout)
                 // Clear is the free-form reset; in a drill, "Practice again" on the
                 // celebrate card is the reset path, so Clear is hidden to avoid
                 // desyncing the visible text from the drill's target index.
@@ -383,7 +408,7 @@ struct ContentView: View {
 
     private func message(title: String, detail: String) -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "flag.2.crossed.fill").font(.largeTitle)
+            Image(systemName: "flag.2.crossed.fill").font(.largeTitle).accessibilityHidden(true)
             Text(title).font(.headline)
             Text(detail)
                 .font(.callout)

@@ -3,7 +3,6 @@ package com.skylinetrailcomputing.semaphore.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,9 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -91,27 +95,41 @@ fun DisclaimerGateScreen(
     }
 }
 
-/** A tappable link that opens [url] in the browser. Cyan + underlined for
- *  affordance over the black gate, paralleling iOS's `.cyan`-tinted `Link`. */
+/**
+ * A tappable link that opens [url] in the browser. Cyan + underlined for affordance
+ * over the black gate, paralleling iOS's `.cyan`-tinted `Link`. Built as a Compose
+ * `LinkAnnotation` (1.7+) so TalkBack announces it as a **link**, not plain text
+ * (#92). Passing a `linkInteractionListener` replaces the default UriHandler open,
+ * so the guarded Intent stays: a device with no browser fails silent rather than
+ * throwing `ActivityNotFoundException` and crashing the gate (the links are
+ * non-essential — the full docs are hosted).
+ */
 @Composable
 private fun LinkRow(label: String, url: String) {
     val context = LocalContext.current
-    Text(
-        label,
-        color = Color(0xFF80DEEA),
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
-        textDecoration = TextDecoration.Underline,
-        modifier =
-            Modifier.clickable {
-                // Guarded: a device with no browser would otherwise throw
-                // ActivityNotFoundException. The links are non-essential (the full
-                // docs are hosted) — fail silent rather than crash the gate.
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                }
-            },
-    )
+    val annotated =
+        buildAnnotatedString {
+            withLink(
+                LinkAnnotation.Url(
+                    url,
+                    styles =
+                        TextLinkStyles(
+                            SpanStyle(
+                                color = Color(0xFF80DEEA),
+                                textDecoration = TextDecoration.Underline,
+                            )
+                        ),
+                    linkInteractionListener = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                    },
+                )
+            ) {
+                append(label)
+            }
+        }
+    Text(annotated, fontSize = 15.sp, fontWeight = FontWeight.Medium)
 }
 
 /**

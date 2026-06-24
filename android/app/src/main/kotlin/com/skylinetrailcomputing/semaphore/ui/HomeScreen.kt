@@ -23,6 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -101,6 +105,9 @@ internal fun ModePill(title: String, subtitle: String, onClick: () -> Unit) {
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.12f))
             .clickable(onClick = onClick)
+            // Merge title + subtitle into one Button node so TalkBack reads the pill
+            // as a single control; the decorative "›" is cleared below (#92).
+            .semantics(mergeDescendants = true) { role = Role.Button }
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -109,6 +116,11 @@ internal fun ModePill(title: String, subtitle: String, onClick: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text(subtitle, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
         }
-        Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 22.sp)
+        Text(
+            "›",
+            color = Color.White.copy(alpha = 0.4f),
+            fontSize = 22.sp,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
     }
 }

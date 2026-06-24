@@ -28,6 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -208,6 +212,12 @@ private fun StartButton(enabled: Boolean, onClick: () -> Unit) {
                 RoundedCornerShape(14.dp),
             )
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            // Announce as a button, and as disabled when the sanitised passage is
+            // empty/too long, matching iOS's `.disabled` Start-drill link (#92).
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                if (!enabled) disabled()
+            }
             .padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
