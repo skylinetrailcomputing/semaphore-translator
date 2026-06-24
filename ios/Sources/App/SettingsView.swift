@@ -21,6 +21,9 @@ struct SettingsView: View {
     /// the same `@AppStorage` key, so flipping it here shows/hides the live pill on
     /// the camera screen the next time it appears.
     @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
+    /// The framing-hint banner on/off (6a-18 #112, polish 6a-20 #125). Default ON;
+    /// `ContentView` reads the same `@AppStorage` key and gates the Learn banner on it.
+    @AppStorage(AppSettingsKeys.showFramingHint) private var showFramingHint = true
     /// The forgiving "easy mode" drill readout on/off (6a-10, #95). Default ON;
     /// `ContentView` reads the same `@AppStorage` key, so flipping it here switches
     /// the drill readout between matched-only and verbatim on the next drill entry.
@@ -65,6 +68,17 @@ struct SettingsView: View {
                 Text(
                     "Shows a badge over the camera while the decoder is reading "
                     + "digits, and hides it when it returns to letters.")
+            }
+
+            // The Learn framing-hint banner (6a-18 #112, polish 6a-20 #125) — a
+            // camera display toggle, so it sits with the other display toggles.
+            Section {
+                Toggle("Show framing hints", isOn: $showFramingHint)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "In Learn, shows a hint over the camera when an arm isn't fully "
+                    + "visible — so you can step back or add light to fix it.")
             }
 
             // The forgiving "easy mode" drill readout (6a-10, #95) — a Learn-drill

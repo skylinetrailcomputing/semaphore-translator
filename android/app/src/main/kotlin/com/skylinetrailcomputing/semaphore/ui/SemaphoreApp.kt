@@ -111,6 +111,11 @@ private fun MainNavHost() {
     // persisted. INTERPRET deliberately does NOT receive it (it always decodes a real
     // signer's digits). The iOS twin is `@AppStorage("allowNumerals")`.
     var allowNumerals by remember { mutableStateOf(AppSettings.allowNumerals(context)) }
+    // Framing-hint banner on/off (6a-18 #112, polish 6a-20 #125) hoisted alongside the
+    // others: one source of truth feeds the Settings toggle and every Learn camera
+    // screen, reactive in-session and persisted. The iOS twin is
+    // `@AppStorage("showFramingHint")`, shared across views by key.
+    var showFramingHint by remember { mutableStateOf(AppSettings.showFramingHint(context)) }
     // Forgiving "easy mode" drill readout on/off (6a-10, #95) hoisted alongside the
     // others: one source of truth feeds the Settings toggle and the drill screen,
     // reactive in-session (a flip shows on the next drill entry) and persisted. The
@@ -161,6 +166,7 @@ private fun MainNavHost() {
                     developerMode = developerMode,
                     showAssist = showAssist,
                     showNumeralsIndicator = showNumeralsIndicator,
+                    showFramingHint = showFramingHint,
                     autoResetOnComplete = autoResetOnComplete,
                     allowNumerals = allowNumerals,
                 )
@@ -213,6 +219,7 @@ private fun MainNavHost() {
                         drillTargets = targets,
                         showAssist = showAssist,
                         showNumeralsIndicator = showNumeralsIndicator,
+                        showFramingHint = showFramingHint,
                         // Drill-only (#95): the forgiving readout has no effect off a
                         // drill, so it's threaded only here, not to LEARN/INTERPRET.
                         matchedOnlyReadout = matchedOnlyReadout,
@@ -238,6 +245,9 @@ private fun MainNavHost() {
                     emptyHint = "Point at someone signing",
                     showAssist = showAssist,
                     showNumeralsIndicator = showNumeralsIndicator,
+                    // Threaded for call-site uniformity; the banner is front-lens-only
+                    // (poseHint stays null on the rear lens), so it never shows here.
+                    showFramingHint = showFramingHint,
                     autoResetOnComplete = autoResetOnComplete,
                 )
                 BackButton(
@@ -265,6 +275,11 @@ private fun MainNavHost() {
                 onShowNumeralsIndicatorChange = {
                     showNumeralsIndicator = it
                     AppSettings.setShowNumeralsIndicator(context, it)
+                },
+                showFramingHint = showFramingHint,
+                onShowFramingHintChange = {
+                    showFramingHint = it
+                    AppSettings.setShowFramingHint(context, it)
                 },
                 matchedOnlyReadout = matchedOnlyReadout,
                 onMatchedOnlyReadoutChange = {

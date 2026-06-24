@@ -20,6 +20,12 @@ enum AppSettingsKeys {
     /// (#103, 6a-14). Default ON (see `SettingsView`); `ContentView` reads the same
     /// key and shows the pill while the committer is in numeric mode.
     static let showNumeralsIndicator = "showNumeralsIndicator"
+    /// Whether Learn shows the per-arm framing/visibility hint banner (#112, 6a-18;
+    /// polish #125, 6a-20). Default ON (see `SettingsView`); `ContentView` reads the
+    /// same key and gates `poseHintBanner` on it. A view-layer gate only — the view
+    /// model keeps publishing `poseHint`, so flipping this never touches the decode
+    /// path. Lets a confident self-signer silence the banner.
+    static let showFramingHint = "showFramingHint"
     /// Whether a passage drill's committed readout grows only by *matched* targets
     /// (the forgiving "easy mode", #95 / 6a-10) rather than echoing every committed
     /// character. Default ON (see `SettingsView`); `ContentView` reads the same key

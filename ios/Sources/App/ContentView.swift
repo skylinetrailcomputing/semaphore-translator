@@ -30,6 +30,11 @@ struct ContentView: View {
     /// `developerMode` is on, since the readout's NUMERIC/LETTERS badge already shows
     /// the mode, so a regular user never sees both. See `numeralsIndicator`.
     @AppStorage(AppSettingsKeys.showNumeralsIndicator) private var showNumeralsIndicator = true
+    /// Whether to show the per-arm framing/visibility hint banner in Learn (#112,
+    /// 6a-18; polish #125, 6a-20). Defaults ON; the Settings toggle writes the same
+    /// `@AppStorage` key. A view-layer gate over the already-published `model.poseHint`
+    /// (the view model keeps computing it) — purely the user's on/off, no decode change.
+    @AppStorage(AppSettingsKeys.showFramingHint) private var showFramingHint = true
     /// The forgiving "easy mode" drill readout on/off (6a-10, #95). Defaults ON; the
     /// Settings toggle writes the same `@AppStorage` key. Only consulted on a drill
     /// screen (see `displayedReadout` / `drillCardColor`) — free-form Learn/Interpret
@@ -50,6 +55,12 @@ struct ContentView: View {
     /// Drill target-glyph size, scaled by Dynamic Type (#92) — same reasoning as
     /// `heroFontSize`. A single glyph, so it grows safely.
     @ScaledMetric(relativeTo: .largeTitle) private var drillGlyphSize: CGFloat = 72
+    /// The user-facing NUMERALS pill glyph size, scaled by Dynamic Type (#92) — same
+    /// reasoning as `heroFontSize`. Bumped to 24 pt after the #125 on-device smoke (50%
+    /// over the initial 16 pt) so the mode badge is glanceable at the Learn standing-back
+    /// distance. 24 pt isn't a named text style, so `@ScaledMetric` keeps the scaling.
+    /// Lockstep with Android's `24.sp`.
+    @ScaledMetric(relativeTo: .title2) private var numeralsFontSize: CGFloat = 24
     /// The empty-state prompt — mode-specific copy ("Sign a letter…" for Learn,
     /// "Point at someone signing" for Interpret). The only behavioral difference
     /// between the two modes beyond lens + display mirror.
@@ -140,7 +151,10 @@ struct ContentView: View {
                 // Framing/visibility hint (#112, 6a-18): only while a signer is
                 // tracked and the drill (if any) isn't on its celebrate screen, so it
                 // never collides with the "no signer" capsule or the completion card.
-                if let hint = model.poseHint, !(isDrill && (model.drillHUD?.complete ?? false)) {
+                // Gated by `showFramingHint` (#125, 6a-20) so a confident self-signer can
+                // silence it; the view model still computes `poseHint` regardless.
+                if showFramingHint, let hint = model.poseHint,
+                    !(isDrill && (model.drillHUD?.complete ?? false)) {
                     poseHintBanner(hint)
                 }
                 if showNumeralsIndicator, !developerMode, model.mode == .numeric {
@@ -370,7 +384,12 @@ struct ContentView: View {
     /// testers want it spoken). The Android twin is `PoseHintBanner`.
     private func poseHintBanner(_ hint: PoseHint) -> some View {
         Text(hint.message)
-            .font(.callout.weight(.medium))
+            // Sized to read across the room (#125, 6a-20): in Learn the user stands
+            // back far enough to fit their wingspan, where the old `.callout` (~16 pt)
+            // was legible-as-a-warning but not *readable*. `.title2` (~22 pt) bold is
+            // a Dynamic Type style, so it also scales with the user's text size (#92);
+            // 22 pt is the lockstep target shared with Android's `22.sp`.
+            .font(.title2.weight(.bold))
             .foregroundStyle(.black)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 16)
@@ -391,7 +410,12 @@ struct ContentView: View {
     /// so the pill disappears when the signer leaves the frame.
     private var numeralsIndicator: some View {
         Text("123 · NUMERALS")
-            .font(.caption.bold())
+            // Enlarged for legibility at the Learn standing-back distance (#125, 6a-20):
+            // 24 pt bold (`numeralsFontSize`), bumped from the initial 16 pt after the
+            // on-device smoke. The capsule auto-sizes to the glyph, so this grows the
+            // whole pill. `@ScaledMetric` keeps Dynamic Type scaling (#92); 24 pt is the
+            // lockstep target with Android's `24.sp`.
+            .font(.system(size: numeralsFontSize, weight: .bold))
             .foregroundStyle(.black)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)

@@ -57,6 +57,8 @@ fun SettingsScreen(
     onAllowNumeralsChange: (Boolean) -> Unit,
     showNumeralsIndicator: Boolean,
     onShowNumeralsIndicatorChange: (Boolean) -> Unit,
+    showFramingHint: Boolean,
+    onShowFramingHintChange: (Boolean) -> Unit,
     matchedOnlyReadout: Boolean,
     onMatchedOnlyReadoutChange: (Boolean) -> Unit,
     autoResetOnComplete: Boolean,
@@ -131,6 +133,16 @@ fun SettingsScreen(
                         "digits, and hides it when it returns to letters.",
                 checked = showNumeralsIndicator,
                 onCheckedChange = onShowNumeralsIndicatorChange,
+            )
+            // The Learn framing-hint banner (6a-18 #112, polish 6a-20 #125) — a camera
+            // display toggle; the iOS twin is the matching toggle in `SettingsView`.
+            SettingsToggleRow(
+                title = "Show framing hints",
+                subtitle =
+                    "In Learn, shows a hint over the camera when an arm isn't fully " +
+                        "visible — so you can step back or add light to fix it.",
+                checked = showFramingHint,
+                onCheckedChange = onShowFramingHintChange,
             )
             // The forgiving "easy mode" drill readout (6a-10, #95) — a Learn-drill
             // behaviour toggle, so it sits with the other regular-user toggles.
