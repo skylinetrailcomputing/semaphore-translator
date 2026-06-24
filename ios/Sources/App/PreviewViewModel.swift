@@ -20,6 +20,46 @@ struct DrillHUD: Equatable {
 /// after each commit so the card settles back to neutral.
 enum DrillFlash: Equatable { case hit, miss }
 
+/// Which arm a `PoseHint` is about, in the **signer's own body frame** (the decoder's
+/// perspective, spec §3.2) — so "left" is the user's actual left arm, never a screen
+/// side, even under the mirrored selfie preview.
+enum ArmSide: Equatable {
+    case left, right
+    var label: String { self == .left ? "left" : "right" }
+}
+
+/// A transient framing/visibility hint for the Learn self-signer (#112, 6a-18). When
+/// an arm won't read, this says *why* — edge-clipped vs too dark — so the user can
+/// self-correct instead of guessing. Keyed off the decoder's **final** per-arm ids
+/// (post the #111 elbow fallback): an arm is "unread" only when
+/// `decodeFrame(...).ids[arm] == nil`, never raw wrist confidence (#112 cross-issue
+/// note). A pure view affordance, like `drillFlash` — no decode/contract/parity change.
+enum PoseHint: Equatable {
+    /// One arm's wrist left the frame (edge-clipped) → step back to fit the wingspan.
+    case clipped(ArmSide)
+    /// One arm is in frame but too low-confidence to read → more light / clearer bg.
+    case tooDark(ArmSide)
+    /// Neither arm reads and at least one wrist is edge-clipped → step back.
+    case bothClipped
+    /// Neither arm reads and both wrists are in frame (low confidence) → more light.
+    case bothDark
+
+    /// The user-visible message; plain prose, so it doubles as the screen-reader
+    /// label (#92). In lockstep with Android's `poseHintMessage`.
+    var message: String {
+        switch self {
+        case .clipped(let side):
+            return "Can’t see your \(side.label) arm — step back to fit your full wingspan."
+        case .tooDark(let side):
+            return "Can’t see your \(side.label) arm — try more light or a clearer background."
+        case .bothClipped:
+            return "Step back so both arms fit in the frame."
+        case .bothDark:
+            return "Move into better light so both arms read."
+        }
+    }
+}
+
 /// Drives the live debug screen ([3.5], #23): owns the capture session, the
 /// decoder, and the temporal `Committer` (#4.5). It consumes the
 /// `AsyncStream<PoseFrame>` and, per frame, runs the mode-independent `classify`
@@ -64,6 +104,13 @@ final class PreviewViewModel: ObservableObject {
     /// completes and the setting is on; the view owns the setting read so the ON
     /// default lives in `@AppStorage`, not in a raw `UserDefaults` lookup.
     @Published private(set) var autoResetRemaining: Int?
+    /// A transient framing/visibility hint for the Learn self-signer (#112, 6a-18),
+    /// or `nil` when both arms read (and always `nil` off the front lens). Surfaced
+    /// only after the unread condition persists for `hintDwellMs`, so normal
+    /// between-letter transitions never flash it; cleared the instant both arms read
+    /// again. Like `drillFlash`, a pure view affordance — no decode/parity change, no
+    /// new vectors. The view renders this as a small banner above the hero.
+    @Published private(set) var poseHint: PoseHint?
 
     let capture = PoseCaptureSession()
     /// Which lens to drive. Front for the Learn screen (the default keeps that
@@ -117,11 +164,26 @@ final class PreviewViewModel: ObservableObject {
     /// `LaunchedEffect(complete)` countdown in `SemaphoreScreen`.
     private var autoResetTask: Task<Void, Never>?
     private var lastFrameAt = Date.distantPast
+    /// Frame clock (`frame.tMs`) when the current "an arm isn't reading" run began, or
+    /// `nil` when both arms read. The hint shows only once this run lasts `hintDwellMs`.
+    /// Uses the committer's frame clock (not wall-clock) so it advances only while
+    /// frames arrive — the same clock the hold timer uses.
+    private var hintSince: Int?
 
     /// The post-completion auto-reset countdown length (#97, 6a-12). Kept in lockstep
     /// with Android's `AUTO_RESET_COUNTDOWN_SECONDS` (no parity vector needed — it's a
     /// view affordance, like `drillFlash`'s ~450 ms clear).
     private static let autoResetCountdownSeconds = 3
+    /// How long an arm must stay unread before the framing hint appears (#112, 6a-18).
+    /// Longer than a normal between-letter transition, so streaming never flashes it;
+    /// shorter than a frustrated hold. In lockstep with Android's `HINT_DWELL_MS`.
+    private static let hintDwellMs = 700
+    /// How close to a frame edge (normalized `[0,1]`) a wrist must sit to count as
+    /// edge-clipped rather than merely low-confidence — the clip/too-dark split (#112).
+    /// iOS Vision clamps an off-frame joint to ~0/1; this margin also catches Android
+    /// ML Kit's slightly-outside-`[0,1]` extrapolations, so both platforms split the
+    /// same way. In lockstep with Android's `EDGE_MARGIN`.
+    private static let edgeMargin = 0.05
 
     /// Dev-only coordinate probe (#58 / ADR 0006). The geometry-seam smoke for the
     /// rear lens: a flipped analysis buffer would mirror-twin every asymmetric
@@ -275,6 +337,7 @@ final class PreviewViewModel: ObservableObject {
         committer?.reset()
         committedText = ""
         drillFlash = nil
+        clearPoseHint()
         flashTask?.cancel()
         drillHUD = DrillHUD(
             target: drill.currentTarget,
@@ -331,6 +394,7 @@ final class PreviewViewModel: ObservableObject {
         // equivalent: its watchdog keeps running while backgrounded and resets
         // before the 600ms hold, since SIGNER_TIMEOUT 500ms < COMMIT_HOLD_MS.)
         committer?.reset()
+        clearPoseHint()
         await capture.stop()
     }
 
@@ -374,8 +438,56 @@ final class PreviewViewModel: ObservableObject {
         character = raw.emit
         mode = committer.currentMode
         status = .tracking
+        updatePoseHint(ids: raw.ids, kp: kp, tMs: frame.tMs)
 
         logProbe(kp: kp, leftId: raw.ids[0], rightId: raw.ids[1], char: raw.emit)
+    }
+
+    /// Derive the framing/visibility hint (#112, 6a-18) from the decoder's **final**
+    /// per-arm ids plus the post-adapter wrist positions. Front lens (Learn) only — a
+    /// rear-lens Interpret operator can't "step back" on the signer's behalf, so the
+    /// hint is suppressed there (the assist figure is front-gated for the same reason).
+    /// An arm counts as unread only when its id is `nil` (post-#111 elbow fallback),
+    /// not on raw wrist confidence, so a frame the decoder just read via the elbow
+    /// never draws a "can't see your wrist" hint. Debounced by `hintDwellMs` so
+    /// transient between-letter gaps never flash it.
+    private func updatePoseHint(ids: [Int?], kp: Keypoints, tMs: Int) {
+        guard cameraPosition == .front else {
+            clearPoseHint()
+            return
+        }
+        let leftUnread = ids[0] == nil
+        let rightUnread = ids[1] == nil
+        guard leftUnread || rightUnread else {
+            clearPoseHint()
+            return
+        }
+        let since = hintSince ?? tMs
+        hintSince = since
+        guard tMs - since >= Self.hintDwellMs else { return }
+        let hint: PoseHint
+        if leftUnread, rightUnread {
+            let clipped = Self.wristClipped(kp.leftWrist) || Self.wristClipped(kp.rightWrist)
+            hint = clipped ? .bothClipped : .bothDark
+        } else {
+            let side: ArmSide = leftUnread ? .left : .right
+            let wrist = leftUnread ? kp.leftWrist : kp.rightWrist
+            hint = Self.wristClipped(wrist) ? .clipped(side) : .tooDark(side)
+        }
+        if poseHint != hint { poseHint = hint }
+    }
+
+    /// Reset the framing-hint state — both arms read again, signer lost, or teardown.
+    private func clearPoseHint() {
+        hintSince = nil
+        if poseHint != nil { poseHint = nil }
+    }
+
+    /// Whether a wrist sits at/over a frame edge (#112): the edge-clip vs too-dark
+    /// split. Consulted only for an arm that already failed to read, so it only
+    /// chooses the *reason*, never gates a readable pose.
+    private static func wristClipped(_ w: Keypoint) -> Bool {
+        w.x <= edgeMargin || w.x >= 1 - edgeMargin || w.y <= edgeMargin || w.y >= 1 - edgeMargin
     }
 
     /// Dev-only coordinate probe (#58 / ADR 0006; extended for #101 / 6a-14): when
@@ -456,6 +568,7 @@ final class PreviewViewModel: ObservableObject {
                     self.rightId = nil
                     self.character = ""
                     self.mode = self.committer?.currentMode ?? .letters
+                    self.clearPoseHint()
                 }
             }
         }

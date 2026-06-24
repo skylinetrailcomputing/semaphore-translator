@@ -137,6 +137,12 @@ struct ContentView: View {
                     drillTargetCard(hud)
                 }
                 Spacer()
+                // Framing/visibility hint (#112, 6a-18): only while a signer is
+                // tracked and the drill (if any) isn't on its celebrate screen, so it
+                // never collides with the "no signer" capsule or the completion card.
+                if let hint = model.poseHint, !(isDrill && (model.drillHUD?.complete ?? false)) {
+                    poseHintBanner(hint)
+                }
                 if showNumeralsIndicator, !developerMode, model.mode == .numeric {
                     numeralsIndicator
                 }
@@ -353,6 +359,25 @@ struct ContentView: View {
         .padding(20)
         .frame(maxWidth: .infinity)
         .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// The framing/visibility hint banner (#112, 6a-18): when an arm isn't reading, a
+    /// small amber banner above the hero says *why* (edge-clipped vs too dark) and what
+    /// to do, so the Learn self-signer can self-correct rather than guess. The view
+    /// model only publishes `poseHint` on the front lens, so this is Learn-only. Plain
+    /// prose, so VoiceOver reads it as the label; deliberately *not* an auto-announcing
+    /// live region this pass — parity with the readout's #92 choice (a follow-up if
+    /// testers want it spoken). The Android twin is `PoseHintBanner`.
+    private func poseHintBanner(_ hint: PoseHint) -> some View {
+        Text(hint.message)
+            .font(.callout.weight(.medium))
+            .foregroundStyle(.black)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(Color.orange.opacity(0.92), in: RoundedRectangle(cornerRadius: 16))
+            .accessibilityLabel(hint.message)
     }
 
     /// The user-facing NUMERALS mode pill (#103, 6a-14): a small amber capsule shown
