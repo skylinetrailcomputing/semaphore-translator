@@ -246,6 +246,18 @@ private fun CameraScreen(
         }
     }
 
+    // Framing/visibility hint (#112, 6a-18): when an arm won't read, tell the Learn
+    // self-signer *why* (edge-clipped vs too dark) so they self-correct instead of
+    // guessing. Keyed off the decoder's FINAL per-arm ids (post the #111 elbow
+    // fallback) — a null id, never raw wrist confidence, so a frame the decoder just
+    // read via the elbow can't draw a "can't see your wrist" hint. View affordance
+    // only, like drillFlash — no decode/parity change, no new vectors. `hintSince` is
+    // the frame.tMs the current unread run began; the hint shows only once it lasts
+    // HINT_DWELL_MS, so normal between-letter transitions never flash it. The iOS twin
+    // is `PreviewViewModel.poseHint`.
+    var poseHint by remember { mutableStateOf<PoseHint?>(null) }
+    var hintSince by remember { mutableStateOf<Long?>(null) }
+
     // Post-completion auto-reset countdown (6a-12, #97). Non-null = the celebrate
     // card is counting down to a hands-free replay of the same passage; the value is
     // the seconds left, rendered as "Resetting in N…". null = no countdown (setting
@@ -261,6 +273,8 @@ private fun CameraScreen(
         committer.reset()
         committedText = ""
         drillFlash = null
+        poseHint = null
+        hintSince = null
         autoResetRemaining = null
         drillUi = drill?.let { DrillUi(it.currentTarget, it.index, it.count, it.isComplete) }
     }
@@ -318,6 +332,8 @@ private fun CameraScreen(
                             keypoints = null,
                             mode = committer.currentMode,
                         )
+                    poseHint = null
+                    hintSince = null
                 }
             }
         }
@@ -368,6 +384,30 @@ private fun CameraScreen(
             // Raw white-box readout: ids are mode-independent; only the per-frame
             // character is interpreted, in the committer's (possibly just-flipped) mode.
             val raw = decoder.decodeFrame(kp, committer.currentMode)
+
+            // Framing/visibility hint (#112, 6a-18): front lens (Learn) only — a
+            // rear-lens Interpret operator can't "step back" on the signer's behalf, so
+            // it's suppressed there (the assist figure is front-gated for the same
+            // reason). An arm is "unread" only when its FINAL id is null (post-#111
+            // elbow fallback). Debounced by HINT_DWELL_MS so transient between-letter
+            // gaps never flash it; cleared the instant both arms read again.
+            if (isRear) {
+                poseHint = null
+                hintSince = null
+            } else {
+                val leftUnread = raw.ids[0] == null
+                val rightUnread = raw.ids[1] == null
+                if (!leftUnread && !rightUnread) {
+                    poseHint = null
+                    hintSince = null
+                } else {
+                    val since = hintSince ?: frame.tMs
+                    hintSince = since
+                    if (frame.tMs - since >= HINT_DWELL_MS) {
+                        poseHint = framingHint(leftUnread, rightUnread, kp)
+                    }
+                }
+            }
 
             // Dev-only coordinate probe (#58 / ADR 0006; extended for #101 / 6a-14).
             // Two diagnostics off one line: (1) the rear-mirror seam — a correctly-
@@ -509,6 +549,14 @@ private fun CameraScreen(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Framing/visibility hint (#112, 6a-18): only while a signer is tracked and
+            // the drill (if any) isn't on its celebrate screen, so it never collides
+            // with the centered "no signer" capsule or the completion card.
+            poseHint?.let { hint ->
+                if (drillUi?.complete != true) {
+                    PoseHintBanner(poseHintMessage(hint), Modifier.align(Alignment.CenterHorizontally))
+                }
+            }
             // The user-facing NUMERALS mode pill (#103, 6a-14): shown just above the
             // hero while the committer is in numeric mode, hidden in letters. The slot
             // above the hero is clear of the top drill card + the centered "no signer"
@@ -575,6 +623,80 @@ private data class DrillUi(
 )
 
 private const val SIGNER_TIMEOUT_MS = 500L
+// How long an arm must stay unread before the framing hint appears (#112, 6a-18).
+// Longer than a normal between-letter transition, so streaming never flashes it;
+// shorter than a frustrated hold. In lockstep with iOS's `hintDwellMs`.
+private const val HINT_DWELL_MS = 700L
+// How close to a frame edge (normalized [0,1]) a wrist must sit to count as
+// edge-clipped rather than merely low-confidence — the clip/too-dark split (#112). ML
+// Kit can extrapolate an off-frame landmark slightly outside [0,1]; the margin also
+// catches iOS Vision's clamp-to-~0/1, so both platforms split the same way. In
+// lockstep with iOS's `edgeMargin`.
+private const val EDGE_MARGIN = 0.05
+
+/**
+ * A transient framing/visibility hint for the Learn self-signer (#112, 6a-18): when
+ * an arm won't read, say *why* — edge-clipped vs too dark — so the user can
+ * self-correct instead of guessing. Keyed off the decoder's FINAL per-arm ids
+ * (post-#111 elbow fallback). A pure view affordance, like `drillFlash`. The iOS twin
+ * is the `PoseHint` enum in `PreviewViewModel`.
+ */
+private sealed interface PoseHint {
+    /** One arm's wrist left the frame (edge-clipped) → step back to fit the wingspan. */
+    data class Clipped(val side: ArmSide) : PoseHint
+    /** One arm is in frame but too low-confidence to read → more light / clearer bg. */
+    data class TooDark(val side: ArmSide) : PoseHint
+    /** Neither arm reads and at least one wrist is edge-clipped → step back. */
+    object BothClipped : PoseHint
+    /** Neither arm reads and both wrists are in frame (low confidence) → more light. */
+    object BothDark : PoseHint
+}
+
+/**
+ * Which arm a [PoseHint] is about, in the signer's own body frame (the decoder's
+ * perspective, §3.2) — so "left" is the user's actual left arm, never a screen side,
+ * even under the mirrored selfie preview.
+ */
+private enum class ArmSide(val label: String) {
+    LEFT("left"),
+    RIGHT("right"),
+}
+
+/**
+ * The user-visible message; plain prose, so it doubles as the TalkBack label (#92).
+ * In lockstep with iOS's `PoseHint.message`.
+ */
+private fun poseHintMessage(hint: PoseHint): String =
+    when (hint) {
+        is PoseHint.Clipped ->
+            "Can’t see your ${hint.side.label} arm — step back to fit your full wingspan."
+        is PoseHint.TooDark ->
+            "Can’t see your ${hint.side.label} arm — try more light or a clearer background."
+        PoseHint.BothClipped -> "Step back so both arms fit in the frame."
+        PoseHint.BothDark -> "Move into better light so both arms read."
+    }
+
+/**
+ * Pick the specific framing hint (#112) from which arm(s) failed to read plus where
+ * the failing wrist sits — edge-clipped (step back) vs in-frame-but-low-confidence
+ * (more light). Consulted only for an arm that already failed, so [wristClipped] only
+ * chooses the *reason*, never gates a readable pose. In lockstep with iOS's
+ * `updatePoseHint`.
+ */
+private fun framingHint(leftUnread: Boolean, rightUnread: Boolean, kp: Keypoints): PoseHint =
+    if (leftUnread && rightUnread) {
+        if (wristClipped(kp.leftWrist) || wristClipped(kp.rightWrist)) PoseHint.BothClipped
+        else PoseHint.BothDark
+    } else {
+        val side = if (leftUnread) ArmSide.LEFT else ArmSide.RIGHT
+        val wrist = if (leftUnread) kp.leftWrist else kp.rightWrist
+        if (wristClipped(wrist)) PoseHint.Clipped(side) else PoseHint.TooDark(side)
+    }
+
+/** Whether a wrist sits at/over a frame edge (#112): the edge-clip vs too-dark split. */
+private fun wristClipped(w: Keypoint): Boolean =
+    w.x <= EDGE_MARGIN || w.x >= 1 - EDGE_MARGIN || w.y <= EDGE_MARGIN || w.y >= 1 - EDGE_MARGIN
+
 // Post-completion auto-reset countdown length (#97, 6a-12). Kept in lockstep with
 // iOS's `PreviewViewModel.autoResetCountdownSeconds` (no parity vector needed — a
 // view affordance, like the ~450 ms drill flash clear).
@@ -980,6 +1102,30 @@ private fun targetSpoken(target: Char?): String =
         target == ' ' -> "Space"
         else -> target.toString()
     }
+
+/**
+ * The framing/visibility hint banner (#112, 6a-18): a small amber banner above the
+ * hero that says why an arm isn't reading and what to do, so the Learn self-signer
+ * self-corrects rather than guesses. Plain prose, so TalkBack reads it as-is;
+ * deliberately not an auto-announcing live region this pass (parity with the readout's
+ * #92 choice — a follow-up if testers want it spoken). The iOS twin is
+ * `ContentView.poseHintBanner`.
+ */
+@Composable
+private fun PoseHintBanner(message: String, modifier: Modifier = Modifier) {
+    Text(
+        message,
+        color = Color.Black,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        textAlign = TextAlign.Center,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(numeralsAccent.copy(alpha = 0.92f), RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
+}
 
 /**
  * The user-facing NUMERALS mode pill (#103, 6a-14): a small amber capsule shown just
