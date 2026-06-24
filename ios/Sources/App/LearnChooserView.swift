@@ -168,6 +168,11 @@ struct CustomPassageView: View {
             Text(
                 "Numbers are turned off. The digits in this passage can’t be signed — "
                 + "turn on “Enable numerals” in Settings to drill them.")
+                // A multi-line Text beside the icon in an HStack otherwise truncates to
+                // one ellipsised line instead of wrapping; pin its vertical size to the
+                // ideal so it grows downward (Android's plain full-width Text wraps for
+                // free, hence the platform divergence Brad caught).
+                .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)
         .foregroundStyle(.yellow)
