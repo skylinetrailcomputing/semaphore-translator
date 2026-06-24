@@ -40,6 +40,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skylinetrailcomputing.semaphore
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Home-screen name parity with Android's "Semaphore Translator" label
+        # (the bare target name would otherwise read "SemaphoreTranslator").
+        INFOPLIST_KEY_CFBundleDisplayName: Semaphore Translator
+        # Export-compliance declaration: the app is fully on-device/offline and
+        # makes no network calls, so it uses no non-exempt encryption. Declaring
+        # this NO skips the per-build "Provide Export Compliance Information"
+        # prompt that otherwise gates every TestFlight build.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "NO"
         # Portrait-locked, iPhone-only (#130). The pose pipeline is portrait-pinned
         # by construction (PoseCaptureSession/CameraPreviewView pin the capture +
         # preview rotation to 90°; the adapter mirror + y-flip and every
