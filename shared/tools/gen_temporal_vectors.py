@@ -170,10 +170,13 @@ WOBBLE = 5  # indeterminate off-octant frames *within* a held letter; post-#40 t
 REST_REARM = 5  # a brief REST that re-arms the same-symbol gate but does NOT commit
 # a space -- its voted-candidate dwell lands in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS).
 # This is the LEARN value (hold=600). REST_REARM is the ONE authored count that
-# forks: COMMIT_HOLD_MS is the UPPER bound of that re-arm window, so the Interpret
-# profile's lower hold (400) narrows the window and 5 frames would instead cross
-# 400ms and commit a SPACE (-> "L L", not "LL"). 4 frames keep the voted-candidate
-# dwell strictly < 400ms, so they still re-arm without spacing (ADR 0009).
+# forks: COMMIT_HOLD_MS is the UPPER bound of that re-arm window. At this cadence the
+# voted-candidate REST dwell steps 200/300/400ms for 3/4/5 brief-REST frames (the
+# trailing held "L" truncates the exit flush, so it's the raw count, not 600ms, that
+# sets the peak). The Interpret hold (350) gives the window [200, 350): it admits the
+# 4-frame dwell (300ms -> re-arm -> "LL") but excludes the 5-frame dwell (400ms >= 350
+# -> SPACE -> "L L"). Learn's window [200, 600) admits the 5-frame dwell too, so Learn
+# doubles on 5 frames and Interpret on 4 -- the one authored count that forks (ADR 0009).
 REST_REARM_INTERPRET = 4
 REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a space
 
@@ -193,7 +196,7 @@ REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a 
 # using ">" instead of ">=", or a wrong exit-flush assumption, fails it). Like
 # ADR 0004 Decision 2, the dwell keys off the VOTED candidate, not raw frames --
 # mirror that from this reference. Both bounds are unaffected by the Interpret
-# hold (400): INTER_CHAR_GAP_MS is shared, so the 2/3-frame boundary holds for
+# hold (350): INTER_CHAR_GAP_MS is shared, so the 2/3-frame boundary holds for
 # both profiles (ADR 0009).
 REST_GAP_TOO_SHORT = 2  # -> single commit ("L")
 REST_GAP_MIN_REARM = 3  # -> re-commit ("LL")
@@ -390,7 +393,7 @@ def build_profile(profile, dest_name, rest_rearm):
 
     # 7. (interpret only) the discriminating boundary: a REST_REARM-LEARN (5)-frame
     #    brief rest -- the dwell that re-arms (doubles) under the Learn 600ms hold --
-    #    instead CROSSES this profile's 400ms hold and commits a SPACE, so the same
+    #    instead CROSSES this profile's 350ms hold and commits a SPACE, so the same
     #    input that gives 'LL' under Learn gives 'L L' here. This proves the fork is a
     #    real contract difference (not just self-consistent): a port that ignored the
     #    Interpret COMMIT_HOLD_MS (kept 600) would emit 'LL' and fail this assertion.
@@ -493,11 +496,20 @@ PROFILES = [
     ("interpret", "temporal_vectors_interpret.json", REST_REARM_INTERPRET),
 ]
 
-for profile, dest_name, rest_rearm in PROFILES:
-    seqs = build_profile(profile, dest_name, rest_rearm)
-    n_frames = sum(len(s["frames"]) for s in seqs)
-    print(f"wrote shared/{dest_name}  (profile: {profile})")
-    print(f"  sequence_vectors: {len(seqs)} ({n_frames} frames total)")
-    for s in seqs:
-        print(f"    {s['name']}: {len(s['frames'])} frames -> {s['expected_committed']!r}")
-    print("  all sequences re-run through the reference committer and asserted OK")
+def main():
+    for profile, dest_name, rest_rearm in PROFILES:
+        seqs = build_profile(profile, dest_name, rest_rearm)
+        n_frames = sum(len(s["frames"]) for s in seqs)
+        print(f"wrote shared/{dest_name}  (profile: {profile})")
+        print(f"  sequence_vectors: {len(seqs)} ({n_frames} frames total)")
+        for s in seqs:
+            print(f"    {s['name']}: {len(s['frames'])} frames -> {s['expected_committed']!r}")
+        print("  all sequences re-run through the reference committer and asserted OK")
+
+
+# Guarded so the canonical Committer / authoring constants can be imported without
+# regenerating (and overwriting) the fixture files -- the #76 tuning harness
+# (tune_interpret_timing.py) imports Committer from here. Running the module still
+# regenerates byte-identically (verified by `git diff --exit-code`, ADR 0009).
+if __name__ == "__main__":
+    main()
