@@ -49,10 +49,21 @@ actor PoseCaptureSession {
     nonisolated(unsafe) let session = AVCaptureSession()
     private let videoQueue = DispatchQueue(label: "com.skylinetrailcomputing.semaphore.capture")
     private var handler: PoseSampleHandler?
+    /// The active capture device, retained so Interpret's pinch-to-zoom can drive
+    /// `videoZoomFactor` after `start()`. `nil` until a session is configured.
+    private var device: AVCaptureDevice?
 
     /// Portrait. The analysis connection is rotated by this so the buffer Vision
     /// receives is upright, matching `CameraPreviewView.previewRotationAngle`.
     static let portraitRotationAngle: CGFloat = 90
+
+    /// Hard cap on Interpret pinch-zoom (the rear-lens read of a distant signer).
+    /// This is *digital* zoom on the wide-angle lens, so past a modest factor the
+    /// crop just softens; more to the point, a tight crop pushes the signer's wide
+    /// semaphore wingspan out of frame — the exact #101 friction the pose model
+    /// already fights — so zoom is kept deliberately small. In lockstep with
+    /// Android's `MAX_ZOOM_RATIO`.
+    static let maxZoomFactor: CGFloat = 3.0
 
     /// Configure the capture pipeline for `cameraPosition` (front by default) and
     /// start streaming adapted poses. The stream finishes when its consuming task
@@ -75,6 +86,7 @@ actor PoseCaptureSession {
             let camera = AVCaptureDevice.default(
                 .builtInWideAngleCamera, for: .video, position: cameraPosition)
         else { throw CaptureError.noCamera }
+        self.device = camera
 
         let input = try AVCaptureDeviceInput(device: camera)
         guard session.canAddInput(input) else { throw CaptureError.cannotAddInput }
@@ -121,6 +133,12 @@ actor PoseCaptureSession {
         }
         session.commitConfiguration()
 
+        // Start every session un-zoomed so the preview's pinch handler — which tracks
+        // zoom from a 1.0 base — stays in sync with the device across a teardown and
+        // restart (the device is the shared singleton, whose `videoZoomFactor`
+        // persists). A no-op on the front lens, which never zooms.
+        setZoom(factor: 1.0)
+
         continuation.onTermination = { [weak self] _ in
             Task { await self?.stop() }
         }
@@ -161,6 +179,27 @@ actor PoseCaptureSession {
         let capped = fourByThree.filter { width($0) <= 1920 }
         return capped.max { width($0) < width($1) }
             ?? fourByThree.min { width($0) < width($1) }
+    }
+
+    /// Set the live zoom for Interpret's pinch-to-zoom (rear lens). Clamped to
+    /// `1.0…maxZoomFactor` and to the device's own ceiling. Zoom is a uniform
+    /// center-crop, so it changes only the field of view: the analysis buffer the
+    /// adapter sees is still normalized, and the decode rests on joint *angles*,
+    /// which a uniform crop+scale preserves — so nothing downstream of capture is
+    /// affected (the mirror stays quarantined in `VisionPoseAdapter`). A no-op until
+    /// `start()` has acquired a device.
+    func setZoom(factor: CGFloat) {
+        guard let device else { return }
+        let ceiling = min(Self.maxZoomFactor, device.maxAvailableVideoZoomFactor)
+        let clamped = max(1.0, min(factor, ceiling))
+        do {
+            try device.lockForConfiguration()
+            device.videoZoomFactor = clamped
+            device.unlockForConfiguration()
+        } catch {
+            // A transient configuration-lock failure just skips this zoom step; the
+            // next pinch delta will try again.
+        }
     }
 }
 
