@@ -105,6 +105,12 @@ private fun MainNavHost() {
     var showNumeralsIndicator by remember {
         mutableStateOf(AppSettings.showNumeralsIndicator(context))
     }
+    // Learn numerals on/off (#127) hoisted alongside the others: one source of truth
+    // feeds the Settings toggle, the front-lens decode gate (LEARN/DRILL only), and the
+    // Learn passage surfaces (custom warn / sight-read disable), reactive in-session and
+    // persisted. INTERPRET deliberately does NOT receive it (it always decodes a real
+    // signer's digits). The iOS twin is `@AppStorage("allowNumerals")`.
+    var allowNumerals by remember { mutableStateOf(AppSettings.allowNumerals(context)) }
     // Framing-hint banner on/off (6a-18 #112, polish 6a-20 #125) hoisted alongside the
     // others: one source of truth feeds the Settings toggle and every Learn camera
     // screen, reactive in-session and persisted. The iOS twin is
@@ -162,6 +168,7 @@ private fun MainNavHost() {
                     showNumeralsIndicator = showNumeralsIndicator,
                     showFramingHint = showFramingHint,
                     autoResetOnComplete = autoResetOnComplete,
+                    allowNumerals = allowNumerals,
                 )
                 BackButton(
                     onClick = { navController.popBackStack() },
@@ -174,6 +181,7 @@ private fun MainNavHost() {
             // the target string up before navigating into the drill. The iOS twin is
             // `CustomPassageView`.
             CustomPassageScreen(
+                allowNumerals = allowNumerals,
                 onStart = { targets ->
                     drillTargets = targets
                     navController.navigate(Route.DRILL)
@@ -185,6 +193,7 @@ private fun MainNavHost() {
             // Sight-read source (6a-3, #71): pick a bundled passage by its hint; its
             // sanitised text becomes the drill targets. The iOS twin is `StockPassageView`.
             StockPassageScreen(
+                allowNumerals = allowNumerals,
                 onStart = { targets ->
                     drillTargets = targets
                     navController.navigate(Route.DRILL)
@@ -215,6 +224,7 @@ private fun MainNavHost() {
                         // drill, so it's threaded only here, not to LEARN/INTERPRET.
                         matchedOnlyReadout = matchedOnlyReadout,
                         autoResetOnComplete = autoResetOnComplete,
+                        allowNumerals = allowNumerals,
                     )
                     BackButton(
                         onClick = { navController.popBackStack() },
@@ -255,6 +265,11 @@ private fun MainNavHost() {
                 onShowAssistChange = {
                     showAssist = it
                     AppSettings.setShowAssist(context, it)
+                },
+                allowNumerals = allowNumerals,
+                onAllowNumeralsChange = {
+                    allowNumerals = it
+                    AppSettings.setAllowNumerals(context, it)
                 },
                 showNumeralsIndicator = showNumeralsIndicator,
                 onShowNumeralsIndicatorChange = {

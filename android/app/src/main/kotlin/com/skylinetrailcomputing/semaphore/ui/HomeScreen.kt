@@ -21,10 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -98,16 +100,29 @@ fun HomeScreen(
  * `HomeView`'s `ModePill`.
  */
 @Composable
-internal fun ModePill(title: String, subtitle: String, onClick: () -> Unit) {
+internal fun ModePill(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
     Row(
         Modifier
             .fillMaxWidth()
+            // Dimmed + non-actionable when disabled — the Learn sight-read picker (#127)
+            // uses this for a number passage while numerals are off. Default `true`
+            // keeps every existing call site unchanged.
+            .alpha(if (enabled) 1f else 0.4f)
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.12f))
-            .clickable(onClick = onClick)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
             // Merge title + subtitle into one Button node so TalkBack reads the pill
-            // as a single control; the decorative "›" is cleared below (#92).
-            .semantics(mergeDescendants = true) { role = Role.Button }
+            // as a single control; the decorative "›" is cleared below (#92). A disabled
+            // pill announces as such.
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                if (!enabled) disabled()
+            }
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -116,11 +131,13 @@ internal fun ModePill(title: String, subtitle: String, onClick: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text(subtitle, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
         }
-        Text(
-            "›",
-            color = Color.White.copy(alpha = 0.4f),
-            fontSize = 22.sp,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
+        if (enabled) {
+            Text(
+                "›",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 22.sp,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
+        }
     }
 }

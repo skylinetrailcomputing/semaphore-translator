@@ -16,6 +16,7 @@ object AppSettings {
     private const val PREFS = "semaphore.settings"
     private const val KEY_DEVELOPER_MODE = "developer_mode"
     private const val KEY_SHOW_ASSIST = "show_assist_figure"
+    private const val KEY_ALLOW_NUMERALS = "allow_numerals"
     private const val KEY_SHOW_NUMERALS_INDICATOR = "show_numerals_indicator"
     private const val KEY_SHOW_FRAMING_HINT = "show_framing_hint"
     private const val KEY_MATCHED_ONLY_READOUT = "drill_matched_only_readout"
@@ -40,6 +41,21 @@ object AppSettings {
 
     fun setShowAssist(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SHOW_ASSIST, enabled).apply()
+    }
+
+    /**
+     * Whether signing may switch into numeric mode in Learn (#127). Default ON. When
+     * OFF, the front-lens decode gate (`SemaphoreScreen`'s `suppressNumerals` +
+     * [com.skylinetrailcomputing.semaphore.core.NumeralsGate]) drops the NUMERALS pose,
+     * the sight-read picker disables number passages, and the type-a-passage screen
+     * warns. Interpret (rear lens) ignores this — it always decodes a real signer's
+     * digits. The iOS twin is `@AppStorage("allowNumerals")`.
+     */
+    fun allowNumerals(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ALLOW_NUMERALS, true)
+
+    fun setAllowNumerals(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_ALLOW_NUMERALS, enabled).apply()
     }
 
     /**

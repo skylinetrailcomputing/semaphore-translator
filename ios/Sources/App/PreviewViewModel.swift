@@ -117,6 +117,13 @@ final class PreviewViewModel: ObservableObject {
     /// path unchanged); Interpret passes `.back` for the rear lens (#56). Lens
     /// selection only — the mirror stays quarantined in the adapter (spec §3.2).
     private let cameraPosition: AVCaptureDevice.Position
+    /// Whether a classified `NUMERALS` pose is suppressed before the committer (#127),
+    /// so the user can practise letters without ever switching into numeric mode. Seeded
+    /// once at construction from the persisted "Enable numerals" setting, gated to the
+    /// front lens: Learn honours the toggle, Interpret (rear) always decodes numerals so
+    /// a real signer's digits aren't mis-read. The VM is rebuilt per screen entry, so a
+    /// Settings flip takes effect on the next entry (same lifetime as `cameraPosition`).
+    private let suppressNumerals: Bool
     /// Whether the preview is mirrored for display, derived from the lens (#57).
     /// Front uses the selfie mirror (the signer sees themselves naturally); the
     /// rear lens must not (you're watching someone else). Drives the preview's
@@ -209,6 +216,13 @@ final class PreviewViewModel: ObservableObject {
     init(cameraPosition: AVCaptureDevice.Position = .front, drillTargets: String? = nil) {
         self.cameraPosition = cameraPosition
         self.drillTargets = drillTargets
+        // Learn-only numerals gate (#127): suppress the numeric-mode switch only on the
+        // front lens (Learn) and only when the setting is off. Read directly from
+        // `UserDefaults` (not `@AppStorage`, which the view owns) with a `true` default,
+        // so an unset key reads as enabled. The gate proper lives in `NumeralsGate`.
+        let allowNumerals =
+            UserDefaults.standard.object(forKey: AppSettingsKeys.allowNumerals) as? Bool ?? true
+        self.suppressNumerals = (cameraPosition == .front) && !allowNumerals
         if let drillTargets {
             let session = DrillSession(targets: drillTargets)
             self.drill = session
@@ -418,7 +432,10 @@ final class PreviewViewModel: ObservableObject {
 
         // Temporal path: classify the mode-independent pose, then let the committer
         // smooth/hold/debounce it. A non-empty return is a committed letter/digit/space.
-        let symbol = decoder.classify(kp)
+        // The numerals gate (#127) drops a NUMERALS pose to indeterminate when the
+        // Learn "Enable numerals" setting is off (front lens only), so the committer
+        // never enters numeric mode; identity otherwise.
+        let symbol = NumeralsGate.gate(decoder.classify(kp), suppress: suppressNumerals)
         let emitted = committer.process(symbol, at: frame.tMs)
         if !emitted.isEmpty {
             // Coalesce spaces into the readout buffer: no leading space, no two in a

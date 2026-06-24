@@ -60,4 +60,13 @@ object PassageSource {
         }
         return out.toString()
     }
+
+    /**
+     * Whether a (already-sanitised) passage contains a digit target -- the signal the
+     * Learn surfaces use to honour the "Enable numerals" setting (#127): when numerals
+     * are OFF, a sight-read passage with a digit is non-selectable and a typed passage
+     * with a digit warns. Sanitised output is pure ASCII `A-Z 0-9 SPACE`, so a plain
+     * `0-9` check is exact. Kept in lockstep with iOS's `PassageSource.containsDigit`.
+     */
+    fun containsDigit(sanitized: String): Boolean = sanitized.any { it in '0'..'9' }
 }

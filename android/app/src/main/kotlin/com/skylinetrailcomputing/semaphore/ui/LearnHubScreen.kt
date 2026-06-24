@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skylinetrailcomputing.semaphore.core.PassageSource
 
+// Amber used for the numerals-off warning + sight-read disabled note (#127); readable
+// on the black Learn surfaces. In lockstep with iOS's yellow warning tint.
+private val numeralsWarning = Color(0xFFFFD54F)
+
 /**
  * The Learn source picker ([6a], #71). The "Sign / Learn" pill lands here and
  * offers three front-camera surfaces: **free practice** (sign anything, watch the
@@ -97,6 +101,7 @@ fun LearnHubScreen(
  */
 @Composable
 fun CustomPassageScreen(
+    allowNumerals: Boolean,
     onStart: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -151,6 +156,12 @@ fun CustomPassageScreen(
                     ),
             )
             PreviewCard(sanitized, withinCap)
+            // Non-blocking warning (#127): when numerals are off and the typed passage
+            // contains a digit, warn but keep Start enabled (per the product call) — the
+            // digit can't be signed with numerals off, so the drill would stall on it.
+            if (!allowNumerals && PassageSource.containsDigit(sanitized)) {
+                NumeralsOffWarning()
+            }
             StartButton(canStart) { onStart(sanitized) }
         }
         BackButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart))
@@ -203,6 +214,25 @@ private fun PreviewCard(sanitized: String, withinCap: Boolean) {
     }
 }
 
+/**
+ * The numerals-off warning (#127): a non-blocking amber notice shown when the typed
+ * passage contains a digit while numerals are turned off. Plain prose so TalkBack
+ * reads it as-is; in lockstep with iOS's `CustomPassageView.numeralsOffWarning`.
+ */
+@Composable
+private fun NumeralsOffWarning() {
+    Text(
+        "Numbers are turned off. The digits in this passage can’t be signed — turn on " +
+            "“Enable numerals” in Settings to drill them.",
+        color = numeralsWarning,
+        fontSize = 13.sp,
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(numeralsWarning.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .padding(16.dp),
+    )
+}
+
 @Composable
 private fun StartButton(enabled: Boolean, onClick: () -> Unit) {
     Box(
@@ -239,6 +269,7 @@ private fun StartButton(enabled: Boolean, onClick: () -> Unit) {
  */
 @Composable
 fun StockPassageScreen(
+    allowNumerals: Boolean,
     onStart: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -286,11 +317,38 @@ fun StockPassageScreen(
                 )
                 for (passage in passages) {
                     val targets = PassageSource.sanitize(passage.text)
-                    ModePill(
-                        title = passage.hint,
-                        subtitle = "${targets.length} steps",
-                        onClick = { onStart(targets) },
-                    )
+                    // Disable a number passage while numerals are off (#127): the digits
+                    // can't be signed, so it would be an unwinnable drill.
+                    val blocked = !allowNumerals && PassageSource.containsDigit(targets)
+                    if (blocked) {
+                        // Fuse the dimmed pill + its note into ONE TalkBack node — parity
+                        // with iOS's `disabledPassagePill` accessibilityElement — so the
+                        // disabled passage and *why* read as a single focus stop, not two.
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.semantics(mergeDescendants = true) {},
+                        ) {
+                            ModePill(
+                                title = passage.hint,
+                                subtitle = "${targets.length} steps",
+                                onClick = {},
+                                enabled = false,
+                            )
+                            Text(
+                                "Contains numbers — turn on “Enable numerals” in Settings " +
+                                    "to drill this.",
+                                color = numeralsWarning.copy(alpha = 0.85f),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                        }
+                    } else {
+                        ModePill(
+                            title = passage.hint,
+                            subtitle = "${targets.length} steps",
+                            onClick = { onStart(targets) },
+                        )
+                    }
                 }
             }
         }

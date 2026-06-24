@@ -52,4 +52,14 @@ enum PassageSource {
         }
         return String(out)
     }
+
+    /// Whether a (already-sanitised) passage contains a digit target — the signal the
+    /// Learn surfaces use to honour the "Enable numerals" setting (#127): when
+    /// numerals are OFF, a sight-read passage with a digit is non-selectable and a
+    /// typed passage with a digit warns. Sanitised output is pure ASCII `A–Z 0–9
+    /// SPACE`, so a plain `0–9` scalar check is exact (no Unicode-numeric surprises).
+    /// Kept in lockstep with Android's `PassageSource.containsDigit`.
+    static func containsDigit(_ sanitized: String) -> Bool {
+        sanitized.unicodeScalars.contains { $0.value >= 0x30 && $0.value <= 0x39 }
+    }
 }
