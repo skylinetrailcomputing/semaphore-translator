@@ -42,6 +42,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -186,6 +187,11 @@ private fun CameraScreen(
         return
     }
 
+    // Interpret runs on the rear lens; Learn on the front. The facing-away toggle +
+    // its decode-site flip are gated to the rear (ADR 0011, #78), so the Learn path
+    // can never apply the flip.
+    val isRear = cameraLens.lensFacing == CameraSelector.LENS_FACING_BACK
+
     val capture = remember { PoseCaptureSession(context) }
     // The bound camera, surfaced by the capture session once `bindToLifecycle` runs,
     // so the Interpret pinch-to-zoom gesture can reach its `CameraControl`. Null until
@@ -204,6 +210,14 @@ private fun CameraScreen(
     // Hoisted out of PreviewState so the clear button can reset it independently of
     // the per-frame state; persists across a watchdog reset() like iOS's.
     var committedText by remember { mutableStateOf("") }
+    // Interpret facing-away (ADR 0011, #78): when on, the post-adapter keypoints are
+    // re-mirrored once before decode so a signer whose back is to the camera (a
+    // lifeguard facing the water) reads as the letter they mean, not its mirror twin.
+    // Default off (facing-us); session-local (not persisted — a flag that silently
+    // survived would read normal signers as twins) and rear-lens only (the toggle in
+    // the Box below renders only when `isRear`). The iOS twin is
+    // `PreviewViewModel.facingAway`.
+    var facingAway by remember { mutableStateOf(false) }
 
     // Drill engine (6a-1, ADR 0007) for a passage-drill screen, or null for
     // free-form Learn/Interpret. Strictly downstream of the committer: it observes
@@ -312,7 +326,14 @@ private fun CameraScreen(
             // distinct from `frame.tMs` (the frame-aligned committer clock, #34) the
             // committer consumes below.
             lastFrameAt = System.currentTimeMillis()
-            val kp = frame.keypoints
+            // Interpret facing-away (ADR 0011, #78): re-mirror the post-adapter
+            // keypoints once before decode for a back-facing signer, cancelling the
+            // adapter's signer's-perspective mirror (net-zero) so the true letter is
+            // read instead of its mirror twin. Gated to the rear lens AND the toggle,
+            // so the Learn (front) path can never apply it; identity when off.
+            // Everything downstream — classify, commit, the published state, the
+            // overlay, the probe — uses this single (possibly-flipped) kp.
+            val kp = if (isRear && facingAway) frame.keypoints.mirroredHorizontally() else frame.keypoints
 
             // Temporal path: classify the mode-independent pose, then let the
             // committer smooth/hold/debounce it. A non-empty return is a committed
@@ -517,6 +538,20 @@ private fun CameraScreen(
                 showClear = drill == null,
             )
             if (developerMode) Readout(state)
+        }
+        // Interpret facing-away toggle (#78, ADR 0011), pinned top-end — rear lens
+        // only, and Interpret is never a drill, so the top area is clear of the drill
+        // card and the centered "no signer" capsule. Toggling resets the committer at
+        // the orientation boundary (the iOS twin is `toggleFacingAway()`).
+        if (isRear) {
+            FacingAwayToggle(
+                facingAway = facingAway,
+                onToggle = {
+                    facingAway = !facingAway
+                    committer.reset()
+                },
+                modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding().padding(16.dp),
+            )
         }
         if (drillUi?.complete == true) {
             CelebrationOverlay(
@@ -937,6 +972,44 @@ private fun NumeralsIndicator(modifier: Modifier = Modifier) {
                     contentDescription = "Numerals mode — the decoder is reading digits"
                 },
         color = Color.Black,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+    )
+}
+
+/**
+ * The Interpret-only (rear lens) facing-away toggle (#78, ADR 0011): flips the
+ * post-adapter keypoints once before decode so a signer whose back is to the camera
+ * (a lifeguard facing the water) reads as the letter they mean, not its mirror twin.
+ * Default off (facing-us); tinted amber when on, so the non-default orientation is
+ * unmistakable (forgetting it on would read normal signers as twins). Rendered only
+ * on the rear lens. The iOS twin is `ContentView.facingAwayToggle`.
+ */
+@Composable
+private fun FacingAwayToggle(
+    facingAway: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = if (facingAway) numeralsAccent else Color.Black.copy(alpha = 0.55f)
+    val label = if (facingAway) "⇄  Facing away" else "⇄  Facing me"
+    Text(
+        label,
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(percent = 50))
+                .background(bg, RoundedCornerShape(percent = 50))
+                .clickable(onClick = onToggle)
+                .semantics {
+                    contentDescription =
+                        if (facingAway)
+                            "Signer orientation: facing away. Tap to switch to facing me."
+                        else
+                            "Signer orientation: facing me. Tap to switch to facing away, " +
+                                "for a signer whose back is to you."
+                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        color = if (facingAway) Color.Black else Color.White,
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
     )

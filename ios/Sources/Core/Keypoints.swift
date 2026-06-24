@@ -40,4 +40,29 @@ struct Keypoints: Sendable {
             rightWrist.x, rightWrist.y,
         ]
     }
+
+    /// The Interpret **facing-away** flip (ADR 0011): one horizontal mirror,
+    /// `x → 1 − x` per keypoint, `y` and `confidence` unchanged. Applied
+    /// **downstream of the adapter, at the decode call site**, only when the
+    /// Interpret facing-away toggle is on — a *separate, opt-in* re-mirror for a
+    /// signer whose back is to the camera (a lifeguard facing the water), never
+    /// the adapter's own (single, quarantined) mirror. It cancels that mirror for
+    /// a reversed signer (net-zero flips), so the true letter is read instead of
+    /// its mirror twin. The deliberate twin of the `mirrorBroken()` test helper —
+    /// same arithmetic, a correction here rather than a bug. Pure (no label swap:
+    /// the decoder's lookup is order-insensitive, §4.3); pinned across platforms
+    /// by `shared/facing_away_vectors.json`. The Kotlin twin is the same name.
+    func mirroredHorizontally() -> Keypoints {
+        func flip(_ k: Keypoint) -> Keypoint {
+            Keypoint(x: 1.0 - k.x, y: k.y, confidence: k.confidence)
+        }
+        return Keypoints(
+            leftShoulder: flip(leftShoulder),
+            leftElbow: flip(leftElbow),
+            leftWrist: flip(leftWrist),
+            rightShoulder: flip(rightShoulder),
+            rightElbow: flip(rightElbow),
+            rightWrist: flip(rightWrist)
+        )
+    }
 }

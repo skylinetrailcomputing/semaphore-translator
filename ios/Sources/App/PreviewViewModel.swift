@@ -82,6 +82,17 @@ final class PreviewViewModel: ObservableObject {
     /// length, where zoom buys nothing and a tight crop would only push the signer's
     /// own arms out of frame. Drives `CameraPreviewView.zoomEnabled`.
     var isZoomEnabled: Bool { cameraPosition == .back }
+    /// Whether the Interpret **facing-away** toggle (ADR 0011, #78) is offered —
+    /// rear lens only. Learn is front-lens self-signing (always facing-us), so the
+    /// control is hidden there and the flip below can never apply on that path.
+    var isFacingAwayAvailable: Bool { cameraPosition == .back }
+    /// Interpret facing-away state (ADR 0011): when on, the post-adapter keypoints
+    /// are re-mirrored once before decode so a signer whose back is to the camera
+    /// (a lifeguard facing the water) reads as the letter they mean, not its mirror
+    /// twin. Default off (facing-us); session-local (not persisted — a flag that
+    /// silently survived would read normal signers as twins). Toggled only via
+    /// `toggleFacingAway()`, which also resets the committer at the flip boundary.
+    @Published private(set) var facingAway = false
     private var decoder: SemaphoreDecoder?
     private var committer: Committer?
     /// Contract-derived assist-figure geometry (#73 / 6a-5, transition cues #100),
@@ -195,6 +206,18 @@ final class PreviewViewModel: ObservableObject {
     /// committer's internal state — just empties the displayed accumulation.
     func clearCommitted() {
         committedText = ""
+    }
+
+    /// Flip the Interpret facing-away orientation (ADR 0011, #78). Resets the
+    /// committer at the same instant: a flip changes which letter every in-flight
+    /// pose decodes to, so stale smoothing votes / a half-elapsed hold from the
+    /// previous orientation must not fire a spurious commit across the boundary —
+    /// the same hard reset a lens change does. No-op available on the front lens
+    /// (the control is hidden there), but guarded anyway.
+    func toggleFacingAway() {
+        guard isFacingAwayAvailable else { return }
+        facingAway.toggle()
+        committer?.reset()
     }
 
     /// The ordered assist filmstrip for the drill target at `index` (#73 / 6a-5 +
@@ -317,7 +340,17 @@ final class PreviewViewModel: ObservableObject {
         // distinct from `frame.tMs` (the frame-aligned committer clock, #34) the
         // committer consumes below.
         lastFrameAt = Date()
-        let kp = frame.keypoints
+        // Interpret facing-away (ADR 0011, #78): for a signer whose back is to the
+        // camera, re-mirror the post-adapter keypoints once before decode, cancelling
+        // the adapter's signer's-perspective mirror (net-zero) so the true letter is
+        // read instead of its mirror twin. Gated to the rear lens AND the toggle, so
+        // the Learn (front) path can never apply it; identity when off. Everything
+        // downstream — classify, commit, the published keypoints, the overlay, the
+        // probe — uses this single (possibly-flipped) `kp`, so what is decoded is what
+        // is shown.
+        let kp =
+            (cameraPosition == .back && facingAway)
+            ? frame.keypoints.mirroredHorizontally() : frame.keypoints
 
         // Temporal path: classify the mode-independent pose, then let the committer
         // smooth/hold/debounce it. A non-empty return is a committed letter/digit/space.
