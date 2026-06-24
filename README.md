@@ -14,21 +14,32 @@ classifier maps two arm angles to a character.
 
 ## Status
 
-Early scaffolding. The shared contract is frozen (Epic 1), and the
-**cross-platform parity harness is live** (Epic 2, #14): both the iOS
-(XCTest) and Android (JVM unit test) ports run `shared/test_vectors.json`
-through their decode path and assert identical results. Native projects
-exist for both platforms — see [`ios/README.md`](ios/README.md),
-[`android/README.md`](android/README.md), and
-[`docs/adr/0001-parity-harness-and-native-project-shape.md`](docs/adr/0001-parity-harness-and-native-project-shape.md).
-Camera, pose, and the adapter (Epic 3) are next.
+Beta-track. The full **camera → pose → adapter → decode → commit**
+pipeline ships on **both** platforms (Epics 1–5):
 
-- **Publisher:** Skyline Trail Computing LLC. Private repo for now.
+- The shared contract is frozen and verified (Epic 1).
+- The **cross-platform parity harness is live** (Epic 2, #14): both the
+  iOS (XCTest) and Android (JVM unit test) ports run
+  `shared/test_vectors.json` through their decode path and assert
+  identical results.
+- Capture, on-device pose estimation, and the per-platform adapter run
+  on each platform in lockstep (Epics 3–4).
+- The app opens to a no-camera home fork into two modes (Epic 5):
+  **Learn** (front camera, practice your own signing) and **Interpret**
+  (rear camera, read another signer).
+
+Current work (Epic 6) is release polish and the light Tier-A
+distribution/legal layer toward a closed friends-&-family beta on both
+app stores. Per-platform detail: [`ios/README.md`](ios/README.md),
+[`android/README.md`](android/README.md), and the architecture decision
+records in [`docs/adr/`](docs/adr/).
+
+- **Publisher:** Skyline Trail Computing LLC.
+- **License:** MIT — see [`LICENSE`](LICENSE).
 - **Distribution posture:** Tier A (free, on-device, no PII of
-  consequence, no injury surface) per the workspace
-  `closed-beta-fast-path.md`. The legal layer for a closed F&F beta is
-  light — a camera purpose string, a short on-device-only privacy note,
-  and a minimal EULA. See `DISTRO_CHECKLIST.md`.
+  consequence, no injury surface). The legal layer for a closed F&F beta
+  is light — a camera purpose string, a short on-device-only privacy
+  note, and a minimal EULA. See [`DISTRO_CHECKLIST.md`](DISTRO_CHECKLIST.md).
 
 ## Architecture
 

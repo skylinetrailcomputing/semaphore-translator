@@ -31,3 +31,14 @@ __pycache__/
 # NOTE: model/artifacts/ exported models (.mlmodel/.mlpackage, .tflite)
 # are intentionally NOT ignored — they are checked-in artifacts per
 # docs/semaphore-translator-spec.md §6.
+
+# Secrets, signing material, and maintainer-only docs — never commit.
+# The Android upload keystore lives OUTSIDE the repo tree; only a
+# git-ignored keystore.properties points at it (see CONTRIBUTING.md).
+.env
+.env.*
+!.env.example
+_private/
+keystore.properties
+*.jks
+*.keystore
