@@ -28,10 +28,17 @@ val copySharedContract by
         into(sharedContractAssets)
     }
 
-// The asset-merge step (mergeDebugAssets / mergeReleaseAssets) must wait for the
-// contract to be staged. Matched by name to avoid importing an AGP internal task
-// type across version bumps.
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }
+// Everything that reads the staged contract dir must wait for copySharedContract:
+// the asset-merge step (mergeDebugAssets / mergeReleaseAssets) AND the release
+// lint-vital model task, which lints the raw asset source set directly. Gradle 9
+// hard-fails the build (not just warns) on an undeclared dependency, and
+// lint-vital only runs on the release path — which is why the debug smoke never
+// surfaced it. Matched by name to avoid importing AGP-internal task types across
+// version bumps.
+tasks.matching {
+    (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        it.name.contains("lint", ignoreCase = true)
+}
     .configureEach { dependsOn(copySharedContract) }
 
 android {
