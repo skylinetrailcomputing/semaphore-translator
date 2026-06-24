@@ -110,11 +110,26 @@ def quantize(angle):
     return best_id if best <= TOL else None
 
 
-def arm_id(shoulder, wrist):
-    """Position id for one arm, or None if indeterminate (angle or confidence)."""
-    if shoulder[2] < MIN_CONF or wrist[2] < MIN_CONF:
+def arm_id(shoulder, elbow, wrist):
+    """Position id for one arm, or None if indeterminate.
+
+    The primary arm vector is shoulder->wrist. When the wrist is below the
+    confidence floor but the elbow is not, fall back to the collinear
+    shoulder->elbow vector (#111, lever C from the #101 diagnostic): semaphore
+    arms are held straight, so the two vectors share an angle, and the elbow is
+    the more proximal, lower-variance joint that survives the frame-clipping /
+    body-crossing that gates the wrist. The shoulder is the common origin for
+    both vectors, so a low-confidence shoulder is unrecoverable -> indeterminate,
+    as is a low wrist with no in-frame elbow proxy."""
+    if shoulder[2] < MIN_CONF:
         return None
-    angle = math.degrees(math.atan2(wrist[1] - shoulder[1], wrist[0] - shoulder[0]))
+    if wrist[2] >= MIN_CONF:
+        tip = wrist
+    elif elbow[2] >= MIN_CONF:
+        tip = elbow
+    else:
+        return None
+    angle = math.degrees(math.atan2(tip[1] - shoulder[1], tip[0] - shoulder[0]))
     return quantize(angle)
 
 
@@ -123,8 +138,8 @@ def classify(kp):
 
     Returns (left_id, right_id, symbol); symbol is a letter / NUMERALS / REST, or
     None when either arm is indeterminate."""
-    left = arm_id(kp["left_shoulder"], kp["left_wrist"])
-    right = arm_id(kp["right_shoulder"], kp["right_wrist"])
+    left = arm_id(kp["left_shoulder"], kp["left_elbow"], kp["left_wrist"])
+    right = arm_id(kp["right_shoulder"], kp["right_elbow"], kp["right_wrist"])
     sym = None
     if left is not None and right is not None:
         sym = LOOKUP.get(tuple(sorted((left, right))))
@@ -177,20 +192,40 @@ def make_kp(
     right_wrist_conf=1.0,
     left_shoulder_conf=1.0,
     right_shoulder_conf=1.0,
+    left_elbow_conf=1.0,
+    right_elbow_conf=1.0,
+    left_elbow_angle=None,
+    right_elbow_angle=None,
 ):
-    """Six keypoints placing each arm at its octant angle (or an override)."""
+    """Six keypoints placing each arm at its octant angle (or an override).
+
+    The elbow sits at the shoulder->wrist midpoint, so by default it is collinear
+    with the wrist and shares the arm's octant angle -- which is what makes the
+    #111 elbow fallback exact on these fixtures. Drop *_elbow_conf alongside
+    *_wrist_conf to model a pose where neither the wrist nor its proxy is in frame
+    (the fallback then declines). Set *_elbow_angle to bend the elbow OFF the arm
+    line (ADR 0012, Decision 2): a bent arm whose wrist is sub-floor resolves to
+    the elbow's octant, not the wrist's -- the accepted straight-arm-prior tradeoff."""
     la = OCTANT[left_id] if left_angle is None else left_angle
     ra = OCTANT[right_id] if right_angle is None else right_angle
 
-    def arm(sh, angle, wrist_conf, shoulder_conf):
+    def arm(sh, angle, wrist_conf, shoulder_conf, elbow_conf, elbow_angle):
         th = math.radians(angle)
-        cos, sin = math.cos(th), math.sin(th)
-        elbow = [_rd(sh[0] + 0.5 * L_ARM * cos), _rd(sh[1] + 0.5 * L_ARM * sin), 1.0]
-        wrist = [_rd(sh[0] + L_ARM * cos), _rd(sh[1] + L_ARM * sin), wrist_conf]
+        eth = math.radians(angle if elbow_angle is None else elbow_angle)
+        elbow = [
+            _rd(sh[0] + 0.5 * L_ARM * math.cos(eth)),
+            _rd(sh[1] + 0.5 * L_ARM * math.sin(eth)),
+            elbow_conf,
+        ]
+        wrist = [_rd(sh[0] + L_ARM * math.cos(th)), _rd(sh[1] + L_ARM * math.sin(th)), wrist_conf]
         return [_rd(sh[0]), _rd(sh[1]), shoulder_conf], elbow, wrist
 
-    l_sh, l_el, l_wr = arm(L_SH, la, left_wrist_conf, left_shoulder_conf)
-    r_sh, r_el, r_wr = arm(R_SH, ra, right_wrist_conf, right_shoulder_conf)
+    l_sh, l_el, l_wr = arm(
+        L_SH, la, left_wrist_conf, left_shoulder_conf, left_elbow_conf, left_elbow_angle
+    )
+    r_sh, r_el, r_wr = arm(
+        R_SH, ra, right_wrist_conf, right_shoulder_conf, right_elbow_conf, right_elbow_angle
+    )
     return {
         "left_shoulder": l_sh,
         "left_elbow": l_el,

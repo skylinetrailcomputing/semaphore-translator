@@ -32,7 +32,7 @@
   "confidence_gate": {
     "constant": "MIN_KEYPOINT_CONFIDENCE",
     "source": "semaphore_config.json",
-    "rule": "An arm is indeterminate if its shoulder OR wrist confidence is below MIN_KEYPOINT_CONFIDENCE (spec 4.3). The adapter only PASSES confidence through; the floor is applied downstream in feature extraction, identically on both platforms. Confidence on the elbow is carried for completeness but does not gate (only shoulder + wrist define the arm vector)."
+    "rule": "An arm's position is read from the shoulder->wrist vector (spec 4.2). The shoulder is the common origin, so an arm is indeterminate if its shoulder confidence is below MIN_KEYPOINT_CONFIDENCE. Otherwise the wrist defines the vector when its confidence is at/above the floor; when the wrist is below the floor but the elbow is at/above it, the collinear shoulder->elbow vector is used as a fallback (ADR 0012 / #111: semaphore arms are held straight, so the elbow is an in-frame proxy for a clipped wrist); if neither wrist nor elbow clears the floor the arm is indeterminate (spec 4.3). The adapter only PASSES confidence through; the floor is applied downstream in feature extraction, identically on both platforms."
   },
 
   "model_input_order": {

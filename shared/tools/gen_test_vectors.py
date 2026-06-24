@@ -33,6 +33,7 @@ from _semaphore_ref import (  # the single Python reference both generators shar
     LETTERS,
     MIN_CONF,
     NUMERALS,
+    OCTANT,
     REST,
     SHARED,
     TOL,
@@ -155,10 +156,13 @@ emit, got = add_single(
 assert emit == "" and got[1] is None, ("indeterminate_angle", emit, got)
 emit, got = add_single(
     "indeterminate_low_wrist",
-    make_kp(2, 4, right_wrist_conf=0.3),  # valid octant, but wrist below the floor
+    make_kp(2, 4, right_wrist_conf=0.3, right_elbow_conf=0.3),  # wrist AND elbow gone
     "LETTERS",
-    f"Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE ({MIN_CONF}): that "
-    "arm is indeterminate despite a valid octant geometry, no emit.",
+    f"Right wrist AND elbow both 0.3 < MIN_KEYPOINT_CONFIDENCE ({MIN_CONF}): with "
+    "no in-frame proxy the shoulder->elbow fallback (#111) has nothing to fall back "
+    "to, so the arm is indeterminate, no emit. (The elbow is dropped too here on "
+    "purpose -- with it in frame this exact pose resolves; see "
+    "fallback_low_wrist_high_elbow below.)",
 )
 assert emit == "" and got[1] is None, ("indeterminate_low_wrist", emit, got)
 emit, got = add_single(
@@ -169,6 +173,47 @@ emit, got = add_single(
     "shoulder gate (mirror of the wrist case) marks that arm indeterminate, no emit.",
 )
 assert emit == "" and got[1] is None, ("indeterminate_low_shoulder", emit, got)
+
+# 3b. elbow-assisted fallback (#111, lever C). A clipped/low-confidence wrist with
+# the elbow still in frame resolves via the collinear shoulder->elbow vector
+# instead of going indeterminate. These poses are exactly the indeterminate cases
+# above minus the elbow drop, so they prove the new branch fires -- on either arm,
+# identically on both platforms (parity), without touching any high-wrist row.
+emit, got = add_single(
+    "fallback_low_wrist_high_elbow",
+    make_kp(2, 4, right_wrist_conf=0.3),  # right wrist below floor, elbow at 1.0
+    "LETTERS",
+    f"Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE ({MIN_CONF}) but the "
+    "elbow is in frame: the straight-arm shoulder->elbow fallback (#111) resolves "
+    "the right arm to id 4, so (2,4) decodes 'P' instead of indeterminate.",
+)
+assert emit == "P" and got == [2, 4], ("fallback_low_wrist_high_elbow", emit, got)
+emit, got = add_single(
+    "fallback_left_arm_low_wrist",
+    make_kp(2, 4, left_wrist_conf=0.3),  # mirror on the LEFT arm
+    "LETTERS",
+    "Mirror of the above on the LEFT arm: left wrist 0.3 < floor, left elbow in "
+    "frame -> shoulder->elbow fallback resolves the left arm to id 2; (2,4) still "
+    "decodes 'P'. Proves the fallback is symmetric across arms.",
+)
+assert emit == "P" and got == [2, 4], ("fallback_left_arm_low_wrist", emit, got)
+# The accepted straight-arm-prior tradeoff (ADR 0012, Decision 2), pinned as a
+# regression-visible vector: the right wrist is sub-floor at id 4 (up), but the
+# elbow is BENT to id 3 (up-right). With no trustworthy wrist angle the fallback
+# trusts the in-frame elbow, so the arm resolves to the elbow's octant (id 3), NOT
+# the true wrist direction (id 4) -- a confident "wrong" id where the old code
+# returned indeterminate. For a held-straight arm the two coincide; this documents
+# what a bent arm does, so the behaviour can't drift silently.
+emit, got = add_single(
+    "fallback_bent_arm_uses_elbow_octant",
+    make_kp(2, 4, right_wrist_conf=0.3, right_elbow_angle=OCTANT[3]),
+    "LETTERS",
+    "ADR 0012 Decision-2 tradeoff: right wrist low-conf at id 4 (up) but the elbow "
+    "is bent to id 3 (up-right). The shoulder->elbow fallback resolves the right arm "
+    "to the ELBOW's octant id 3, not the wrist's id 4 -- the bent-arm false positive "
+    "the straight-arm prior accepts. A straight semaphore arm makes the two coincide.",
+)
+assert got == [2, 3], ("fallback_bent_arm_uses_elbow_octant", got)
 
 # 4. sequences exercising both numeric-mode transitions (spec 4.5)
 run_sequence(
@@ -298,10 +343,12 @@ dest.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
 
 n_swapped = sum(1 for v in single_pose_vectors if v["name"].endswith("_arm_swapped"))
 n_indet = sum(1 for v in single_pose_vectors if v["name"].startswith("indeterminate"))
+n_fallback = sum(1 for v in single_pose_vectors if v["name"].startswith("fallback"))
 print(f"wrote {dest.relative_to(SHARED.parent)}")
 print(
     f"  single_pose_vectors: {len(single_pose_vectors)} "
-    f"(A-Z + NUMERALS + REST, {n_swapped} arm-swapped, {n_indet} indeterminate)"
+    f"(A-Z + NUMERALS + REST, {n_swapped} arm-swapped, {n_indet} indeterminate, "
+    f"{n_fallback} elbow-fallback)"
 )
 print(
     f"  sequence_vectors: {len(sequence_vectors)} "
