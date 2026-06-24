@@ -1,7 +1,10 @@
 # semaphore-translator
 
-_(One-paragraph project description. See `README.md` and
-`CONTRIBUTING.md` for project-level context and contribution flow.)_
+A free, on-device app — native **iOS (Swift)** and **Android
+(Kotlin)** — that reads flag-semaphore arm positions from the device
+camera and decodes them to text. One signer, one frame, on-device,
+offline. See `README.md` and `CONTRIBUTING.md` for project-level
+context and the contribution flow.
 
 ## Stack
 
@@ -33,8 +36,23 @@ regenerate those fixtures; it is not required to build or test either app.
 
 ## Repo conventions
 
-- _(License, commit-message style, pre-commit hygiene, branch
-  protection — things that apply to anyone contributing.)_
+- **Public OSS repo, MIT-licensed** (see `LICENSE`), copyright Skyline
+  Trail Computing LLC. Never commit secrets, credentials, keystores, or
+  `keystore.properties` — the `.gitignore` blocks the common shapes, but
+  the rule is yours to keep.
+- **Conventional Commits** for messages (`feat:`, `fix:`, `docs:`,
+  `refactor:`, `chore:`, `test:`); see `CONTRIBUTING.md`.
+- **The cross-platform parity test is the gate.** Any change to the
+  decode path must keep `shared/test_vectors.json` passing identically on
+  both platforms (iOS XCTest + Android JVM unit test). The shared
+  contract (`shared/*.json`) is frozen — both apps load it verbatim; the
+  per-platform adapter is the only place allowed to know about
+  platform-specific skeletons, coordinate origins, or the camera mirror.
+- **ADRs** in `docs/adr/` record non-obvious architectural choices
+  (see the existing 0001–0014). Dated, not edited after landing.
+- **Branch protection on `main`:** PR required before merge, no
+  force-push or branch deletion; secret scanning + push protection are
+  enabled at the repo level.
 
 ## Maintainer-side Claude Code context
 
