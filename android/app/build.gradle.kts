@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     // Compose compiler plugin, applied on top of AGP 9's built-in Kotlin (its
@@ -41,6 +43,20 @@ tasks.matching {
 }
     .configureEach { dependsOn(copySharedContract) }
 
+// Release signing (#84). Read from a gitignored `keystore.properties` at the
+// android/ root (template: keystore.properties.example). Guarded so its absence
+// is non-fatal: CI and outside contributors build debug with no keystore, and a
+// release build with no keystore is simply unsigned (still exercises the full
+// release graph — incl. lint-vital — which the #132 AAB break taught us debug
+// smokes skip).
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps =
+    Properties().apply {
+        if (keystorePropsFile.exists()) {
+            keystorePropsFile.inputStream().use { load(it) }
+        }
+    }
+
 android {
     namespace = "com.skylinetrailcomputing.semaphore"
     // CameraX 1.6.x compiles against API 36; targetSdk stays 35 (compile-only
@@ -62,6 +78,28 @@ android {
     }
 
     buildFeatures { compose = true }
+
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Beta posture: keep R8/resource shrinking OFF for the F&F beta to
+            // avoid ML Kit / CameraX keep-rule surprises. Revisit pre-wide-release.
+            isMinifyEnabled = false
+            // null when no keystore.properties ⇒ unsigned release (build still
+            // verifies; you just can't upload it until the keystore exists).
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
 
     sourceSets {
         // The shipping app loads the frozen contract from these staged assets at
