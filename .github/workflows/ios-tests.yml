@@ -15,12 +15,25 @@ permissions:
 
 jobs:
   ios-tests:
-    runs-on: macos-latest
+    runs-on: macos-15
     defaults:
       run:
         working-directory: ios
     steps:
       - uses: actions/checkout@v4
+
+      # The project's AVCaptureSession actor-isolation workaround
+      # (nonisolated(unsafe)) compiles on Swift 6.2+; older Xcodes reject
+      # it. Pin to the toolchain the app is developed against (Xcode 26).
+      - name: Show available Xcodes
+        run: ls /Applications | grep -i Xcode || true
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26'
+
+      - name: Show selected Xcode
+        run: xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
