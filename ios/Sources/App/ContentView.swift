@@ -136,10 +136,48 @@ struct ContentView: View {
                 if developerMode { readout }
             }
             .padding()
+            // Interpret facing-away toggle (#78, ADR 0011), pinned top-trailing —
+            // rear lens only, and Interpret is never a drill, so the top area is
+            // clear of the drill card and the centered "no signer" capsule.
+            if model.isFacingAwayAvailable {
+                VStack {
+                    HStack {
+                        Spacer()
+                        facingAwayToggle
+                    }
+                    Spacer()
+                }
+                .padding()
+            }
             if isDrill, let hud = model.drillHUD, hud.complete {
                 celebrationOverlay
             }
         }
+    }
+
+    /// The Interpret-only (rear lens) facing-away toggle (#78, ADR 0011): flips the
+    /// post-adapter keypoints once before decode so a signer whose back is to the
+    /// camera (a lifeguard facing the water) reads as the letter they mean, not its
+    /// mirror twin. Default off (facing-us); tinted amber when on, so the non-default
+    /// orientation is unmistakable (forgetting it on would read normal signers as
+    /// twins). Hidden on the Learn (front) lens. The Android twin is `FacingAwayToggle`.
+    private var facingAwayToggle: some View {
+        Button(action: { model.toggleFacingAway() }) {
+            Label(
+                model.facingAway ? "Facing away" : "Facing me",
+                systemImage: "arrow.left.arrow.right"
+            )
+            .font(.caption.bold())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                model.facingAway ? Color.orange : Color.black.opacity(0.55), in: Capsule()
+            )
+            .foregroundStyle(model.facingAway ? .black : .white)
+        }
+        .accessibilityLabel("Signer orientation")
+        .accessibilityValue(model.facingAway ? "Facing away" : "Facing me")
+        .accessibilityHint("Turn on when reading a signer whose back is to you")
     }
 
     /// The drill HUD hero (6a-2, #70): the letter to sign next, a progress bar

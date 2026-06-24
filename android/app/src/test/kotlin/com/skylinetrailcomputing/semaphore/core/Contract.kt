@@ -99,6 +99,30 @@ data class TestVectors(
     @SerializedName("sequence_vectors") val sequenceVectors: List<SequenceVector>,
 )
 
+// --- facing_away_vectors.json (ADR 0011; the Interpret facing-away parity fixtures) ---
+
+// One decode branch of a facing-away vector: the expected emit + white-box ids.
+// `mode_after` is documentation only (Gson ignores it); the single-frame harness
+// checks emit + ids.
+data class FacingAwayBranch(
+    val expected: String,
+    @SerializedName("expected_position_ids") val expectedPositionIds: List<Int?>,
+)
+
+// One facing-away vector: a canonical post-adapter pose decoded both as-is
+// (`facingUs`, the toggle off -- the identity) and after the shipping
+// `mirroredHorizontally()` flip (`facingAway`, the toggle on -> the pose's mirror
+// twin). The harness runs the *production* flip, so this pins it, not a reimpl.
+data class FacingAwayVector(
+    val name: String,
+    val keypoints: Map<String, List<Double>>,
+    @SerializedName("mode_before") val modeBefore: String,
+    @SerializedName("facing_us") val facingUs: FacingAwayBranch,
+    @SerializedName("facing_away") val facingAway: FacingAwayBranch,
+)
+
+data class FacingAwayVectors(val vectors: List<FacingAwayVector>)
+
 // --- temporal_vectors.json (ADR 0004; the committer parity fixtures) ---
 
 // A pose frame carries `keypoints` + `expectedSymbol`; a reset frame carries

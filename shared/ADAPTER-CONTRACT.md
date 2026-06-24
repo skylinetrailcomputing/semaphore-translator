@@ -132,6 +132,17 @@ either: the adapter passes raw confidence through, and feature extraction marks
 an arm indeterminate when its shoulder or wrist falls below the floor (§4.3),
 identically on both platforms.
 
+> **The Interpret facing-away flip is not an exception to this** (ADR 0011). A
+> back-facing signer (a lifeguard facing the water) is read by an opt-in,
+> default-off Interpret toggle that applies one extra horizontal flip
+> (`Keypoints.mirroredHorizontally()`, `x → 1 − x`) **downstream of the adapter,
+> at the decode call site** — a *separate, named, identity-when-off* transform,
+> not a second adapter mirror. The adapter still mirrors **exactly once**; this
+> flip cancels that mirror for a reversed signer (net-zero), and is pinned by its
+> own parity fixture (`facing_away_vectors.json`) precisely because chirality is
+> the highest-blast-radius seam. The rule above — the *adapter's* mirror happens
+> once and nowhere else — is unchanged.
+
 ---
 
 ## 5. Per-platform mapping guidance
