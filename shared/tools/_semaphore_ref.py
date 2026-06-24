@@ -38,6 +38,11 @@ COMMIT_HOLD_MS = CONFIG["COMMIT_HOLD_MS"]
 SMOOTHING_WINDOW = CONFIG["SMOOTHING_WINDOW"]
 INTER_CHAR_GAP_MS = CONFIG["INTER_CHAR_GAP_MS"]
 
+# Incumbent-candidate vote bonus that resists near-boundary octant flicker (ADR
+# 0013). Flat / non-forking (flicker is lens-independent), so it is shared by every
+# timing profile -- timing_for adds it unchanged regardless of the fork.
+CANDIDATE_STICKINESS = CONFIG["CANDIDATE_STICKINESS"]
+
 # Per-fork timing profiles (ADR 0009; used by gen_temporal_vectors.py). The flat
 # constants above are the implicit "learn" profile; each named entry under
 # timing_profiles fully specifies all three timing keys (never a delta). Selecting
@@ -61,6 +66,8 @@ def timing_for(profile=None):
         "smoothing_window": t["SMOOTHING_WINDOW"],
         "commit_hold_ms": t["COMMIT_HOLD_MS"],
         "inter_char_gap_ms": t["INTER_CHAR_GAP_MS"],
+        # Flat / non-forking (ADR 0013): every profile gets the same stickiness.
+        "candidate_stickiness": CANDIDATE_STICKINESS,
     }
 
 # id -> angle, read from the alphabet's position model (single source of truth)

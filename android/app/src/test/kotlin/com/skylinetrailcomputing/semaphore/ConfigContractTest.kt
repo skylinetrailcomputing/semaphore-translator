@@ -21,5 +21,6 @@ class ConfigContractTest {
         assertEquals(600.0, config.commitHoldMs, 0.0)
         assertEquals(5, config.smoothingWindow)
         assertEquals(200.0, config.interCharGapMs, 0.0)
+        assertEquals(2, config.candidateStickiness)
     }
 }

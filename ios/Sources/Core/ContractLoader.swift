@@ -117,16 +117,20 @@ enum ContractLoader {
             return CommitTiming(
                 smoothingWindow: config.smoothingWindow,
                 commitHoldMs: config.commitHoldMs,
-                interCharGapMs: config.interCharGapMs)
+                interCharGapMs: config.interCharGapMs,
+                candidateStickiness: config.candidateStickiness)
         }
         let config = try load(ProfilesConfig.self, "semaphore_config", bundle)
         guard let t = config.timingProfiles?[profile.rawValue] else {
             throw LoadError.missingTimingProfile(profile.rawValue)
         }
+        // CANDIDATE_STICKINESS is a flat, non-forking key (ADR 0013): read it from the
+        // top level, not the per-fork block, so every profile shares one value.
         return CommitTiming(
             smoothingWindow: t.smoothingWindow,
             commitHoldMs: t.commitHoldMs,
-            interCharGapMs: t.interCharGapMs)
+            interCharGapMs: t.interCharGapMs,
+            candidateStickiness: config.candidateStickiness)
     }
 
     private static func load<T: Decodable>(_ type: T.Type, _ name: String, _ bundle: Bundle) throws
@@ -212,12 +216,14 @@ enum ContractLoader {
         let commitHoldMs: Double
         let smoothingWindow: Int
         let interCharGapMs: Double
+        let candidateStickiness: Int
         enum CodingKeys: String, CodingKey {
             case angleToleranceDeg = "ANGLE_TOLERANCE_DEG"
             case minKeypointConfidence = "MIN_KEYPOINT_CONFIDENCE"
             case commitHoldMs = "COMMIT_HOLD_MS"
             case smoothingWindow = "SMOOTHING_WINDOW"
             case interCharGapMs = "INTER_CHAR_GAP_MS"
+            case candidateStickiness = "CANDIDATE_STICKINESS"
         }
     }
 
@@ -228,8 +234,12 @@ enum ContractLoader {
     /// never touch this, so a fork-block fault can't break them.
     private struct ProfilesConfig: Decodable {
         let timingProfiles: [String: ProfileTiming]?
+        /// The flat, non-forking CANDIDATE_STICKINESS (ADR 0013), read on the
+        /// non-Learn path so the forked profile still gets the shared stickiness.
+        let candidateStickiness: Int
         enum CodingKeys: String, CodingKey {
             case timingProfiles = "timing_profiles"
+            case candidateStickiness = "CANDIDATE_STICKINESS"
         }
     }
 }
@@ -248,4 +258,8 @@ struct CommitTiming: Equatable {
     /// commits a space instead. A distinct symbol commits on its hold alone
     /// (ADR 0005, superseding ADR 0004 Decision 3).
     let interCharGapMs: Double
+    /// Incumbent-candidate vote bonus that resists near-boundary octant flicker
+    /// (ADR 0013). Flat / non-forking — the same value rides every profile. `0`
+    /// reproduces the pre-ADR-0013 plain plurality.
+    let candidateStickiness: Int
 }

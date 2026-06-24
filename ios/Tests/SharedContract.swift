@@ -19,6 +19,10 @@ struct SemaphoreConfig: Decodable {
     let commitHoldMs: Double
     let smoothingWindow: Int
     let interCharGapMs: Double
+    /// Incumbent-candidate vote bonus that resists near-boundary octant flicker
+    /// (ADR 0013). Flat / non-forking — the same value rides every profile, so it
+    /// sits in the flat keys, not under `timing_profiles`.
+    let candidateStickiness: Int
     // The flat timing constants above are the Learn profile; this carries the
     // per-fork overrides (`timing_profiles`, ADR 0009). Independent from the
     // app-side `ContractLoader.Config`'s identically-shaped DTO — both parse the
@@ -32,6 +36,7 @@ struct SemaphoreConfig: Decodable {
         case commitHoldMs = "COMMIT_HOLD_MS"
         case smoothingWindow = "SMOOTHING_WINDOW"
         case interCharGapMs = "INTER_CHAR_GAP_MS"
+        case candidateStickiness = "CANDIDATE_STICKINESS"
         case timingProfiles = "timing_profiles"
     }
 }

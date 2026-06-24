@@ -56,16 +56,20 @@ fun referenceTiming(profile: TimingProfile = TimingProfile.LEARN): CommitTiming 
             smoothingWindow = config.smoothingWindow,
             commitHoldMs = config.commitHoldMs,
             interCharGapMs = config.interCharGapMs,
+            candidateStickiness = config.candidateStickiness,
         )
     }
     val t =
         requireNotNull(config.timingProfiles?.get(profile.jsonKey)) {
             "timing_profiles.${profile.jsonKey} missing from semaphore_config.json"
         }
+    // CANDIDATE_STICKINESS is flat / non-forking (ADR 0013) -- read it from the top
+    // level, not the per-fork block, so every profile shares one value.
     return CommitTiming(
         smoothingWindow = t.smoothingWindow,
         commitHoldMs = t.commitHoldMs,
         interCharGapMs = t.interCharGapMs,
+        candidateStickiness = config.candidateStickiness,
     )
 }
 

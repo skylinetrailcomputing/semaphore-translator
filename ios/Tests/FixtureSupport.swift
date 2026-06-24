@@ -51,16 +51,20 @@ func referenceTiming(profile: TimingProfile = .learn) throws -> CommitTiming {
         return CommitTiming(
             smoothingWindow: config.smoothingWindow,
             commitHoldMs: config.commitHoldMs,
-            interCharGapMs: config.interCharGapMs
+            interCharGapMs: config.interCharGapMs,
+            candidateStickiness: config.candidateStickiness
         )
     }
     let t = try XCTUnwrap(
         config.timingProfiles?[profile.rawValue],
         "timing_profiles.\(profile.rawValue) missing from semaphore_config.json")
+    // CANDIDATE_STICKINESS is flat / non-forking (ADR 0013) — read it from the top
+    // level, not the per-fork block, so every profile shares one value.
     return CommitTiming(
         smoothingWindow: t.smoothingWindow,
         commitHoldMs: t.commitHoldMs,
-        interCharGapMs: t.interCharGapMs
+        interCharGapMs: t.interCharGapMs,
+        candidateStickiness: config.candidateStickiness
     )
 }
 

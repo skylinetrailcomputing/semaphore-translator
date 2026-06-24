@@ -42,7 +42,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from _semaphore_ref import classify, timing_for  # canonical reference decoder + profiles
+from _semaphore_ref import (  # canonical reference decoder + profiles
+    CANDIDATE_STICKINESS,
+    classify,
+    timing_for,
+)
 from gen_temporal_vectors import Committer  # canonical reference committer (ADR 0004)
 
 GROUND_TRUTH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -99,7 +103,14 @@ def symbol_stream(frames, mirror):
 
 
 def decode(stream, *, window, hold, gap):
-    c = Committer(smoothing_window=window, commit_hold_ms=hold, inter_char_gap_ms=gap)
+    # Stickiness is flat / non-forking (ADR 0013), so the sweep over window/hold/gap
+    # holds it at the shared CANDIDATE_STICKINESS -- it is not a tuned axis here.
+    c = Committer(
+        smoothing_window=window,
+        commit_hold_ms=hold,
+        inter_char_gap_ms=gap,
+        candidate_stickiness=CANDIDATE_STICKINESS,
+    )
     return "".join(c.process(sym, t_ms) for t_ms, sym in stream)
 
 

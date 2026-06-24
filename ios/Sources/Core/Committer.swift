@@ -24,6 +24,9 @@ final class Committer {
     private let smoothingWindow: Int
     private let commitHoldMs: Double
     private let interCharGapMs: Double
+    /// Incumbent-candidate vote bonus that resists near-boundary octant flicker
+    /// (ADR 0013). 0 reproduces the prior plain plurality.
+    private let candidateStickiness: Int
 
     /// Ring buffer of the last `smoothingWindow` votable symbols (`nil` =
     /// indeterminate is a legitimate vote value).
@@ -53,6 +56,7 @@ final class Committer {
         self.smoothingWindow = timing.smoothingWindow
         self.commitHoldMs = timing.commitHoldMs
         self.interCharGapMs = timing.interCharGapMs
+        self.candidateStickiness = timing.candidateStickiness
         reset()
     }
 
@@ -128,12 +132,26 @@ final class Committer {
     /// partial window before it fills (sequence start / post-`reset`) so the first
     /// character is not committed `smoothingWindow − 1` frames late (ADR 0004
     /// Decision 2).
+    ///
+    /// The current candidate (the incumbent being timed) gets a `candidateStickiness`
+    /// vote bonus, so a transient adjacent-octant neighbor can't displace a held pose
+    /// (ADR 0013). Only a **determinate** incumbent (never `nil`) gets the bonus, so
+    /// leaving an indeterminate transition for a new pose is never slowed. Iterating
+    /// the window in order keeps the most-recent tie-break; with stickiness `0` this
+    /// reduces exactly to the prior plain plurality. Mirrors the reference `_vote`.
     private func vote() -> String? {
         var counts: [String?: Int] = [:]
         for value in window { counts[value, default: 0] += 1 }
-        let best = counts.values.max() ?? 0
+        let incumbent: String? = candidateSet ? candidate : nil
+        var bestEff = -1
         var winner: String?
-        for value in window where counts[value] == best { winner = value }
+        for value in window {
+            let eff = (counts[value] ?? 0) + (value != nil && value == incumbent ? candidateStickiness : 0)
+            if eff >= bestEff {
+                bestEff = eff
+                winner = value
+            }
+        }
         return winner
     }
 }
