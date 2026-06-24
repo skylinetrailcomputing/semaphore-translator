@@ -44,6 +44,7 @@ struct DisclaimerGateView: View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: "flag.2.crossed.fill")
                 .font(.system(size: 40))
+                .accessibilityHidden(true)
             Text(document.title)
                 .font(.title.bold())
         }
@@ -94,6 +95,7 @@ struct DisclaimerUnavailableView: View {
             VStack(spacing: 12) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 40))
+                    .accessibilityHidden(true)
                 Text("Couldn’t load the required notice.")
                     .font(.headline)
                 Text("This is a packaging error. Please reinstall the app.")

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -67,7 +69,16 @@ fun DeveloperSettingsScreen(
     ) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                // Row-level toggle so TalkBack reads the label + subtitle as the
+                // switch's label and announces on/off state; the Switch's own
+                // onCheckedChange is null and the row owns the action (#92).
+                Modifier.fillMaxWidth()
+                    .toggleable(
+                        value = developerMode,
+                        onValueChange = onDeveloperModeChange,
+                        role = Role.Switch,
+                    )
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -83,7 +94,7 @@ fun DeveloperSettingsScreen(
                 Spacer(Modifier.width(16.dp))
                 Switch(
                     checked = developerMode,
-                    onCheckedChange = onDeveloperModeChange,
+                    onCheckedChange = null,
                     colors =
                         SwitchDefaults.colors(
                             checkedThumbColor = Color.White,

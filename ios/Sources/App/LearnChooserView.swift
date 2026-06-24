@@ -13,38 +13,46 @@ struct LearnChooserView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Spacer()
-                NavigationLink {
-                    // Free-form Learn — the original surface, unchanged.
-                    ContentView()
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbarBackground(.hidden, for: .navigationBar)
-                } label: {
-                    ModePill(
-                        title: "Free practice",
-                        subtitle: "Sign anything — see the letters",
-                        systemImage: "hand.wave")
+            // Scroll + min-height: centered at normal text sizes, but grows and scrolls
+            // (rather than truncating the pill labels) at the largest Dynamic Type
+            // sizes (#92) — same idiom as HomeView.
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        Spacer(minLength: 0)
+                        NavigationLink {
+                            // Free-form Learn — the original surface, unchanged.
+                            ContentView()
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbarBackground(.hidden, for: .navigationBar)
+                        } label: {
+                            ModePill(
+                                title: "Free practice",
+                                subtitle: "Sign anything — see the letters",
+                                systemImage: "hand.wave")
+                        }
+                        NavigationLink {
+                            CustomPassageView()
+                        } label: {
+                            ModePill(
+                                title: "Type a passage",
+                                subtitle: "Drill your own words, letter by letter",
+                                systemImage: "keyboard")
+                        }
+                        NavigationLink {
+                            StockPassageView()
+                        } label: {
+                            ModePill(
+                                title: "Sight-read a passage",
+                                subtitle: "Drill a surprise passage you haven’t seen",
+                                systemImage: "book")
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(24)
+                    .frame(minHeight: proxy.size.height)
                 }
-                NavigationLink {
-                    CustomPassageView()
-                } label: {
-                    ModePill(
-                        title: "Type a passage",
-                        subtitle: "Drill your own words, letter by letter",
-                        systemImage: "keyboard")
-                }
-                NavigationLink {
-                    StockPassageView()
-                } label: {
-                    ModePill(
-                        title: "Sight-read a passage",
-                        subtitle: "Drill a surprise passage you haven’t seen",
-                        systemImage: "book")
-                }
-                Spacer()
             }
-            .padding(24)
         }
         .navigationTitle("Learn")
         .navigationBarTitleDisplayMode(.inline)
@@ -229,7 +237,7 @@ struct StockPassageView: View {
 
     private var unavailable: some View {
         VStack(spacing: 12) {
-            Image(systemName: "book.closed").font(.largeTitle)
+            Image(systemName: "book.closed").font(.largeTitle).accessibilityHidden(true)
             Text("Sight-read passages are unavailable.")
                 .font(.headline)
             Text("Try “Type a passage” instead.")

@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,8 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -130,21 +134,36 @@ private fun appVersionLine(context: Context): String =
 
 /**
  * A tappable link that opens [url] in the browser — cyan + underlined, the same
- * affordance as the disclaimer gate's links. Guarded so a device with no browser
- * fails silent (the docs are non-essential, hosted) rather than crashing.
+ * affordance as the disclaimer gate's links. Built as a Compose `LinkAnnotation`
+ * (1.7+) so TalkBack announces it as a **link** (#92, parity with iOS's `Link`).
+ * The `linkInteractionListener` keeps the guarded Intent (replaces the default
+ * UriHandler open) so a device with no browser fails silent — the docs are
+ * non-essential and hosted — rather than crashing.
  */
 @Composable
 private fun AboutLink(label: String, url: String) {
     val context = LocalContext.current
-    Text(
-        label,
-        color = Color(0xFF80DEEA),
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
-        textDecoration = TextDecoration.Underline,
-        modifier =
-            Modifier.clickable {
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-            },
-    )
+    val annotated =
+        buildAnnotatedString {
+            withLink(
+                LinkAnnotation.Url(
+                    url,
+                    styles =
+                        TextLinkStyles(
+                            SpanStyle(
+                                color = Color(0xFF80DEEA),
+                                textDecoration = TextDecoration.Underline,
+                            )
+                        ),
+                    linkInteractionListener = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                    },
+                )
+            ) {
+                append(label)
+            }
+        }
+    Text(annotated, fontSize = 15.sp, fontWeight = FontWeight.Medium)
 }

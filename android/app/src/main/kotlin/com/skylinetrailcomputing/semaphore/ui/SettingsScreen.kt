@@ -1,6 +1,9 @@
 package com.skylinetrailcomputing.semaphore.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -77,7 +84,17 @@ fun SettingsScreen(
             )
         },
     ) { innerPadding ->
-        Column(Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
+        // Scrollable so every row stays reachable at large Dynamic Type / Display
+        // sizes — at the biggest font scales the four toggle rows (with wrapping
+        // subtitles) push About/Developer off-screen in a fixed Column (#92,
+        // caught on-device at font_scale 1.5). iOS's `Form` scrolls inherently;
+        // this restores parity.
+        Column(
+            Modifier.fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
             // Assist & practice-mode + display toggles (6a-5 #73, 6a-14 #103) — the
             // primary regular-user content, above the nav rows.
             SettingsToggleRow(
@@ -147,7 +164,13 @@ private fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        // The whole row is the toggle target so TalkBack reads the title + subtitle as
+        // the switch's label and announces its on/off state — a bare Switch otherwise
+        // focuses separately from its label. The Switch's own onCheckedChange is null:
+        // the row owns the action (#92).
+        Modifier.fillMaxWidth()
+            .toggleable(value = checked, onValueChange = onCheckedChange, role = Role.Switch)
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -158,7 +181,7 @@ private fun SettingsToggleRow(
         Spacer(Modifier.width(16.dp))
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             colors =
                 SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
@@ -175,10 +198,18 @@ private fun SettingsToggleRow(
 @Composable
 private fun SettingsRow(label: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        Modifier.fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) { role = Role.Button }
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = Color.White, fontSize = 17.sp, modifier = Modifier.weight(1f))
-        Text("›", color = Color.White.copy(alpha = 0.4f), fontSize = 22.sp)
+        Text(
+            "›",
+            color = Color.White.copy(alpha = 0.4f),
+            fontSize = 22.sp,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
     }
 }
