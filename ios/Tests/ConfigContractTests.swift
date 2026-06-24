@@ -15,5 +15,6 @@ final class ConfigContractTests: XCTestCase {
         XCTAssertEqual(config.commitHoldMs, 600)
         XCTAssertEqual(config.smoothingWindow, 5)
         XCTAssertEqual(config.interCharGapMs, 200)
+        XCTAssertEqual(config.candidateStickiness, 2)
     }
 }

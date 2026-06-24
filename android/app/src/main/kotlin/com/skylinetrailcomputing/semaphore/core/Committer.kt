@@ -29,6 +29,12 @@ class Committer(
     private val commitHoldMs = timing.commitHoldMs
     private val interCharGapMs = timing.interCharGapMs
 
+    /**
+     * Incumbent-candidate vote bonus that resists near-boundary octant flicker
+     * (ADR 0013). 0 reproduces the prior plain plurality.
+     */
+    private val candidateStickiness = timing.candidateStickiness
+
     /** Ring buffer of the last [smoothingWindow] votable symbols (null = indeterminate is a vote value). */
     private val window = ArrayDeque<String?>()
 
@@ -143,13 +149,28 @@ class Committer(
      * partial window before it fills (sequence start / post-[reset]) so the first
      * character is not committed `smoothingWindow - 1` frames late (ADR 0004
      * Decision 2).
+     *
+     * The current candidate (the incumbent being timed) gets a [candidateStickiness]
+     * vote bonus, so a transient adjacent-octant neighbor can't displace a held pose
+     * (ADR 0013). Only a **determinate** incumbent (never null) gets the bonus, so
+     * leaving an indeterminate transition for a new pose is never slowed. Iterating
+     * the window in order keeps the most-recent tie-break; with stickiness 0 this
+     * reduces exactly to the prior plain plurality. Mirrors the reference `_vote`.
      */
     private fun vote(): String? {
         val counts = HashMap<String?, Int>()
         for (value in window) counts[value] = (counts[value] ?: 0) + 1
-        val best = counts.values.max()
+        val incumbent = if (candidateSet) candidate else null
+        var bestEff = -1
         var winner: String? = null
-        for (value in window) if (counts[value] == best) winner = value
+        for (value in window) {
+            val eff = (counts[value] ?: 0) +
+                if (value != null && value == incumbent) candidateStickiness else 0
+            if (eff >= bestEff) {
+                bestEff = eff
+                winner = value
+            }
+        }
         return winner
     }
 }

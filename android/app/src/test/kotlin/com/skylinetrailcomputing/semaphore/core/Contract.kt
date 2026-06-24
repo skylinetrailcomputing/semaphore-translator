@@ -20,6 +20,10 @@ data class SemaphoreConfig(
     @SerializedName("COMMIT_HOLD_MS") val commitHoldMs: Double,
     @SerializedName("SMOOTHING_WINDOW") val smoothingWindow: Int,
     @SerializedName("INTER_CHAR_GAP_MS") val interCharGapMs: Double,
+    // Incumbent-candidate vote bonus that resists near-boundary octant flicker
+    // (ADR 0013). Flat / non-forking -- the same value rides every profile, so it
+    // sits in the flat keys, not under timing_profiles.
+    @SerializedName("CANDIDATE_STICKINESS") val candidateStickiness: Int,
     // The flat timing constants above are the Learn profile; this carries the
     // per-fork overrides (`timing_profiles`, ADR 0009). Independent from the
     // app-side `ContractLoader`'s org.json parse -- both read the same bytes. The

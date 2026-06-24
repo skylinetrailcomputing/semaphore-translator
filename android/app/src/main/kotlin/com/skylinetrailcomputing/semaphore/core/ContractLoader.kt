@@ -15,11 +15,15 @@ import org.json.JSONObject
  *   symbol for re-commit (the double-letter separator); a REST held >=
  *   commitHoldMs commits a space instead, and a distinct symbol commits on its
  *   hold alone (ADR 0005, superseding ADR 0004 Decision 3).
+ * @param candidateStickiness incumbent-candidate vote bonus that resists
+ *   near-boundary octant flicker (ADR 0013); flat / non-forking, so the same value
+ *   rides every profile. 0 reproduces the prior plain plurality.
  */
 data class CommitTiming(
     val smoothingWindow: Int,
     val commitHoldMs: Double,
     val interCharGapMs: Double,
+    val candidateStickiness: Int,
 )
 
 /**
@@ -159,6 +163,7 @@ object ContractLoader {
                 smoothingWindow = config.getInt("SMOOTHING_WINDOW"),
                 commitHoldMs = config.getDouble("COMMIT_HOLD_MS"),
                 interCharGapMs = config.getDouble("INTER_CHAR_GAP_MS"),
+                candidateStickiness = config.getInt("CANDIDATE_STICKINESS"),
             )
         }
         val profiles =
@@ -167,10 +172,13 @@ object ContractLoader {
         val t =
             profiles.optJSONObject(profile.jsonKey)
                 ?: error("timing_profiles.${profile.jsonKey} missing from semaphore_config.json")
+        // CANDIDATE_STICKINESS is flat / non-forking (ADR 0013): read it from the top
+        // level, not the per-fork block, so every profile shares one value.
         return CommitTiming(
             smoothingWindow = t.getInt("SMOOTHING_WINDOW"),
             commitHoldMs = t.getDouble("COMMIT_HOLD_MS"),
             interCharGapMs = t.getDouble("INTER_CHAR_GAP_MS"),
+            candidateStickiness = config.getInt("CANDIDATE_STICKINESS"),
         )
     }
 

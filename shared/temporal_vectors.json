@@ -986,6 +986,495 @@
       "_note": "A commits once; a 2-frame B flicker never out-votes the held A (window of 5); holding A afterwards does not re-commit it."
     },
     {
+      "name": "incumbent_holds_through_neighbour_blip",
+      "mode_start": "LETTERS",
+      "frames": [
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 0,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 200,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 300,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.71,
+              0.55,
+              1.0
+            ],
+            "right_wrist": [
+              0.82,
+              0.55,
+              1.0
+            ]
+          },
+          "t_ms": 400,
+          "expected_symbol": "B",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 500,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 600,
+          "expected_symbol": "A",
+          "expected_emit": "A"
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 700,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 800,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 900,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1000,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1100,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.4,
+              0.44,
+              1.0
+            ],
+            "left_wrist": [
+              0.4,
+              0.33,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 1200,
+          "expected_symbol": "A",
+          "expected_emit": ""
+        }
+      ],
+      "expected_committed": "A",
+      "_note": "A is held 2 frames (the candidate), then a 3-frame B neighbour blip wins plain plurality (3 of the 5-frame window) but is out-voted by A's +CANDIDATE_STICKINESS incumbent bonus, so A stays the candidate and commits on its original hold (ADR 0013). Without the bonus the blip seizes the candidate and resets A's hold timer: under the Learn hold (600ms) A can't re-reach its hold before the sequence ends, so a stickiness-less port commits '' (not 'A'); under the faster Interpret hold (350ms) A eventually re-commits but on a LATER frame, which the per-frame expected_emit assertion (ADR 0004 Decision 5) still catches. Either way a port that dropped CANDIDATE_STICKINESS fails this vector. The bonus is given only to a DETERMINATE incumbent, so it never slows leaving an indeterminate transition (see coalesce_off_octant_wobble)."
+    },
+    {
       "name": "distinct_letters_stream",
       "mode_start": "LETTERS",
       "frames": [
@@ -1764,7 +2253,7 @@
           },
           "t_ms": 2000,
           "expected_symbol": "B",
-          "expected_emit": "B"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -1801,7 +2290,7 @@
           },
           "t_ms": 2100,
           "expected_symbol": "B",
-          "expected_emit": ""
+          "expected_emit": "B"
         },
         {
           "keypoints": {
@@ -2208,7 +2697,7 @@
           },
           "t_ms": 3200,
           "expected_symbol": "C",
-          "expected_emit": "C"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -2245,7 +2734,7 @@
           },
           "t_ms": 3300,
           "expected_symbol": "C",
-          "expected_emit": ""
+          "expected_emit": "C"
         },
         {
           "keypoints": {
@@ -3289,7 +3778,7 @@
           },
           "t_ms": 2500,
           "expected_symbol": "L",
-          "expected_emit": "L"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -3326,7 +3815,7 @@
           },
           "t_ms": 2600,
           "expected_symbol": "L",
-          "expected_emit": ""
+          "expected_emit": "L"
         },
         {
           "keypoints": {
@@ -3936,13 +4425,13 @@
               1.0
             ],
             "left_elbow": [
-              0.322218,
-              0.627782,
+              0.4,
+              0.44,
               1.0
             ],
             "left_wrist": [
-              0.244437,
-              0.705563,
+              0.4,
+              0.33,
               1.0
             ],
             "right_shoulder": [
@@ -3951,18 +4440,18 @@
               1.0
             ],
             "right_elbow": [
-              0.677782,
-              0.472218,
+              0.6,
+              0.44,
               1.0
             ],
             "right_wrist": [
-              0.755563,
-              0.394437,
+              0.6,
+              0.33,
               1.0
             ]
           },
           "t_ms": 1400,
-          "expected_symbol": "L",
+          "expected_symbol": "REST",
           "expected_emit": ""
         },
         {
@@ -4371,10 +4860,47 @@
           "t_ms": 2500,
           "expected_symbol": "L",
           "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2600,
+          "expected_symbol": "L",
+          "expected_emit": ""
         }
       ],
       "expected_committed": "L",
-      "_note": "A 2-frame REST does NOT re-arm: it never reaches plurality in the 5-frame window (2/5), so REST never becomes the voted candidate and the same-symbol gate never re-arms -> single 'L'. Paired with same_letter_rest_min_rearms this pins the boundary to one frame (this side guards the entry vote-flush)."
+      "_note": "A 3-frame REST does NOT re-arm: it tops out at 3/5 votes, which cannot overcome the held L incumbent's +CANDIDATE_STICKINESS bonus (ADR 0013), so REST never becomes the voted candidate and the same-symbol gate never re-arms -> single 'L'. Paired with same_letter_rest_min_rearms this pins the boundary to one frame (this side guards the stickiness-adjusted vote floor)."
     },
     {
       "name": "same_letter_rest_min_rearms",
@@ -4943,13 +5469,13 @@
               1.0
             ],
             "left_elbow": [
-              0.322218,
-              0.627782,
+              0.4,
+              0.44,
               1.0
             ],
             "left_wrist": [
-              0.244437,
-              0.705563,
+              0.4,
+              0.33,
               1.0
             ],
             "right_shoulder": [
@@ -4958,18 +5484,18 @@
               1.0
             ],
             "right_elbow": [
-              0.677782,
-              0.472218,
+              0.6,
+              0.44,
               1.0
             ],
             "right_wrist": [
-              0.755563,
-              0.394437,
+              0.6,
+              0.33,
               1.0
             ]
           },
           "t_ms": 1500,
-          "expected_symbol": "L",
+          "expected_symbol": "REST",
           "expected_emit": ""
         },
         {
@@ -5266,7 +5792,7 @@
           },
           "t_ms": 2300,
           "expected_symbol": "L",
-          "expected_emit": "L"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -5340,7 +5866,7 @@
           },
           "t_ms": 2500,
           "expected_symbol": "L",
-          "expected_emit": ""
+          "expected_emit": "L"
         },
         {
           "keypoints": {
@@ -5378,10 +5904,47 @@
           "t_ms": 2600,
           "expected_symbol": "L",
           "expected_emit": ""
+        },
+        {
+          "keypoints": {
+            "left_shoulder": [
+              0.4,
+              0.55,
+              1.0
+            ],
+            "left_elbow": [
+              0.322218,
+              0.627782,
+              1.0
+            ],
+            "left_wrist": [
+              0.244437,
+              0.705563,
+              1.0
+            ],
+            "right_shoulder": [
+              0.6,
+              0.55,
+              1.0
+            ],
+            "right_elbow": [
+              0.677782,
+              0.472218,
+              1.0
+            ],
+            "right_wrist": [
+              0.755563,
+              0.394437,
+              1.0
+            ]
+          },
+          "t_ms": 2700,
+          "expected_symbol": "L",
+          "expected_emit": ""
         }
       ],
       "expected_committed": "LL",
-      "_note": "One frame longer (3) is the minimal REST that DOES re-arm: REST wins the vote and its voted dwell (extended by exit window-flush) reaches exactly INTER_CHAR_GAP_MS -> 'LL'. Paired with same_letter_rest_too_short this pins the boundary to one frame (this side guards the dwell '>=' comparison)."
+      "_note": "One frame longer (4) is the minimal REST that DOES re-arm: REST reaches 4/5, overcomes the held L's +CANDIDATE_STICKINESS bonus to become the candidate, and its voted dwell (extended by the incumbent bias holding REST a few frames into the L-return, ADR 0013) reaches INTER_CHAR_GAP_MS -> 'LL'. Paired with same_letter_rest_too_short this pins the boundary to one frame (this side guards the dwell '>=' comparison)."
     },
     {
       "name": "coalesce_off_octant_wobble",
@@ -7243,7 +7806,7 @@
           },
           "t_ms": 2000,
           "expected_symbol": "REST",
-          "expected_emit": " "
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -7280,7 +7843,7 @@
           },
           "t_ms": 2100,
           "expected_symbol": "REST",
-          "expected_emit": ""
+          "expected_emit": " "
         },
         {
           "keypoints": {
@@ -7687,7 +8250,7 @@
           },
           "t_ms": 3200,
           "expected_symbol": "L",
-          "expected_emit": "L"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -7724,7 +8287,7 @@
           },
           "t_ms": 3300,
           "expected_symbol": "L",
-          "expected_emit": ""
+          "expected_emit": "L"
         },
         {
           "keypoints": {
@@ -8583,7 +9146,7 @@
           },
           "t_ms": 2000,
           "expected_symbol": "A",
-          "expected_emit": "1"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -8620,7 +9183,7 @@
           },
           "t_ms": 2100,
           "expected_symbol": "A",
-          "expected_emit": ""
+          "expected_emit": "1"
         },
         {
           "keypoints": {
@@ -9027,7 +9590,7 @@
           },
           "t_ms": 3200,
           "expected_symbol": "B",
-          "expected_emit": "2"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -9064,7 +9627,7 @@
           },
           "t_ms": 3300,
           "expected_symbol": "B",
-          "expected_emit": ""
+          "expected_emit": "2"
         },
         {
           "keypoints": {
@@ -9915,7 +10478,7 @@
           },
           "t_ms": 5600,
           "expected_symbol": "A",
-          "expected_emit": "A"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -9952,7 +10515,7 @@
           },
           "t_ms": 5700,
           "expected_symbol": "A",
-          "expected_emit": ""
+          "expected_emit": "A"
         },
         {
           "keypoints": {
@@ -10811,7 +11374,7 @@
           },
           "t_ms": 2000,
           "expected_symbol": "A",
-          "expected_emit": "1"
+          "expected_emit": ""
         },
         {
           "keypoints": {
@@ -10848,7 +11411,7 @@
           },
           "t_ms": 2100,
           "expected_symbol": "A",
-          "expected_emit": ""
+          "expected_emit": "1"
         },
         {
           "keypoints": {

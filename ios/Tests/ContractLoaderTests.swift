@@ -21,6 +21,7 @@ final class ContractLoaderTests: XCTestCase {
         XCTAssertEqual(timing.smoothingWindow, 5)
         XCTAssertEqual(timing.commitHoldMs, 600)
         XCTAssertEqual(timing.interCharGapMs, 200)
+        XCTAssertEqual(timing.candidateStickiness, 2)
     }
 
     /// The shipping decoder loader. Running every `single_pose_vectors` fixture

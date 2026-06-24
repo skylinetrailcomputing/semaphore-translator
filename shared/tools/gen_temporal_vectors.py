@@ -68,7 +68,12 @@ class Committer:
     State machine (ADR 0004):
       * Vote: a ring buffer of the last SMOOTHING_WINDOW votable pose symbols
         (None = indeterminate is a legitimate vote value). The candidate is the
-        plurality value; ties break to the most-recent occurrence.
+        plurality value; ties break to the most-recent occurrence. The incumbent
+        (the candidate currently being timed) gets a CANDIDATE_STICKINESS vote
+        bonus so a transient adjacent-octant neighbor can't displace a held pose
+        (ADR 0013); the bonus is given only to a DETERMINATE incumbent (never
+        None), so picking up a new pose from an indeterminate transition is never
+        slowed.
       * Commit: a determinate candidate held continuously for >= COMMIT_HOLD_MS
         (wall-clock) commits — run interpret(symbol, mode) for (emit, new mode).
         Mode therefore flips only on a *committed* control pose (debounced).
@@ -88,10 +93,11 @@ class Committer:
 
     _UNSET = object()  # sentinel distinct from every symbol, including None
 
-    def __init__(self, *, smoothing_window, commit_hold_ms, inter_char_gap_ms):
+    def __init__(self, *, smoothing_window, commit_hold_ms, inter_char_gap_ms, candidate_stickiness):
         self.n = smoothing_window
         self.hold = commit_hold_ms
         self.gap = inter_char_gap_ms
+        self.stickiness = candidate_stickiness
         self.reset()
 
     def reset(self):
@@ -106,15 +112,25 @@ class Committer:
 
     def _vote(self):
         """Plurality over the window; ties break to the most-recent occurrence.
-        None (indeterminate) is a legitimate vote value."""
+        None (indeterminate) is a legitimate vote value.
+
+        The current candidate (the incumbent being timed) gets a
+        CANDIDATE_STICKINESS vote bonus, so a transient adjacent-octant neighbor
+        cannot out-vote a held pose (ADR 0013). The bonus is applied per
+        most-recent-tie-break by iterating the window in order and keeping the
+        last value with the max *effective* count -- which, with stickiness 0,
+        reduces exactly to the prior plain-plurality vote. Only a DETERMINATE
+        incumbent gets the bonus (never None / _UNSET), so leaving an
+        indeterminate transition for a new pose is never slowed."""
         counts = {}
         for v in self.window:
             counts[v] = counts.get(v, 0) + 1
-        best = max(counts.values())
-        winner = None
-        for v in self.window:  # last value with the max count == most recent
-            if counts[v] == best:
-                winner = v
+        inc = self.candidate if self.candidate is not Committer._UNSET else None
+        best_eff, winner = -1, None
+        for v in self.window:  # window order -> ties resolve to the most-recent value
+            eff = counts[v] + (self.stickiness if (v is not None and v == inc) else 0)
+            if eff >= best_eff:
+                best_eff, winner = eff, v
         return winner
 
     def process(self, symbol, t_ms):
@@ -170,36 +186,44 @@ WOBBLE = 5  # indeterminate off-octant frames *within* a held letter; post-#40 t
 REST_REARM = 5  # a brief REST that re-arms the same-symbol gate but does NOT commit
 # a space -- its voted-candidate dwell lands in [INTER_CHAR_GAP_MS, COMMIT_HOLD_MS).
 # This is the LEARN value (hold=600). REST_REARM is the ONE authored count that
-# forks: COMMIT_HOLD_MS is the UPPER bound of that re-arm window. At this cadence the
-# voted-candidate REST dwell steps 200/300/400ms for 3/4/5 brief-REST frames (the
-# trailing held "L" truncates the exit flush, so it's the raw count, not 600ms, that
-# sets the peak). The Interpret hold (350) gives the window [200, 350): it admits the
-# 4-frame dwell (300ms -> re-arm -> "LL") but excludes the 5-frame dwell (400ms >= 350
-# -> SPACE -> "L L"). Learn's window [200, 600) admits the 5-frame dwell too, so Learn
-# doubles on 5 frames and Interpret on 4 -- the one authored count that forks (ADR 0009).
+# forks: COMMIT_HOLD_MS is the UPPER bound of that re-arm window. With
+# CANDIDATE_STICKINESS=2 (ADR 0013) the held "L" incumbent carries a +2 vote bonus,
+# so a brief REST must reach 4 in-window frames before it becomes the voted
+# candidate (see the boundary block below); the voted-candidate dwell then steps
+# 300/400ms for 4/5 brief-REST frames (the incumbent bias holds REST a few frames
+# into the L-return, and the trailing held "L" truncates the exit flush, so the raw
+# count -- not 600ms -- sets the peak). The Interpret hold (350) gives the window
+# [200, 350): it admits the 4-frame dwell (peak 300ms -> re-arm -> "LL") but excludes
+# the 5-frame dwell (peak 400ms >= 350 -> SPACE -> "L L"). Learn's window [200, 600)
+# admits the 5-frame dwell too, so Learn doubles on 5 frames and Interpret on 4 --
+# the one authored count that forks (ADR 0009). Stickiness shifted the internal
+# frame->dwell arithmetic by one frame but left these fork values (5 / 4) intact.
 REST_REARM_INTERPRET = 4
 REST_SPACE = HELD  # a sustained REST (voted dwell >= COMMIT_HOLD_MS) commits a space
 
 # Re-arm boundary, empirically pinned against the reference committer for the
-# frozen constants (WINDOW=5, HOLD=600, GAP=200, DT=100). At this cadence the
-# floor is set by the smoothing vote, not the gap: REST needs 3 frames to reach
-# plurality in a window of 5 before it can become the voted candidate at all, and
-# with GAP=200 that vote floor and the dwell threshold coincide --
-#   * REST_GAP_TOO_SHORT (2): REST never reaches plurality (2/5), so it never
-#     becomes the voted candidate and the gate never re-arms -> single "L".
-#   * REST_GAP_MIN_REARM (3): REST wins the vote, and its voted-candidate dwell
-#     (extended by exit window-flush, ADR 0004 Decision 2) reaches exactly
-#     INTER_CHAR_GAP_MS -> re-commit ("LL").
+# frozen constants (WINDOW=5, HOLD=600, GAP=200, DT=100, CANDIDATE_STICKINESS=2).
+# The floor is set by the smoothing vote, not the gap, and CANDIDATE_STICKINESS
+# (ADR 0013) raises it by one frame: the held "L" incumbent carries a +2 vote
+# bonus, so a brief REST must reach 4 in-window frames to overcome it (effREST 4 >
+# effL 1+2) before it can become the voted candidate at all -- one more than the
+# plain-plurality floor of 3 --
+#   * REST_GAP_TOO_SHORT (3): REST tops out at 3/5 (effREST 3 < effL 2+2=4), so it
+#     never becomes the voted candidate and the gate never re-arms -> single "L".
+#   * REST_GAP_MIN_REARM (4): REST reaches 4/5, overcomes the +2 incumbent bonus,
+#     becomes the candidate, and its voted-candidate dwell (extended by the
+#     incumbent bias holding REST a few frames into the L-return, ADR 0004
+#     Decision 2 + ADR 0013) reaches INTER_CHAR_GAP_MS -> re-commit ("LL").
 # The pair still pins the boundary to a single frame: the low side guards the
-# entry vote-flush (a port that lets REST win on 2/5 fails it), the high side
-# guards the dwell ">=" comparison landing exactly on INTER_CHAR_GAP_MS (a port
-# using ">" instead of ">=", or a wrong exit-flush assumption, fails it). Like
-# ADR 0004 Decision 2, the dwell keys off the VOTED candidate, not raw frames --
-# mirror that from this reference. Both bounds are unaffected by the Interpret
-# hold (350): INTER_CHAR_GAP_MS is shared, so the 2/3-frame boundary holds for
-# both profiles (ADR 0009).
-REST_GAP_TOO_SHORT = 2  # -> single commit ("L")
-REST_GAP_MIN_REARM = 3  # -> re-commit ("LL")
+# stickiness-adjusted vote floor (a port that forgot the +2 bonus and let REST win
+# on 3/5 fails it), the high side guards the dwell ">=" comparison (a port using
+# ">" instead of ">=", or a wrong exit-flush assumption, fails it). Like ADR 0004
+# Decision 2, the dwell keys off the VOTED candidate, not raw frames -- mirror that
+# from this reference. Both bounds are unaffected by the Interpret hold (350):
+# INTER_CHAR_GAP_MS and the (flat, non-forking) stickiness are shared, so the
+# 3/4-frame boundary holds for both profiles (ADR 0009 / ADR 0013).
+REST_GAP_TOO_SHORT = 3  # -> single commit ("L")
+REST_GAP_MIN_REARM = 4  # -> re-commit ("LL")
 
 # Both arms at 22.5deg sit exactly between octants 2 (0deg) and 3 (45deg), beyond
 # ANGLE_TOLERANCE_DEG from either: classify -> None. This is the "indeterminate"
@@ -288,6 +312,33 @@ def build_profile(profile, dest_name, rest_rearm):
         f"{window}); holding A afterwards does not re-commit it.",
     )
 
+    # 1a. candidate stickiness (ADR 0013, lever E from #101): a NEIGHBOUR blip long
+    #     enough to win plain plurality (3 of a 5-window) still does NOT displace the
+    #     held incumbent, because the incumbent carries a +CANDIDATE_STICKINESS vote
+    #     bonus. This is the near-boundary-flicker fix: an arm sitting ~20deg off an
+    #     octant edge flickers to an adjacent symbol for a few frames, and without
+    #     stickiness that flicker seizes the candidate and resets the incumbent's hold
+    #     timer. The blip starts after only 2 lead frames so it lands BEFORE the commit
+    #     fires under EITHER hold (Learn 600 / Interpret 350) -- so the vector
+    #     discriminates stickiness on both profiles, not just Learn (a 4-frame lead
+    #     would let the faster Interpret hold commit "A" before the blip mattered).
+    run(
+        "incumbent_holds_through_neighbour_blip",
+        [("A", 2), ("B", 3), ("A", 8)],
+        "A",
+        "A is held 2 frames (the candidate), then a 3-frame B neighbour blip wins "
+        f"plain plurality (3 of the {window}-frame window) but is out-voted by A's "
+        "+CANDIDATE_STICKINESS incumbent bonus, so A stays the candidate and commits "
+        "on its original hold (ADR 0013). Without the bonus the blip seizes the "
+        "candidate and resets A's hold timer: under the Learn hold (600ms) A can't "
+        "re-reach its hold before the sequence ends, so a stickiness-less port commits "
+        "'' (not 'A'); under the faster Interpret hold (350ms) A eventually re-commits "
+        "but on a LATER frame, which the per-frame expected_emit assertion (ADR 0004 "
+        "Decision 5) still catches. Either way a port that dropped CANDIDATE_STICKINESS "
+        "fails this vector. The bonus is given only to a DETERMINATE incumbent, so it "
+        "never slows leaving an indeterminate transition (see coalesce_off_octant_wobble).",
+    )
+
     # 2. distinct letters stream on their holds alone — no gap needed between them.
     run(
         "distinct_letters_stream",
@@ -322,20 +373,23 @@ def build_profile(profile, dest_name, rest_rearm):
         "same_letter_rest_too_short",
         [("L", HELD), ("REST", REST_GAP_TOO_SHORT), ("L", HELD)],
         "L",
-        f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: it never reaches plurality "
-        f"in the {window}-frame window ({REST_GAP_TOO_SHORT}/{window}), "
-        "so REST never becomes the voted candidate and the same-symbol gate never re-arms "
-        "-> single 'L'. Paired with same_letter_rest_min_rearms this pins the boundary to "
-        "one frame (this side guards the entry vote-flush).",
+        f"A {REST_GAP_TOO_SHORT}-frame REST does NOT re-arm: it tops out at "
+        f"{REST_GAP_TOO_SHORT}/{window} votes, which cannot overcome the held L "
+        "incumbent's +CANDIDATE_STICKINESS bonus (ADR 0013), so REST never becomes the "
+        "voted candidate and the same-symbol gate never re-arms -> single 'L'. Paired "
+        "with same_letter_rest_min_rearms this pins the boundary to one frame (this "
+        "side guards the stickiness-adjusted vote floor).",
     )
     run(
         "same_letter_rest_min_rearms",
         [("L", HELD), ("REST", REST_GAP_MIN_REARM), ("L", HELD)],
         "LL",
         f"One frame longer ({REST_GAP_MIN_REARM}) is the minimal REST that DOES re-arm: "
-        "REST wins the vote and its voted dwell (extended by exit window-flush) reaches "
-        "exactly INTER_CHAR_GAP_MS -> 'LL'. Paired with same_letter_rest_too_short this "
-        "pins the boundary to one frame (this side guards the dwell '>=' comparison).",
+        "REST reaches 4/5, overcomes the held L's +CANDIDATE_STICKINESS bonus to become "
+        "the candidate, and its voted dwell (extended by the incumbent bias holding REST "
+        "a few frames into the L-return, ADR 0013) reaches INTER_CHAR_GAP_MS -> 'LL'. "
+        "Paired with same_letter_rest_too_short this pins the boundary to one frame "
+        "(this side guards the dwell '>=' comparison).",
     )
 
     # 3c. coalesce: an indeterminate off-octant wobble *within* a held letter no longer
