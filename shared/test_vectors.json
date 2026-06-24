@@ -1486,7 +1486,7 @@
         "right_elbow": [
           0.6,
           0.66,
-          1.0
+          0.3
         ],
         "right_wrist": [
           0.6,
@@ -1500,7 +1500,7 @@
         2,
         null
       ],
-      "_note": "Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5): that arm is indeterminate despite a valid octant geometry, no emit."
+      "_note": "Right wrist AND elbow both 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5): with no in-frame proxy the shoulder->elbow fallback (#111) has nothing to fall back to, so the arm is indeterminate, no emit. (The elbow is dropped too here on purpose -- with it in frame this exact pose resolves; see fallback_low_wrist_high_elbow below.)"
     },
     {
       "name": "indeterminate_low_shoulder",
@@ -1543,6 +1543,132 @@
         null
       ],
       "_note": "Right shoulder confidence 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5): the shoulder gate (mirror of the wrist case) marks that arm indeterminate, no emit."
+    },
+    {
+      "name": "fallback_low_wrist_high_elbow",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          0.3
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "P",
+      "expected_position_ids": [
+        2,
+        4
+      ],
+      "_note": "Right wrist confidence 0.3 < MIN_KEYPOINT_CONFIDENCE (0.5) but the elbow is in frame: the straight-arm shoulder->elbow fallback (#111) resolves the right arm to id 4, so (2,4) decodes 'P' instead of indeterminate."
+    },
+    {
+      "name": "fallback_left_arm_low_wrist",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          0.3
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.6,
+          0.66,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          1.0
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "P",
+      "expected_position_ids": [
+        2,
+        4
+      ],
+      "_note": "Mirror of the above on the LEFT arm: left wrist 0.3 < floor, left elbow in frame -> shoulder->elbow fallback resolves the left arm to id 2; (2,4) still decodes 'P'. Proves the fallback is symmetric across arms."
+    },
+    {
+      "name": "fallback_bent_arm_uses_elbow_octant",
+      "keypoints": {
+        "left_shoulder": [
+          0.4,
+          0.55,
+          1.0
+        ],
+        "left_elbow": [
+          0.51,
+          0.55,
+          1.0
+        ],
+        "left_wrist": [
+          0.62,
+          0.55,
+          1.0
+        ],
+        "right_shoulder": [
+          0.6,
+          0.55,
+          1.0
+        ],
+        "right_elbow": [
+          0.677782,
+          0.627782,
+          1.0
+        ],
+        "right_wrist": [
+          0.6,
+          0.77,
+          0.3
+        ]
+      },
+      "mode_before": "LETTERS",
+      "expected": "O",
+      "expected_position_ids": [
+        2,
+        3
+      ],
+      "_note": "ADR 0012 Decision-2 tradeoff: right wrist low-conf at id 4 (up) but the elbow is bent to id 3 (up-right). The shoulder->elbow fallback resolves the right arm to the ELBOW's octant id 3, not the wrist's id 4 -- the bent-arm false positive the straight-arm prior accepts. A straight semaphore arm makes the two coincide."
     }
   ],
   "sequence_vectors": [

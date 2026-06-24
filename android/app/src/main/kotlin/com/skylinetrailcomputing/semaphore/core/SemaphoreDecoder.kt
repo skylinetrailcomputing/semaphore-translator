@@ -87,19 +87,33 @@ class SemaphoreDecoder(
     }
 
     /**
-     * Position id for one arm, or null if indeterminate (angle out of tolerance
-     * or a defining keypoint below the confidence floor). Only shoulder and
-     * wrist define the arm vector; the elbow does not gate.
+     * Position id for one arm, or null if indeterminate (angle out of tolerance,
+     * or no usable keypoint above the confidence floor).
+     *
+     * The primary arm vector is shoulder->wrist. When the wrist is below the
+     * floor but the elbow is not, fall back to the collinear shoulder->elbow
+     * vector (#111, lever C from the #101 diagnostic): semaphore arms are held
+     * straight, so the two share an angle, and the elbow is the more proximal,
+     * lower-variance joint that survives the frame-clipping / body-crossing that
+     * gates the wrist. The shoulder is the common origin for both vectors, so a
+     * low-confidence shoulder is unrecoverable -> null, as is a low wrist with no
+     * in-frame elbow proxy. Mirrors `arm_id` in the Python reference.
      */
-    private fun armId(shoulder: Keypoint, wrist: Keypoint): Int? {
-        if (shoulder.confidence < minConfidence || wrist.confidence < minConfidence) return null
-        val angle = Math.toDegrees(atan2(wrist.y - shoulder.y, wrist.x - shoulder.x))
+    private fun armId(shoulder: Keypoint, elbow: Keypoint, wrist: Keypoint): Int? {
+        if (shoulder.confidence < minConfidence) return null
+        val tip =
+            when {
+                wrist.confidence >= minConfidence -> wrist
+                elbow.confidence >= minConfidence -> elbow
+                else -> return null
+            }
+        val angle = Math.toDegrees(atan2(tip.y - shoulder.y, tip.x - shoulder.x))
         return quantize(angle)
     }
 
     private fun classifyArms(kp: Keypoints): Triple<Int?, Int?, String?> {
-        val left = armId(kp.leftShoulder, kp.leftWrist)
-        val right = armId(kp.rightShoulder, kp.rightWrist)
+        val left = armId(kp.leftShoulder, kp.leftElbow, kp.leftWrist)
+        val right = armId(kp.rightShoulder, kp.rightElbow, kp.rightWrist)
         val symbol = if (left != null && right != null) lookup[pairOf(left, right)] else null
         return Triple(left, right, symbol)
     }
