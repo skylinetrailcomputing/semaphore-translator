@@ -382,6 +382,44 @@ struct CommittedTextVectors: Decodable {
     let cases: [CommittedTextCase]
 }
 
+// MARK: - facing_away_vectors.json (ADR 0011; the Interpret facing-away parity fixtures)
+
+/// One decode branch of a facing-away vector: the expected emit + white-box ids.
+/// `mode_after` is documentation only (the single-frame harness checks emit + ids),
+/// so it is not modeled — Codable ignores it.
+struct FacingAwayBranch: Decodable {
+    let expected: String
+    let expectedPositionIds: [Int?]
+
+    enum CodingKeys: String, CodingKey {
+        case expected
+        case expectedPositionIds = "expected_position_ids"
+    }
+}
+
+/// One facing-away vector: a canonical post-adapter pose decoded both as-is
+/// (`facingUs`, the toggle off — the identity) and after the shipping
+/// `mirroredHorizontally()` flip (`facingAway`, the toggle on → the pose's mirror
+/// twin). The harness runs the *production* flip, so this pins it, not a reimpl.
+struct FacingAwayVector: Decodable {
+    let name: String
+    let keypoints: [String: [Double]]
+    let modeBefore: String
+    let facingUs: FacingAwayBranch
+    let facingAway: FacingAwayBranch
+
+    enum CodingKeys: String, CodingKey {
+        case name, keypoints
+        case modeBefore = "mode_before"
+        case facingUs = "facing_us"
+        case facingAway = "facing_away"
+    }
+}
+
+struct FacingAwayVectors: Decodable {
+    let vectors: [FacingAwayVector]
+}
+
 // MARK: - locating the shared contract
 
 /// Resolves the repo's `shared/` directory and loads the JSON contract files.
