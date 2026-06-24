@@ -13,8 +13,13 @@
         android:icon="@mipmap/ic_launcher"
         android:label="Semaphore Translator"
         android:theme="@style/Theme.SemaphoreTranslator">
+        <!-- Portrait-locked (#130) to match iOS and the portrait-pinned pose
+             pipeline: the adapter mirror + y-flip and every frozen-contract arm
+             angle assume an upright portrait frame, so the UI must not rotate.
+             Not related to #61 (data-driven decode facing — post-beta). -->
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
