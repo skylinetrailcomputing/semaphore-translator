@@ -106,6 +106,12 @@ struct ModePill: View {
     let title: String
     let subtitle: String
     let systemImage: String
+    /// Render a non-actionable, dimmed variant — used by the Learn sight-read picker
+    /// (#127) for a number passage while numerals are off. Default `false` keeps every
+    /// existing call site (Home, the Learn chooser) unchanged. The caller still
+    /// withholds the tap (no `NavigationLink`); this only handles the look + drops the
+    /// chevron affordance.
+    var disabled: Bool = false
 
     var body: some View {
         HStack(spacing: 16) {
@@ -120,16 +126,19 @@ struct ModePill: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.footnote)
-                .foregroundStyle(.white.opacity(0.4))
-                .accessibilityHidden(true)
+            if !disabled {
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.4))
+                    .accessibilityHidden(true)
+            }
         }
         .foregroundStyle(.white)
         .padding()
         .frame(maxWidth: .infinity)
         .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
         .contentShape(Rectangle())
+        .opacity(disabled ? 0.4 : 1)
     }
 }
 

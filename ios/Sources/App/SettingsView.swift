@@ -12,6 +12,11 @@ struct SettingsView: View {
     /// reads the same `@AppStorage` key, so flipping it here shows/hides the figure
     /// on the next return to the drill screen.
     @AppStorage(AppSettingsKeys.showAssistFigure) private var showAssistFigure = true
+    /// The Learn numerals on/off (#127). Default ON; `PreviewViewModel` seeds its
+    /// front-lens decode gate from the same `@AppStorage` key, and the Learn passage
+    /// surfaces read it to disable/​warn on number passages. The next drill/practice
+    /// entry reflects a flip here.
+    @AppStorage(AppSettingsKeys.allowNumerals) private var allowNumerals = true
     /// The numerals-indicator on/off (6a-14, #103). Default ON; `ContentView` reads
     /// the same `@AppStorage` key, so flipping it here shows/hides the live pill on
     /// the camera screen the next time it appears.
@@ -35,6 +40,20 @@ struct SettingsView: View {
                 Text(
                     "Shows a stick figure of the arm positions to copy for each "
                     + "letter while practising a passage in Learn.")
+            }
+
+            // The Learn numerals on/off (#127) — a decode-behaviour toggle for the
+            // self-signing path; sits just above the display-only indicator toggle so
+            // the two numerals controls read together.
+            Section {
+                Toggle("Enable numerals", isOn: $allowNumerals)
+                    .tint(.green)
+            } footer: {
+                Text(
+                    "Lets signing switch into number mode (digits 0–9) in Learn. Turn "
+                    + "off to practise letters only — the numbers switch is ignored, "
+                    + "sight-read passages with numbers are hidden, and typing a number "
+                    + "into a passage warns you. Interpret still reads numbers normally.")
             }
 
             // The live NUMERALS mode indicator (6a-14, #103) — a display toggle for

@@ -6,6 +6,13 @@ import SwiftUI
 /// `AppSettings`.
 enum AppSettingsKeys {
     static let developerMode = "developerMode"
+    /// Whether signing may switch into numeric mode in Learn (#127). Default ON (see
+    /// `SettingsView`). When OFF, the front-lens decode gate (`PreviewViewModel`'s
+    /// `suppressNumerals` + `NumeralsGate`) drops the NUMERALS pose, the sight-read
+    /// picker disables number passages, and the type-a-passage screen warns. Interpret
+    /// (rear lens) ignores this — it always decodes a real signer's digits. The Android
+    /// twin is `AppSettings`' `allow_numerals`.
+    static let allowNumerals = "allowNumerals"
     /// Whether the Learn drill draws the contract-derived assist figure (#73,
     /// 6a-5). Default ON (see `SettingsView`); the drill card reads the same key.
     static let showAssistFigure = "showAssistFigure"

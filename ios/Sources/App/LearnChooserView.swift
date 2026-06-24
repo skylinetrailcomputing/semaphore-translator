@@ -67,6 +67,10 @@ struct LearnChooserView: View {
 /// twin is `CustomPassageScreen`.
 struct CustomPassageView: View {
     @State private var text = "HELLO"
+    /// The Learn numerals on/off (#127). When off, a typed passage that contains a
+    /// digit gets a non-blocking warning (Start stays enabled, per the product call):
+    /// the digit can't be signed with numerals off, so the drill would stall on it.
+    @AppStorage(AppSettingsKeys.allowNumerals) private var allowNumerals = true
     /// Owned keyboard focus (#104, 6a-15). The drill screen pushes from the
     /// "Start drill" CTA below; on the pop back, iOS otherwise auto-refocused this
     /// field — raising the keyboard unbidden — and keyboard-avoidance failed to
@@ -103,6 +107,10 @@ struct CustomPassageView: View {
                     .foregroundStyle(.white)
 
                 previewCard(sanitized: sanitized, withinCap: withinCap)
+
+                if !allowNumerals && PassageSource.containsDigit(sanitized) {
+                    numeralsOffWarning
+                }
 
                 Spacer()
 
@@ -150,6 +158,24 @@ struct CustomPassageView: View {
         }
     }
 
+    /// The numerals-off warning (#127): a non-blocking amber notice shown when the
+    /// typed passage contains a digit while numerals are turned off. Plain prose so it
+    /// doubles as the screen-reader label (#92). In lockstep with Android's banner in
+    /// `CustomPassageScreen`.
+    private var numeralsOffWarning: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill").accessibilityHidden(true)
+            Text(
+                "Numbers are turned off. The digits in this passage can’t be signed — "
+                + "turn on “Enable numerals” in Settings to drill them.")
+        }
+        .font(.caption)
+        .foregroundStyle(.yellow)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.yellow.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+    }
+
     /// The live preview = the sanitised target string, shown verbatim (spaces as `␣`
     /// so trims/collapses are legible), with a target counter. Empty-state copy names
     /// the supported set so a field of only-dropped characters doesn't read as a
@@ -195,6 +221,10 @@ struct CustomPassageView: View {
 /// is `StockPassageScreen`.
 struct StockPassageView: View {
     private let passages: [StockPassage]
+    /// The Learn numerals on/off (#127). When off, a stock passage whose sanitised
+    /// text contains a digit is shown disabled (dimmed, non-tappable) with a note, so
+    /// the user never starts an unsignable sight-read.
+    @AppStorage(AppSettingsKeys.allowNumerals) private var allowNumerals = true
 
     init() {
         passages = (try? StockPassages.loadBundled())?.passages ?? []
@@ -213,17 +243,24 @@ struct StockPassageView: View {
                             .foregroundStyle(.white.opacity(0.7))
                             .frame(maxWidth: .infinity, alignment: .leading)
                         ForEach(passages) { passage in
-                            NavigationLink {
-                                ContentView(
-                                    emptyHint: "Sign the letter shown above",
-                                    drillTargets: PassageSource.sanitize(passage.text))
-                                    .navigationBarTitleDisplayMode(.inline)
-                                    .toolbarBackground(.hidden, for: .navigationBar)
-                            } label: {
-                                ModePill(
-                                    title: passage.hint,
-                                    subtitle: "\(PassageSource.sanitize(passage.text).count) steps",
-                                    systemImage: "list.bullet.rectangle")
+                            let targets = PassageSource.sanitize(passage.text)
+                            // Disable a number passage while numerals are off (#127): the
+                            // digits can't be signed, so it would be an unwinnable drill.
+                            if !allowNumerals && PassageSource.containsDigit(targets) {
+                                disabledPassagePill(hint: passage.hint, steps: targets.count)
+                            } else {
+                                NavigationLink {
+                                    ContentView(
+                                        emptyHint: "Sign the letter shown above",
+                                        drillTargets: targets)
+                                        .navigationBarTitleDisplayMode(.inline)
+                                        .toolbarBackground(.hidden, for: .navigationBar)
+                                } label: {
+                                    ModePill(
+                                        title: passage.hint,
+                                        subtitle: "\(targets.count) steps",
+                                        systemImage: "list.bullet.rectangle")
+                                }
                             }
                         }
                     }
@@ -233,6 +270,27 @@ struct StockPassageView: View {
         }
         .navigationTitle("Sight-read")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// A disabled sight-read row (#127): the dimmed, non-tappable `ModePill` plus a
+    /// short note that names why it's off and how to re-enable it. Combined into one
+    /// accessibility element announced as disabled, matching the Android twin.
+    private func disabledPassagePill(hint: String, steps: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ModePill(
+                title: hint,
+                subtitle: "\(steps) steps",
+                systemImage: "list.bullet.rectangle",
+                disabled: true)
+            Text("Contains numbers — turn on “Enable numerals” in Settings to drill this.")
+                .font(.caption2)
+                .foregroundStyle(.yellow.opacity(0.85))
+                .padding(.horizontal, 4)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(hint), \(steps) steps. Disabled: contains numbers. "
+            + "Turn on Enable numerals in Settings to drill this.")
     }
 
     private var unavailable: some View {

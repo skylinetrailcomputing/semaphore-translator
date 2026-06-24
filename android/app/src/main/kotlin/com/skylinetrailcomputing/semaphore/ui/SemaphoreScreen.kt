@@ -65,6 +65,7 @@ import com.skylinetrailcomputing.semaphore.core.DrillSession
 import com.skylinetrailcomputing.semaphore.core.Keypoint
 import com.skylinetrailcomputing.semaphore.core.Keypoints
 import com.skylinetrailcomputing.semaphore.core.Mode
+import com.skylinetrailcomputing.semaphore.core.NumeralsGate
 import com.skylinetrailcomputing.semaphore.core.TimingProfile
 import com.skylinetrailcomputing.semaphore.capture.PoseCaptureSession
 import kotlinx.coroutines.delay
@@ -99,6 +100,7 @@ fun SemaphoreScreen(
     showNumeralsIndicator: Boolean = false,
     matchedOnlyReadout: Boolean = false,
     autoResetOnComplete: Boolean = false,
+    allowNumerals: Boolean = true,
 ) {
     val context = LocalContext.current
     var hasCamera by remember {
@@ -133,6 +135,7 @@ fun SemaphoreScreen(
                 showNumeralsIndicator,
                 matchedOnlyReadout,
                 autoResetOnComplete,
+                allowNumerals,
             )
     }
 }
@@ -158,6 +161,7 @@ private fun CameraScreen(
     showNumeralsIndicator: Boolean,
     matchedOnlyReadout: Boolean,
     autoResetOnComplete: Boolean,
+    allowNumerals: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
@@ -193,6 +197,11 @@ private fun CameraScreen(
     // its decode-site flip are gated to the rear (ADR 0011, #78), so the Learn path
     // can never apply the flip.
     val isRear = cameraLens.lensFacing == CameraSelector.LENS_FACING_BACK
+    // Learn-only numerals gate (#127): suppress the numeric-mode switch only on the
+    // front lens (Learn) and only when the setting is off. Interpret (rear) always
+    // honours numerals, so a real signer's digits aren't mis-read as letters. The gate
+    // proper lives in `NumeralsGate`, applied in the frame loop below.
+    val suppressNumerals = !isRear && !allowNumerals
 
     val capture = remember { PoseCaptureSession(context) }
     // The bound camera, surfaced by the capture session once `bindToLifecycle` runs,
@@ -355,8 +364,10 @@ private fun CameraScreen(
 
             // Temporal path: classify the mode-independent pose, then let the
             // committer smooth/hold/debounce it. A non-empty return is a committed
-            // letter/digit/space.
-            val symbol = decoder.classify(kp)
+            // letter/digit/space. The numerals gate (#127) drops a NUMERALS pose to
+            // indeterminate when the Learn "Enable numerals" setting is off (front lens
+            // only), so the committer never enters numeric mode; identity otherwise.
+            val symbol = NumeralsGate.gate(decoder.classify(kp), suppressNumerals)
             val emitted = committer.process(symbol, frame.tMs)
             if (emitted.isNotEmpty()) {
                 // Coalesce spaces into the readout buffer: no leading space, no two in

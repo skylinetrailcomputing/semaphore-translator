@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.sp
 fun SettingsScreen(
     showAssist: Boolean,
     onShowAssistChange: (Boolean) -> Unit,
+    allowNumerals: Boolean,
+    onAllowNumeralsChange: (Boolean) -> Unit,
     showNumeralsIndicator: Boolean,
     onShowNumeralsIndicatorChange: (Boolean) -> Unit,
     matchedOnlyReadout: Boolean,
@@ -104,6 +106,21 @@ fun SettingsScreen(
                         "letter while practising a passage in Learn.",
                 checked = showAssist,
                 onCheckedChange = onShowAssistChange,
+            )
+            // The Learn numerals on/off (#127) — a decode-behaviour toggle for the
+            // self-signing path; sits just above the display-only indicator toggle so
+            // the two numerals controls read together. The iOS twin is the matching
+            // toggle in `SettingsView`.
+            SettingsToggleRow(
+                title = "Enable numerals",
+                subtitle =
+                    "Lets signing switch into number mode (digits 0–9) in Learn. Turn " +
+                        "off to practise letters only — the numbers switch is ignored, " +
+                        "sight-read passages with numbers are hidden, and typing a " +
+                        "number into a passage warns you. Interpret still reads numbers " +
+                        "normally.",
+                checked = allowNumerals,
+                onCheckedChange = onAllowNumeralsChange,
             )
             // The live NUMERALS mode indicator (6a-14, #103) — a display toggle for
             // the camera screen; the iOS twin is the matching toggle in `SettingsView`.
