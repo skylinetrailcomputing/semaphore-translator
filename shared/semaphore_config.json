@@ -8,7 +8,7 @@
   "SMOOTHING_WINDOW": 5,
   "timing_profiles": {
     "interpret": {
-      "COMMIT_HOLD_MS": 400,
+      "COMMIT_HOLD_MS": 350,
       "INTER_CHAR_GAP_MS": 200,
       "SMOOTHING_WINDOW": 5
     }
@@ -19,6 +19,6 @@
     "COMMIT_HOLD_MS": "how long a stable pose must hold (wall-clock ms) before being committed to output (ADR 0004)",
     "INTER_CHAR_GAP_MS": "minimum brief-REST dwell (ms) that re-arms the SAME symbol for re-commit -- the double-letter separator; a REST held >= COMMIT_HOLD_MS commits a space instead, and an indeterminate gap no longer re-arms. A distinct symbol commits on its hold alone (ADR 0005, superseding ADR 0004 Decision 3)",
     "SMOOTHING_WINDOW": "frames of plurality-vote smoothing (ties to the most-recent occurrence) on the predicted mode-independent pose symbol (the classify output, not the emitted character); see ADR 0004",
-    "timing_profiles": "Per-fork committer-timing overrides (ADR 0009). The flat COMMIT_HOLD_MS/INTER_CHAR_GAP_MS/SMOOTHING_WINDOW are the implicit Learn profile (front camera, self-signing). Each named profile here is FULLY SPECIFIED (all three timing keys; never a delta) and is selected by the camera lens at the committer-construction site -- the rear-camera Interpret fork selects 'interpret'. Faster commit (400 vs 600 ms) suits faster real-world signers; #76 (6a-8) tunes against footage. Only the three timing keys may fork -- the geometry constants never do (ADR 0006: the rear lens reuses the front decode path verbatim). A missing/malformed selected profile is a fatal load error, never a silent fallback to Learn."
+    "timing_profiles": "Per-fork committer-timing overrides (ADR 0009). The flat COMMIT_HOLD_MS/INTER_CHAR_GAP_MS/SMOOTHING_WINDOW are the implicit Learn profile (front camera, self-signing). Each named profile here is FULLY SPECIFIED (all three timing keys; never a delta) and is selected by the camera lens at the committer-construction site -- the rear-camera Interpret fork selects 'interpret'. Faster commit (350 vs 600 ms) suits faster real-world signers; tuned by #76 (6a-8) against fast-signer footage (docs/interpret-timing-tuning.md). Only the three timing keys may fork -- the geometry constants never do (ADR 0006: the rear lens reuses the front decode path verbatim). A missing/malformed selected profile is a fatal load error, never a silent fallback to Learn."
   }
 }
