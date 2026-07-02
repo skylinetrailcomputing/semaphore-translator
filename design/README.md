@@ -33,6 +33,7 @@ semaphore-translator-icon-background.svg  Solid navy square (Android adaptive ba
 semaphore-translator-icon-dark.svg        iOS 18 Dark variant (transparent; system supplies dark bg).
 semaphore-translator-icon-tinted.svg      iOS 18 Tinted variant (grayscale, transparent).
 semaphore-translator-icon-1024.png        1024px PNG master (App Store / Play listing render source).
+semaphore-translator-icon-512.png         512px PNG (Play Console store-listing "App icon" field; downscaled from the 1024 master).
 ```
 
 ## iOS 18 appearances (Light / Dark / Tinted)
