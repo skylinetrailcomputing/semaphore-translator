@@ -42,15 +42,19 @@ Companion docs:
 - [x] Privacy Policy authored and hosted (required by App Store
   even for zero-data apps) — hosted on GitHub Pages (#79); states the
   on-device / no-storage / no-transmission posture
-- [ ] App Store Connect "App Privacy" questionnaire answered
-      *(hold: answered in the ASC record — #83)*
+- [x] App Store Connect "App Privacy" questionnaire answered
+  — answered in the ASC record (#83): "Do you collect data from
+  this app?" → **No**. Matches the privacy note.
 - [x] Apple Small Business Program enrolled if any paid tier
   (drops commission 30% → 15%; Skyline qualifies)
   **WAIVED** — free app, no paid tier, no IAP/donations (Skyline is
   enrolled regardless).
-- [ ] Listing copy reviewed against marketing-copy guardrails
-  below
-      *(hold: listing copy authored during store setup — #83/#84)*
+- [x] Listing copy reviewed against marketing-copy guardrails
+  below — Play listing copy reviewed clean (2026-07-02): no
+  "guaranteed / always / 100% / safe-for" language, no health /
+  medical / dietary claims, and an explicit education-and-
+  entertainment "A NOTE ON SCOPE" honesty paragraph. iOS App Store
+  copy mirrors the same posture (authored in ASC during #83).
 
 ## In-app surfaces
 
@@ -107,10 +111,34 @@ merged; the final Sign-off review below remains the true gate.)
 
 ## Sign-off
 
-- [ ] All items above either checked or explicitly waived (with
-  reason recorded inline)
-      *(near-complete after the 6b-8 pre-pass; gated only on the
-      store-record items above — #83/#84)*
-- [ ] This file reviewed at the moment of TestFlight expansion
-  / public listing
-      *(THE go/no-go — flip both Sign-off boxes when #83/#84/#85 land)*
+- [x] All items above either checked or explicitly waived (with
+  reason recorded inline) — completed 2026-07-02; the two held
+  store-record items (App Privacy questionnaire, listing-copy
+  guardrail review) are now resolved above.
+- [x] This file reviewed at the moment of TestFlight expansion
+  / public listing — reviewed 2026-07-02, immediately preceding
+  the #85 external-TestFlight / Play-internal invite send.
+
+### Go / no-go — 2026-07-02: **GO** (closed F&F beta)
+
+Both distribution tracks are live and the RC is submitted:
+
+- **iOS (#83):** build past **Beta App Review — approved**, live on
+  the external TestFlight track; ready to invite.
+- **Android (#84):** build live on the Play **internal testing**
+  track (no review — live in minutes); ready to invite.
+
+**Legal / risk posture (recorded per #86):** this is a closed
+friends-&-family beta with ≤20 curated testers, so **"legal" is the
+maintainer** — best-effort under the Skyline Trail Computing LLC
+umbrella (LLC + operating agreement + E&O bound). The cohort is
+invited **without a paid per-app counsel loop**; real per-app counsel
+is **deferred to pre-wide-release, which stays a hard gate** (the two
+per-app / E&O legal items above remain waived on that basis). The
+app-specific risk section is waived on Tier-A grounds — no money, no
+PII of consequence, no injury/reliance surface.
+
+**Remaining is execution of the GO, not a gate — #85:** set the
+Effective date in the hosted privacy + EULA docs (and the ASC EULA
+paste) on the day invites go out, then add the cohort to both tracks
+and send.
